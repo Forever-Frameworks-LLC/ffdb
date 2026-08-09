@@ -206,10 +206,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Test and pack the public SDK and CLI packages
         run: |
+          scripts/build-sdk-packages.sh "${{ needs.validate.outputs.version }}" dist/sdk
           pnpm --filter @ffdb/client --filter @ffdb/sync-client \
             --filter @ffdb/react --filter @ffdb/react-native \
             --filter @ffdb/email-components --filter @ffdb/cli test
-          scripts/build-sdk-packages.sh "${{ needs.validate.outputs.version }}" dist/sdk
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ffdb-sdk-${{ needs.validate.outputs.version }}
