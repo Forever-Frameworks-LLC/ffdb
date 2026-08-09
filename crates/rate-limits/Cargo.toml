@@ -9,7 +9,7 @@ publish = false
 hmac = "0.12"
 parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
+sha2 = "0.11"
 sqlx.workspace = true
 thiserror = "2"
 
