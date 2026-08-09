@@ -662,6 +662,7 @@ dependencies = [
  "ed25519-dalek",
  "ffdb-postgres",
  "ffdb-protocol",
+ "getrandom 0.4.3",
  "hmac",
  "password-hash",
  "rand 0.8.7",
