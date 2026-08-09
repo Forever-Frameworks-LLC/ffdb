@@ -891,7 +891,8 @@ impl Session<'_> {
         };
         let payload = serde_json::to_vec(&claims).map_err(|_| RuntimeError::Database)?;
         let secret = self.sync_cursor_secret()?;
-        let mut mac = HmacSha256::new_from_slice(&secret).map_err(|_| RuntimeError::Database)?;
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(&secret)
+            .map_err(|_| RuntimeError::Database)?;
         mac.update(&payload);
         Ok(format!(
             "{}.{}",
@@ -920,7 +921,8 @@ impl Session<'_> {
             .decode(signature)
             .map_err(|_| RuntimeError::SyncCursorInvalid)?;
         let secret = self.sync_cursor_secret()?;
-        let mut mac = HmacSha256::new_from_slice(&secret).map_err(|_| RuntimeError::Database)?;
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(&secret)
+            .map_err(|_| RuntimeError::Database)?;
         mac.update(&payload);
         mac.verify_slice(&signature)
             .map_err(|_| RuntimeError::SyncCursorInvalid)?;
@@ -952,7 +954,7 @@ impl Session<'_> {
 }
 
 fn capture_source_names(table: &str) -> Result<[Identifier; 4], RuntimeError> {
-    let digest = format!("{:x}", Sha256::digest(table.as_bytes()));
+    let digest = hex::encode(Sha256::digest(table.as_bytes()));
     let suffix = &digest[..16];
     Ok([
         Identifier::new(format!("__ffdb_sync_capture_insert_{suffix}"))
@@ -1232,7 +1234,7 @@ fn result_json(value: &ResultValue) -> Result<JsonValue, RuntimeError> {
 fn scope_fingerprint(auth: &crate::AuthContext) -> Result<String, RuntimeError> {
     let payload =
         serde_json::to_vec(&(&auth.role, &auth.claims)).map_err(|_| RuntimeError::Database)?;
-    Ok(format!("{:x}", Sha256::digest(payload)))
+    Ok(hex::encode(Sha256::digest(payload)))
 }
 
 fn epoch_ms() -> Result<i64, RuntimeError> {

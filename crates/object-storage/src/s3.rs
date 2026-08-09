@@ -1066,7 +1066,8 @@ fn signature(
 }
 
 fn hmac(key: &[u8], value: &[u8]) -> Result<Vec<u8>, StorageError> {
-    let mut mac = HmacSha256::new_from_slice(key).map_err(|_| StorageError::Internal)?;
+    let mut mac =
+        <HmacSha256 as hmac::KeyInit>::new_from_slice(key).map_err(|_| StorageError::Internal)?;
     mac.update(value);
     Ok(mac.finalize().into_bytes().to_vec())
 }

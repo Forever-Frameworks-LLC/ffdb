@@ -159,7 +159,7 @@ impl OpaqueTokenCodec {
     }
 
     fn digest(&self, value: &[u8]) -> Result<CredentialDigest, TokenError> {
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(&self.pepper)
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(&self.pepper)
             .map_err(|_| TokenError::InvalidKey)?;
         mac.update(value);
         let bytes: [u8; 32] = mac.finalize().into_bytes().into();

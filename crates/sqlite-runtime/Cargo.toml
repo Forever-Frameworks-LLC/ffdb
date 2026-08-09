@@ -10,6 +10,7 @@ description = "Hardened, context-bound SQLite execution for FFDB workers"
 base64 = "0.22.1"
 ffdb-sql-parser = { path = "../sql-parser" }
 ffdb-sqlite-rls = { path = "../sqlite-rls" }
+hex.workspace = true
 hmac = "0.13.0"
 rusqlite = { workspace = true, features = ["column_decltype"] }
 serde = { version = "1.0.228", features = ["derive"] }

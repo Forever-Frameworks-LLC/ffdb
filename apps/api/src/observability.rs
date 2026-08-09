@@ -830,7 +830,7 @@ fn profile_sql(sql: &str) -> QueryProfile {
         |class| (statement_kind_name(class.kind).to_owned(), class.read_only),
     );
     let shape = redact_sql_shape(sql);
-    let fingerprint = format!("{:x}", Sha256::digest(shape.as_bytes()));
+    let fingerprint = hex::encode(Sha256::digest(shape.as_bytes()));
     QueryProfile {
         fingerprint,
         shape,

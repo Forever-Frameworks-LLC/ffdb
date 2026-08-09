@@ -94,7 +94,7 @@ impl DirectorySyncStore {
         if project_id.is_empty() || project_id.len() > 128 {
             return Err(SyncStoreError::Corrupt);
         }
-        let digest = format!("{:x}", Sha256::digest(project_id.as_bytes()));
+        let digest = hex::encode(Sha256::digest(project_id.as_bytes()));
         Ok(self.root.join(format!("{digest}.sync")))
     }
 

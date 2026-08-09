@@ -1955,7 +1955,7 @@ fn hash_file_bounded(
             .ok_or_else(receipt_outcome_unknown)?;
         digest.update(&buffer[..read]);
     }
-    Ok((size, format!("{:x}", digest.finalize())))
+    Ok((size, hex::encode(digest.finalize())))
 }
 
 fn receipt_outcome_unknown() -> WorkerFailure {

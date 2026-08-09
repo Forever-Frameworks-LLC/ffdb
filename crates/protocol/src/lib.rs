@@ -489,7 +489,7 @@ impl MigrationSpec {
         hasher.update(self.up_sql.as_bytes());
         hasher.update([0]);
         hasher.update(self.down_sql.as_bytes());
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 
     pub fn validate(&self) -> Result<(), ProtocolValidationError> {

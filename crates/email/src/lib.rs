@@ -437,7 +437,7 @@ pub fn default_template(
     let text_template = format!(
         "{heading}\n\n{explanatory}\n\n{{{{action_url}}}}\n\nThis link expires in {{{{expires_in}}}}."
     );
-    let source_sha256 = format!("{:x}", Sha256::digest(template_id.as_bytes()));
+    let source_sha256 = hex::encode(Sha256::digest(template_id.as_bytes()));
     PrecompiledTemplate {
         project_id: project_id.into(),
         template_id: template_id.to_owned(),

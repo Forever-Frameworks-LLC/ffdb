@@ -326,7 +326,7 @@ impl OrganizationMetricsStore {
         if subject.is_empty() || subject.len() > 512 || subject.bytes().any(|byte| byte == 0) {
             return Err(MetricsError::InvalidInput);
         }
-        let mut mac = HmacSha256::new_from_slice(&self.subject_key)
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(&self.subject_key)
             .map_err(|_| MetricsError::InvalidConfiguration)?;
         mac.update(b"ffdb.metrics.mau.v1\0");
         mac.update(self.organization_id.0.as_bytes());

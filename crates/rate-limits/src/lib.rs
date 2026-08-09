@@ -46,7 +46,7 @@ impl RateLimitKey {
         if namespace_secret.len() < 32 || identifier.is_empty() || identifier.len() > 1024 {
             return Err(RateLimitError::InvalidConfiguration);
         }
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(namespace_secret)
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(namespace_secret)
             .map_err(|_| RateLimitError::InvalidConfiguration)?;
         mac.update(dimension_name(dimension).as_bytes());
         mac.update(&[0]);

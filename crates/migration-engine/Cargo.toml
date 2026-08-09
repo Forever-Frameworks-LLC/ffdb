@@ -10,6 +10,7 @@ description = "Atomic FFDB SQLite migrations with explicit down SQL and RLS comp
 ffdb-sql-parser = { path = "../sql-parser" }
 ffdb-sqlite-rls = { path = "../sqlite-rls" }
 ffdb-sqlite-runtime = { path = "../sqlite-runtime" }
+hex.workspace = true
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.11.0"

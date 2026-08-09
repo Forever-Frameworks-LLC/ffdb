@@ -92,7 +92,7 @@ impl StorageCursorCodec {
 
     fn encode(&self, cursor: &ListCursor) -> Result<String, StorageError> {
         let payload = serde_json::to_vec(cursor).map_err(|_| StorageError::Internal)?;
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| StorageError::Internal)?;
         mac.update(&payload);
         let encoded = format!(
@@ -120,7 +120,7 @@ impl StorageCursorCodec {
         let signature = URL_SAFE_NO_PAD
             .decode(signature)
             .map_err(|_| StorageError::InvalidGrant)?;
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| StorageError::Internal)?;
         mac.update(&payload);
         mac.verify_slice(&signature)
@@ -144,7 +144,7 @@ impl StorageCursorCodec {
             "provider_key": provider_key,
         }))
         .map_err(|_| runtime::RuntimeError::Database)?;
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| runtime::RuntimeError::Database)?;
         mac.update(&payload);
         Ok(URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes()))
@@ -1287,7 +1287,7 @@ fn optional_text(value: Option<&str>) -> runtime::SqlParameter {
 fn scope_fingerprint(auth: &protocol::AuthContext) -> Result<String, runtime::RuntimeError> {
     let bytes = serde_json::to_vec(&json!({"role": auth.role, "claims": auth.claims}))
         .map_err(|_| runtime::RuntimeError::Database)?;
-    Ok(format!("{:x}", Sha256::digest(bytes)))
+    Ok(hex::encode(Sha256::digest(bytes)))
 }
 
 fn storage_action_name(action: StorageAction) -> &'static str {

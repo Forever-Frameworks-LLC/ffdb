@@ -245,7 +245,7 @@ impl GrantCodec {
 
     fn issue(&self, claims: &GrantClaims) -> Result<AuthorizationToken, StorageError> {
         let payload = serde_json::to_vec(claims).map_err(|_| StorageError::InvalidGrant)?;
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| StorageError::InvalidConfiguration)?;
         mac.update(&payload);
         let signature = mac.finalize().into_bytes();
@@ -294,7 +294,7 @@ impl GrantCodec {
         if signature.len() != 32 {
             return Err(StorageError::InvalidGrant);
         }
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| StorageError::InvalidConfiguration)?;
         mac.update(&payload);
         mac.verify_slice(&signature)

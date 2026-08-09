@@ -1012,7 +1012,7 @@ fn provider_idempotency_key(
     digest.update(operation.as_bytes());
     digest.update(organization_id.0.as_bytes());
     digest.update(caller_key.as_bytes());
-    format!("ffdb-{operation}-{:x}", digest.finalize())
+    format!("ffdb-{operation}-{}", hex::encode(digest.finalize()))
 }
 
 const fn tier_name(value: PlatformBillingTier) -> &'static str {

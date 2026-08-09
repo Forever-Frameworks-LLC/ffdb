@@ -5383,7 +5383,7 @@ impl CommerceService {
         } else if let Some(email) = email {
             validate_email(email)?;
             let digest = Sha256::digest(email.trim().to_ascii_lowercase().as_bytes());
-            ("guest", format!("email:{digest:x}"))
+            ("guest", format!("email:{}", hex::encode(digest)))
         } else {
             return Ok(None);
         };
