@@ -1572,10 +1572,12 @@ impl InstanceService {
         actor: UserId,
     ) -> Result<Vec<InstancePlanCatalogEntry>, InstanceServiceError> {
         self.require_administrator(actor).await?;
-        let rows = sqlx::query(&format!(
+        // The base statement and ordering suffix are compile-time SQL with no
+        // request data; AssertSqlSafe records that audit for SQLx 0.9.
+        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             "{} ORDER BY CASE tier WHEN 'free' THEN 0 WHEN 'pay_as_you_go' THEN 1 ELSE 2 END",
             plan_select()
-        ))
+        )))
         .fetch_all(&self.pool)
         .await
         .map_err(|_| InstanceServiceError::Unavailable)?;
@@ -1595,12 +1597,17 @@ impl InstanceService {
         validate_plan(tier, input)?;
         let provider_catalog_bound = self.provider_catalog_bound().await?;
         if provider_catalog_bound && tier != PlatformBillingTier::Free {
-            let current = sqlx::query(&format!("{} WHERE tier=$1", plan_select()))
-                .bind(tier_name(tier))
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|_| InstanceServiceError::Unavailable)?
-                .ok_or(InstanceServiceError::NotFound)?;
+            // plan_select() and this predicate are both compile-time SQL. The
+            // tier remains a bind parameter below.
+            let current = sqlx::query(sqlx::AssertSqlSafe(format!(
+                "{} WHERE tier=$1",
+                plan_select()
+            )))
+            .bind(tier_name(tier))
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|_| InstanceServiceError::Unavailable)?
+            .ok_or(InstanceServiceError::NotFound)?;
             let current = plan_from_row(&current, true)?;
             if !provider_pricing_fields_match(&current, input) {
                 return Err(InstanceServiceError::ProviderCatalogConflict);
@@ -4679,9 +4686,12 @@ mod tests {
             "instance_billing_secrets",
             "instance_billing_accounts",
         ] {
-            let count: i64 = sqlx::query_scalar(&format!("SELECT count(*) FROM {table}"))
-                .fetch_one(&mut *transaction)
-                .await?;
+            // `table` is selected exclusively from the fixed list above and
+            // never contains request input.
+            let count: i64 =
+                sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT count(*) FROM {table}")))
+                    .fetch_one(&mut *transaction)
+                    .await?;
             assert_eq!(count, 0, "{table} was not cleared");
         }
         let provider_ids_cleared: bool = sqlx::query_scalar(

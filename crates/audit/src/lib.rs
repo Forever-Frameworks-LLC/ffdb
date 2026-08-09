@@ -470,11 +470,13 @@ mod tests {
         const CONCURRENCY: usize = 8;
         let database_url = std::env::var("TEST_DATABASE_URL")?;
         let admin_pool = PgPool::connect(&database_url).await?;
+        // The schema suffix is canonical UUID hex generated in-process. It
+        // cannot contain quotes, delimiters, whitespace, or caller input.
         let schema = format!("audit_profile_{}", Uuid::now_v7().simple());
-        sqlx::query(&format!("CREATE SCHEMA {schema}"))
+        sqlx::query(sqlx::AssertSqlSafe(format!("CREATE SCHEMA {schema}")))
             .execute(&admin_pool)
             .await?;
-        sqlx::query(&format!(
+        sqlx::query(sqlx::AssertSqlSafe(format!(
             "CREATE TABLE {schema}.audit_events (\
                 append_sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE,\
                 id uuid PRIMARY KEY, occurred_at timestamptz NOT NULL,\
@@ -483,14 +485,14 @@ mod tests {
                 resource_kind text NOT NULL, resource_id uuid, outcome text NOT NULL,\
                 source_ip inet, metadata jsonb NOT NULL, prev_hash bytea, event_hash bytea NOT NULL\
             )"
-        ))
+        )))
         .execute(&admin_pool)
         .await?;
-        sqlx::query(&format!(
+        sqlx::query(sqlx::AssertSqlSafe(format!(
             "CREATE INDEX audit_profile_org_append_idx ON {schema}.audit_events \
              (organization_id,append_sequence DESC) \
              WHERE project_id IS NULL AND organization_id IS NOT NULL"
-        ))
+        )))
         .execute(&admin_pool)
         .await?;
         let search_path = schema.clone();
@@ -610,7 +612,7 @@ mod tests {
         );
 
         pool.close().await;
-        sqlx::query(&format!("DROP SCHEMA {schema} CASCADE"))
+        sqlx::query(sqlx::AssertSqlSafe(format!("DROP SCHEMA {schema} CASCADE")))
             .execute(&admin_pool)
             .await?;
         Ok(())

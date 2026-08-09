@@ -186,12 +186,7 @@ pub(crate) fn migrator() -> Migrator {
             ),
         ),
     ];
-    Migrator {
-        migrations: Cow::Owned(migrations),
-        ignore_missing: false,
-        locking: true,
-        no_tx: false,
-    }
+    Migrator::with_migrations(migrations)
 }
 
 fn up(version: i64, description: &'static str, sql: &'static str) -> Migration {
@@ -199,7 +194,7 @@ fn up(version: i64, description: &'static str, sql: &'static str) -> Migration {
         version,
         Cow::Borrowed(description),
         MigrationType::ReversibleUp,
-        Cow::Borrowed(sql),
+        sqlx::SqlStr::from_static(sql),
         false,
     )
 }
@@ -209,7 +204,7 @@ fn down(version: i64, description: &'static str, sql: &'static str) -> Migration
         version,
         Cow::Borrowed(description),
         MigrationType::ReversibleDown,
-        Cow::Borrowed(sql),
+        sqlx::SqlStr::from_static(sql),
         false,
     )
 }
@@ -262,6 +257,10 @@ mod tests {
                 (16, MigrationType::ReversibleDown),
             ]
         );
-        assert!(migrator.iter().all(|migration| !migration.sql.is_empty()));
+        assert!(
+            migrator
+                .iter()
+                .all(|migration| !migration.sql.as_str().is_empty())
+        );
     }
 }
