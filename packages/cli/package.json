@@ -15,7 +15,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": { "ffdb": "./dist/main.js" },
+  "bin": { "ffdb": "dist/main.js" },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -71,6 +71,26 @@ no `NPM_TOKEN`. In npm package settings, add a GitHub Actions trusted publisher
 for each package below, using repository `Forever-Frameworks-LLC/ffdb` and
 workflow filename `release.yml`:
 
+Trusted publishers can only be attached after the package identities exist. For
+a new registry scope, first create the `ffdb` organization at npm, enable 2FA on
+the publishing account, and verify the local account can access it:
+
+```sh
+npm login
+npm whoami
+npm org ls ffdb
+```
+
+Then publish a one-time prerelease under the non-default `bootstrap` tag:
+
+```sh
+make npm-bootstrap-publish
+```
+
+The command performs npm access checks before building, stops on the first
+failure, and can be rerun safely if an interrupted attempt published only some
+packages. It never publishes the final release version or changes `latest`.
+
 - `@ffdb/client`
 - `@ffdb/sync-client`
 - `@ffdb/react`

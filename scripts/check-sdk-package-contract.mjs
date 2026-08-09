@@ -52,7 +52,7 @@ function validateManifest(manifest, expected, location, packed) {
   check(manifest.types === "./dist/index.d.ts", `${location} has the wrong declarations entry point`);
   for (const subpath of expected.exports) check(manifest.exports?.[subpath], `${location} is missing export ${subpath}`);
   check(manifest.exports?.["./package.json"] === "./package.json", `${location} must export package.json`);
-  if (expected.bin) check(manifest.bin?.ffdb === `./${expected.bin}`, `${location} has the wrong ffdb binary target`);
+  if (expected.bin) check(manifest.bin?.ffdb === expected.bin, `${location} has the wrong ffdb binary target`);
   if (expected.templates) check(manifest.files.includes("templates"), `${location} must publish CLI templates`);
   for (const dependency of expected.dependencies ?? []) {
     const selector = manifest.dependencies?.[dependency];
