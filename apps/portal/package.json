@@ -27,7 +27,7 @@
     "sql-formatter": "^15.7.3"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.2.0",
     "@types/react": "^19.1.9",

@@ -122,8 +122,8 @@ importers:
         version: 15.8.2
     devDependencies:
       '@testing-library/jest-dom':
-        specifier: ^6.6.4
-        version: 6.10.0(@testing-library/dom@10.4.1)
+        specifier: ^7.0.0
+        version: 7.0.0(@testing-library/dom@10.4.1)
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -374,6 +374,9 @@ packages:
 
   '@codemirror/view@6.43.7':
     resolution: {integrity: sha512-FZsExxkoxnAN+d9TgqXLg5g4A1oQwzX9WlkOT5i2PKkcW7xx3Bmu0vs90g6fo9Mpdsb/l96dnAraQ8932aO4/g==}
+
+  '@codemirror/view@6.43.8':
+    resolution: {integrity: sha512-qtItTDssZ/5GFfi94hrILu9j/VUeFPDPkhovEfmWFj2ipTxnzPB8DdHgfbb8HYTzLTYhrndKmyQxXUz/PDLenw==}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -900,10 +903,9 @@ packages:
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
 
-  '@testing-library/jest-dom@6.10.0':
-    resolution: {integrity: sha512-HQwu0KaB2zyT0iLzBL+8CLyZDL3KlZlZJ+2iyc9uCUnlJVskJU/UlPuVCyIPhtukjPQdT2QNoR5nCP5FqTmmDQ==}
+  '@testing-library/jest-dom@7.0.0':
+    resolution: {integrity: sha512-HKAH9C6mBo5yBG6yRO5i43L2iisencAo5z+o5P/saHUoY+miC5ivXRxHBJcFyB5ypPNxHJdK3BoF/3O4DIptMg==}
     engines: {node: '>=22', npm: '>=6', yarn: '>=1'}
-    deprecated: Incorrect minor release with breaking changes (Node >=22 and required @testing-library/dom peer). Use 6.9.1 for the 6.x line, or upgrade to 7.0.0.
     peerDependencies:
       '@testing-library/dom': '>=10 <11'
 
@@ -1781,13 +1783,13 @@ snapshots:
   '@codemirror/lint@6.9.7':
     dependencies:
       '@codemirror/state': 6.7.1
-      '@codemirror/view': 6.43.7
+      '@codemirror/view': 6.43.8
       crelt: 1.0.7
 
   '@codemirror/search@6.7.1':
     dependencies:
       '@codemirror/state': 6.7.1
-      '@codemirror/view': 6.43.7
+      '@codemirror/view': 6.43.8
       crelt: 1.0.7
 
   '@codemirror/state@6.7.1':
@@ -1798,10 +1800,17 @@ snapshots:
     dependencies:
       '@codemirror/language': 6.12.4
       '@codemirror/state': 6.7.1
-      '@codemirror/view': 6.43.7
+      '@codemirror/view': 6.43.8
       '@lezer/highlight': 1.2.3
 
   '@codemirror/view@6.43.7':
+    dependencies:
+      '@codemirror/state': 6.7.1
+      crelt: 1.0.7
+      style-mod: 4.1.3
+      w3c-keyname: 2.2.8
+
+  '@codemirror/view@6.43.8':
     dependencies:
       '@codemirror/state': 6.7.1
       crelt: 1.0.7
@@ -2158,7 +2167,7 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@6.10.0(@testing-library/dom@10.4.1)':
+  '@testing-library/jest-dom@7.0.0(@testing-library/dom@10.4.1)':
     dependencies:
       '@adobe/css-tools': 4.5.0
       '@testing-library/dom': 10.4.1
@@ -2351,7 +2360,7 @@ snapshots:
       '@codemirror/lint': 6.9.7
       '@codemirror/search': 6.7.1
       '@codemirror/state': 6.7.1
-      '@codemirror/view': 6.43.7
+      '@codemirror/view': 6.43.8
 
   commander@2.20.3: {}
 
