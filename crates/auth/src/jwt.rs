@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signature, Signer as _, SigningKey, Verifier as _, VerifyingKey};
 use ffdb_protocol::{AuthContext, ProjectId, SessionId, TokenId, UserId};
-use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use thiserror::Error;
@@ -101,10 +100,12 @@ impl fmt::Debug for ProjectSigner {
 impl ProjectSigner {
     pub fn generate(project_id: ProjectId, kid: String) -> Result<Self, JwtError> {
         validate_kid(&kid)?;
+        let mut private_key = Zeroizing::new([0_u8; 32]);
+        getrandom::fill(private_key.as_mut()).map_err(|_| JwtError::KeyGeneration)?;
         Ok(Self {
             project_id,
             kid,
-            key: SigningKey::generate(&mut OsRng),
+            key: SigningKey::from_bytes(&private_key),
         })
     }
 
@@ -337,6 +338,8 @@ pub enum JwtError {
     Encoding,
     #[error("signing key store is unavailable")]
     KeyStoreUnavailable,
+    #[error("signing key generation failed")]
+    KeyGeneration,
 }
 
 pub fn verify_access_token(

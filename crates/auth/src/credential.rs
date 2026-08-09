@@ -385,7 +385,9 @@ fn unix_time_ms() -> Result<i64, CredentialVerificationError> {
 fn map_jwt_error(error: JwtError) -> CredentialVerificationError {
     match error {
         JwtError::TimeInvalid => CredentialVerificationError::Expired,
-        JwtError::KeyStoreUnavailable => CredentialVerificationError::Unavailable,
+        JwtError::KeyStoreUnavailable | JwtError::KeyGeneration => {
+            CredentialVerificationError::Unavailable
+        }
         JwtError::Malformed
         | JwtError::UnsupportedAlgorithm
         | JwtError::UnknownKey
