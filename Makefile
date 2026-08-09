@@ -50,6 +50,7 @@ TS_BUILD_OUTPUTS := \
 .PHONY: \
 	bootstrap build rust-build typescript-build check test live verify format \
 	compose-rebuild compose-fresh production-config-check release-check release-bundle sdk-packages \
+	npm-bootstrap-publish \
 	native-install-linux-test \
 	github-security-audit github-security-apply \
 	distribution-check load-test load-test-gateway load-test-api load-test-ready load-test-query load-test-check \
@@ -73,6 +74,7 @@ help:
 	@echo "  make native-install-linux-test  validate the native installer in disposable Linux containers"
 	@echo "  make release-bundle    build bundle (requires FFDB_VERSION and image digests)"
 	@echo "  make sdk-packages      build six version-matched publishable npm tarballs"
+	@echo "  make npm-bootstrap-publish  one-time publish package identities before trusted publishing"
 	@echo "  make github-security-audit  verify hosted GitHub repository security controls"
 	@echo "  make github-security-apply  apply and verify hosted GitHub repository security controls"
 	@echo "  make distribution-check  verify the public curl installation channel"
@@ -141,6 +143,7 @@ release-check:
 		infra/release/native/install-native.sh \
 		infra/release/native/uninstall-native.sh scripts/build-release-bundle.sh \
 		scripts/build-sdk-packages.sh scripts/check-public-distribution.sh \
+		scripts/bootstrap-npm-packages.sh \
 		scripts/build-native-bundle.sh scripts/test-release-distribution.sh \
 		scripts/test-host-backup.sh scripts/test-host-backup-compose.sh \
 		scripts/test-native-install-linux.sh \
@@ -172,6 +175,9 @@ native-install-linux-test:
 sdk-packages:
 	scripts/build-sdk-packages.sh $$(node -p 'require("./package.json").version') \
 		"$(or $(FFDB_SDK_OUTPUT_DIR),dist/sdk)"
+
+npm-bootstrap-publish:
+	scripts/bootstrap-npm-packages.sh $$(node -p 'require("./package.json").version')
 
 github-security-audit:
 	scripts/configure-github-security.sh --audit

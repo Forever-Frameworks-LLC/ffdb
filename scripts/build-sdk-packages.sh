@@ -29,7 +29,8 @@ CI=true pnpm --filter @ffdb/client --filter @ffdb/sync-client \
   --filter @ffdb/cli \
   --workspace-concurrency=1 build
 
-for package_dir in client sync-client react react-native email-components cli; do
+package_dirs="client sync-client react react-native email-components cli"
+for package_dir in $package_dirs; do
   manifest_version=$(node -p "require('./packages/$package_dir/package.json').version")
   [ "$manifest_version" = "$VERSION" ] \
     || die "packages/$package_dir is $manifest_version, expected $VERSION"
@@ -38,8 +39,8 @@ done
 
 node scripts/check-sdk-package-contract.mjs "$VERSION" "$OUTPUT_DIR"
 
-expected="@ffdb/client-$VERSION.tgz ffdb-sync-client-$VERSION.tgz ffdb-react-$VERSION.tgz ffdb-react-native-$VERSION.tgz ffdb-email-components-$VERSION.tgz @ffdb/cli-$VERSION.tgz"
-for archive in $expected; do
+for package_dir in $package_dirs; do
+  archive=ffdb-$package_dir-$VERSION.tgz
   [ -f "$OUTPUT_DIR/$archive" ] || die "missing archive: $archive"
   package_json=$(tar -xOf "$OUTPUT_DIR/$archive" package/package.json)
   printf '%s' "$package_json" | grep -F -q '"version": "'"$VERSION"'"' \
@@ -51,7 +52,8 @@ done
 
 checksums=$OUTPUT_DIR/SDK-SHA256SUMS
 : > "$checksums"
-for archive in $expected; do
+for package_dir in $package_dirs; do
+  archive=ffdb-$package_dir-$VERSION.tgz
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$OUTPUT_DIR/$archive" | awk -v name="$archive" '{print $1 "  " name}' >> "$checksums"
   else
