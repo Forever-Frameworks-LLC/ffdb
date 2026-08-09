@@ -149,7 +149,27 @@ for compose_file in compose.yaml compose.production.yaml \
 done
 grep -F -q '/var/lib/ffdb/metrics' "$ROOT_DIR/infra/docker/Dockerfile.rust"
 grep -E -q 'apt-get install .*sqlite3' "$ROOT_DIR/infra/docker/Dockerfile.rust"
-grep -F -q 'uses: softprops/action-gh-release@v2' "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'Create or resume draft GitHub release' "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'gh release create "$GITHUB_REF_NAME"' "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q -- '--verify-tag' "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'gh release upload "$GITHUB_REF_NAME" dist/release/* --clobber' \
+  "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'gh release edit "$GITHUB_REF_NAME" --draft=false' \
+  "$ROOT_DIR/.github/workflows/release.yml"
+if grep -F -q 'softprops/action-gh-release' "$ROOT_DIR/.github/workflows/release.yml"; then
+  printf '%s\n' "release workflow must publish a complete draft before immutability" >&2
+  exit 1
+fi
+if grep -E -q 'uses:[[:space:]]+[^[:space:]]+@(v[0-9]+|stable|nightly)([[:space:]]|$)' \
+  "$ROOT_DIR/.github/workflows/ci.yml" "$ROOT_DIR/.github/workflows/release.yml"; then
+  printf '%s\n' "GitHub Actions must be pinned to immutable commit SHAs" >&2
+  exit 1
+fi
+grep -F -q 'npm install --global npm@12.0.2' "$ROOT_DIR/.github/workflows/release.yml"
+if grep -E -q 'NPM_TOKEN|NODE_AUTH_TOKEN' "$ROOT_DIR/.github/workflows/release.yml"; then
+  printf '%s\n' "npm releases must use trusted publishing instead of a long-lived token" >&2
+  exit 1
+fi
 grep -F -q 'verify-github-release:' "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q 'for package in client sync-client react react-native email-components cli; do' \
   "$ROOT_DIR/.github/workflows/release.yml"
@@ -224,6 +244,15 @@ printf '%s\n' "$*" >> "${FFDB_TEST_DOCKER_LOG:?}"
 exit 0
 EOF
 chmod 0755 "$test_root/fake-bin/docker"
+
+# Keep controller tests isolated from a developer workstation's Cosign install
+# and from the network. Public release signature behavior is exercised below
+# with a separate logging fake that validates the expected CLI arguments.
+cat > "$test_root/fake-bin/cosign" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod 0755 "$test_root/fake-bin/cosign"
 
 sed \
   -e 's|https://ffdb.example.com|https://ffdb.test|g' \

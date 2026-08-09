@@ -63,7 +63,7 @@ describe("instance operator commands", () => {
   it("operates Connect, global inventory, admins, exemptions, and plans with guarded destructive actions", async () => {
     const calls: Request[] = [];
     const client = await instanceClient(calls);
-    const directory = await mkdtemp(join(tmpdir(), "@ffdb/cli-instance-"));
+    const directory = await mkdtemp(join(tmpdir(), "ffdb-cli-instance-"));
     temporaryDirectories.push(directory);
     const exemptionPath = join(directory, "exemption.json");
     const planPath = join(directory, "plan.json");

@@ -4,6 +4,10 @@ ignore = []
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Workspace crates intentionally use local path dependencies without publishing
+# version requirements. Keep wildcard registry and git dependencies denied while
+# permitting only those local path edges.
+allow-wildcard-paths = true
 
 [licenses]
 confidence-threshold = 0.93
@@ -12,9 +16,9 @@ allow = [
   "Apache-2.0 WITH LLVM-exception",
   "BSD-2-Clause",
   "BSD-3-Clause",
+  "CDLA-Permissive-2.0",
   "ISC",
   "MIT",
-  "MPL-2.0",
   "Unicode-3.0",
   "Zlib",
 ]
@@ -22,4 +26,3 @@ allow = [
 [sources]
 unknown-git = "deny"
 unknown-registry = "deny"
-
