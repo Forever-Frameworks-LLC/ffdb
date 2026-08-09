@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 async-trait.workspace = true
 ffdb-protocol = { path = "../protocol" }
-hmac = "0.12"
+hmac = "0.13"
 reqwest.workspace = true
 secrecy.workspace = true
 serde.workspace = true

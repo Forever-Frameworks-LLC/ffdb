@@ -16,11 +16,11 @@ ffdb-protocol = { path = "../../crates/protocol" }
 ffdb-sql-parser = { path = "../../crates/sql-parser" }
 ffdb-sqlite-runtime = { path = "../../crates/sqlite-runtime" }
 getrandom = "0.3.4"
-hmac = "0.12.1"
-hkdf = "0.12.4"
+hmac = "0.13.0"
+hkdf = "0.13.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 thiserror = "2.0.18"
 tracing.workspace = true
 tracing-subscriber.workspace = true

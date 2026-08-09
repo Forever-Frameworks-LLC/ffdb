@@ -333,6 +333,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
+name = "const-oid"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -457,7 +463,7 @@ version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7c1832837b905bbfb5101e07cc24c8deddf52f93225eee6ead5f4d63d53ddcb"
 dependencies = [
- "const-oid",
+ "const-oid 0.9.6",
  "zeroize",
 ]
 
@@ -479,6 +485,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
 dependencies = [
  "block-buffer 0.12.1",
+ "const-oid 0.10.2",
  "crypto-common 0.2.2",
  "ctutils",
 ]
@@ -623,7 +630,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "subtle",
  "tempfile",
  "thiserror 2.0.19",
@@ -646,7 +653,7 @@ dependencies = [
  "ffdb-protocol",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "tokio",
  "uuid",
@@ -662,13 +669,13 @@ dependencies = [
  "ed25519-dalek",
  "ffdb-postgres",
  "ffdb-protocol",
- "hmac 0.12.1",
+ "hmac",
  "password-hash",
  "rand 0.8.7",
  "ring",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "subtle",
  "thiserror 2.0.19",
  "tokio",
@@ -682,12 +689,12 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "ffdb-protocol",
- "hmac 0.12.1",
+ "hmac",
  "reqwest",
  "secrecy",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "tokio",
  "url",
@@ -701,7 +708,7 @@ dependencies = [
  "ffdb-protocol",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "uuid",
 ]
@@ -761,11 +768,11 @@ dependencies = [
  "ffdb-sql-parser",
  "ffdb-sqlite-runtime",
  "getrandom 0.3.4",
- "hkdf 0.12.4",
- "hmac 0.12.1",
+ "hkdf",
+ "hmac",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
@@ -786,7 +793,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "tokio",
  "tracing",
@@ -804,7 +811,7 @@ dependencies = [
  "ffdb-sqlite-runtime",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",
 ]
@@ -817,12 +824,12 @@ dependencies = [
  "base64",
  "chrono",
  "ffdb-protocol",
- "hmac 0.12.1",
+ "hmac",
  "rand 0.9.5",
  "reqwest",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "tokio",
  "url",
@@ -847,9 +854,9 @@ name = "ffdb-org-metrics"
 version = "0.3.0"
 dependencies = [
  "ffdb-protocol",
- "hmac 0.12.1",
+ "hmac",
  "rusqlite",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",
  "uuid",
@@ -871,7 +878,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "uuid",
  "zeroize",
@@ -882,10 +889,10 @@ name = "ffdb-rate-limits"
 version = "0.1.0"
 dependencies = [
  "ffdb-postgres",
- "hmac 0.12.1",
+ "hmac",
  "parking_lot",
  "serde",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "tokio",
  "uuid",
@@ -909,7 +916,7 @@ dependencies = [
  "proptest",
  "rusqlite",
  "serde",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
 ]
 
@@ -920,11 +927,11 @@ dependencies = [
  "base64",
  "ffdb-sql-parser",
  "ffdb-sqlite-rls",
- "hmac 0.12.1",
+ "hmac",
  "rusqlite",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",
  "tracing",
@@ -936,10 +943,10 @@ name = "ffdb-sync-engine"
 version = "0.3.0"
 dependencies = [
  "base64",
- "hmac 0.12.1",
+ "hmac",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.19",
  "zeroize",
 ]
@@ -953,7 +960,7 @@ dependencies = [
  "ffdb-sync-engine",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
@@ -1183,29 +1190,11 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hkdf"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
-dependencies = [
- "hmac 0.12.1",
-]
-
-[[package]]
-name = "hkdf"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
 dependencies = [
- "hmac 0.13.0",
-]
-
-[[package]]
-name = "hmac"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
-dependencies = [
- "digest 0.10.7",
+ "hmac",
 ]
 
 [[package]]
@@ -2451,8 +2440,8 @@ dependencies = [
  "futures-core",
  "futures-util",
  "hex",
- "hkdf 0.13.0",
- "hmac 0.13.0",
+ "hkdf",
+ "hmac",
  "itoa",
  "log",
  "md-5",
