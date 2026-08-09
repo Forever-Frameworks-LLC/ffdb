@@ -80,9 +80,12 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: fuzz -> target
-      - run: cargo install cargo-fuzz --version 0.13.2 --locked
+      # The repository pins stable in rust-toolchain.toml, so each fuzz command
+      # must select nightly explicitly instead of relying on the setup action's
+      # temporary default-toolchain selection.
+      - run: cargo +nightly install cargo-fuzz --version 0.13.2 --locked
       - name: Compile fuzz targets with their locked dependency graph
-        run: cargo check --manifest-path fuzz/Cargo.toml --bins --locked
+        run: cargo +nightly check --manifest-path fuzz/Cargo.toml --bins --locked
       - name: Prepare writable fuzz corpora from reviewed seeds
         run: |
           mkdir -p fuzz/corpus/sql_parser fuzz/corpus/rls_bypass
@@ -90,12 +93,12 @@ jobs:
           cp fuzz/seeds/rls_bypass/*.sql fuzz/corpus/rls_bypass/
       - name: Fuzz SQL parsing and classification
         run: >-
-          cargo fuzz run --fuzz-dir fuzz sql_parser fuzz/corpus/sql_parser --
+          cargo +nightly fuzz run --fuzz-dir fuzz sql_parser fuzz/corpus/sql_parser --
           -dict=${{ github.workspace }}/fuzz/sql.dict
           -max_total_time=30 -max_len=4096 -timeout=5
       - name: Fuzz the SQLite RLS execution boundary
         run: >-
-          cargo fuzz run --fuzz-dir fuzz rls_bypass fuzz/corpus/rls_bypass --
+          cargo +nightly fuzz run --fuzz-dir fuzz rls_bypass fuzz/corpus/rls_bypass --
           -dict=${{ github.workspace }}/fuzz/sql.dict
           -max_total_time=30 -max_len=2048 -timeout=5
 

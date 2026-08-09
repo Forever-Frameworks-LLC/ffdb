@@ -3,6 +3,7 @@ name = "ffdb-sql-parser"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+publish = false
 description = "Conservative SQLite statement classifier and FFDB RLS syntax parser"
 
 [dependencies]
