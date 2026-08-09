@@ -51,6 +51,7 @@ TS_BUILD_OUTPUTS := \
 	bootstrap build rust-build typescript-build check test live verify format \
 	compose-rebuild compose-fresh production-config-check release-check release-bundle sdk-packages \
 	native-install-linux-test \
+	github-security-audit github-security-apply \
 	distribution-check load-test load-test-gateway load-test-api load-test-ready load-test-query load-test-check \
 	postgres-bench status clean dev-up dev-down infra-up help
 
@@ -72,6 +73,8 @@ help:
 	@echo "  make native-install-linux-test  validate the native installer in disposable Linux containers"
 	@echo "  make release-bundle    build bundle (requires FFDB_VERSION and image digests)"
 	@echo "  make sdk-packages      build six version-matched publishable npm tarballs"
+	@echo "  make github-security-audit  verify hosted GitHub repository security controls"
+	@echo "  make github-security-apply  apply and verify hosted GitHub repository security controls"
 	@echo "  make distribution-check  verify the public curl installation channel"
 	@echo "  make status           show Compose containers and image identities"
 	@echo "  make clean            stop Compose and remove build outputs; retain all data"
@@ -141,7 +144,8 @@ release-check:
 		scripts/build-native-bundle.sh scripts/test-release-distribution.sh \
 		scripts/test-host-backup.sh scripts/test-host-backup-compose.sh \
 		scripts/test-native-install-linux.sh \
-		scripts/test-native-install-container.sh; do \
+		scripts/test-native-install-container.sh \
+		scripts/configure-github-security.sh; do \
 		sh -n "$$script" || exit; \
 	done
 	scripts/test-host-backup.sh
@@ -168,6 +172,12 @@ native-install-linux-test:
 sdk-packages:
 	scripts/build-sdk-packages.sh $$(node -p 'require("./package.json").version') \
 		"$(or $(FFDB_SDK_OUTPUT_DIR),dist/sdk)"
+
+github-security-audit:
+	scripts/configure-github-security.sh --audit
+
+github-security-apply:
+	scripts/configure-github-security.sh --apply
 
 distribution-check:
 	scripts/check-public-distribution.sh "$(or $(FFDB_GITHUB_RELEASES_URL),https://github.com/Forever-Frameworks-LLC/ffdb/releases)"

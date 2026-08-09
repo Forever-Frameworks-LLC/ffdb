@@ -5,17 +5,31 @@ updates:
     schedule:
       interval: weekly
     groups:
+      rust-security:
+        applies-to: security-updates
+        patterns: ["*"]
       rust-minor:
+        applies-to: version-updates
         update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
       npm-minor:
+        applies-to: version-updates
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
-
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      actions-versions:
+        applies-to: version-updates
+        patterns: ["*"]
