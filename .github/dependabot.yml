@@ -15,6 +15,10 @@ updates:
         applies-to: version-updates
         patterns: [hmac, hkdf, sha2]
         update-types: [major]
+      rust-sqlx-major:
+        applies-to: version-updates
+        patterns: [sqlx-core, sqlx-postgres]
+        update-types: [major]
     # password-hash 0.6 uses a new trait/API generation. The current stable
     # argon2 release still implements password-hash 0.5, so upgrading only the
     # direct dependency creates two incompatible trait versions. Revisit this
