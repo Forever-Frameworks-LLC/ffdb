@@ -802,11 +802,17 @@ async fn persist_batch(pool: &PgPool, batch: &Pending) -> Result<(), sqlx::Error
 async fn cleanup_retention(pool: &PgPool) {
     let cutoff = super::now_ms().saturating_sub(i64::from(RETENTION_DAYS) * 24 * 60 * 60 * 1_000);
     for table in ["observability_http_buckets", "observability_query_buckets"] {
+        // `table` comes only from this fixed internal allowlist. The cutoff is
+        // still bound separately, so no request data enters the SQL string.
         let statement = format!(
             "DELETE FROM {table} WHERE ctid IN (SELECT ctid FROM {table} WHERE bucket_start_ms < $1 LIMIT 10000)"
         );
         loop {
-            match sqlx::query(&statement).bind(cutoff).execute(pool).await {
+            match sqlx::query(sqlx::AssertSqlSafe(statement.as_str()))
+                .bind(cutoff)
+                .execute(pool)
+                .await
+            {
                 Ok(result) if result.rows_affected() == 10_000 => tokio::task::yield_now().await,
                 Ok(_) => break,
                 Err(error) => {
