@@ -17,7 +17,7 @@ ffdb-sql-parser = { path = "../../crates/sql-parser" }
 ffdb-sqlite-runtime = { path = "../../crates/sqlite-runtime" }
 getrandom = "0.3.4"
 hmac = "0.12.1"
-hkdf = "0.12.4"
+hkdf = "0.13.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.10.9"
