@@ -1,0 +1,12 @@
+.env
+.git
+.pnpm-store
+data
+node_modules
+target
+fuzz/artifacts
+fuzz/corpus
+fuzz/target
+**/dist
+**/node_modules
+**/*.tsbuildinfo

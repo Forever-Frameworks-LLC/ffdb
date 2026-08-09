@@ -1,0 +1,22 @@
+title = "FFDB secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated dependencies, build output, browser captures, and runtime data"
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)\.pnpm-store/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)target/''',
+  '''(^|/)dist/''',
+  '''(^|/)\.vite/''',
+  '''(^|/)\.playwright-cli/''',
+  '''(^|/)coverage/''',
+  '''(^|/)artifacts/''',
+  '''(^|/)data/''',
+  '''(^|/)fuzz/(artifacts|corpus|target)/''',
+  '''\.sqlite(-shm|-wal)?$''',
+  '''\.tsbuildinfo$''',
+]

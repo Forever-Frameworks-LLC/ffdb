@@ -1,0 +1,19 @@
+[package]
+name = "ffdb-control-plane"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+async-trait = "0.1"
+ffdb-auth = { path = "../auth" }
+ffdb-database-router = { path = "../database-router" }
+ffdb-protocol = { path = "../protocol" }
+serde = { version = "1", features = ["derive"] }
+sqlx.workspace = true
+thiserror = "2"
+tokio = { version = "1", features = ["sync"] }
+uuid = { version = "1", features = ["serde", "v7"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

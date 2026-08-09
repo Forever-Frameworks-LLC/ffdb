@@ -1,0 +1,12 @@
+import type { PropsWithChildren } from "react";
+import { AuthProvider, FFDBProvider } from "@ffdb/react";
+
+import { ffdb } from "./ffdb";
+
+export function FFDBProviders({ children }: PropsWithChildren) {
+  return (
+    <FFDBProvider client={ffdb}>
+      <AuthProvider>{children}</AuthProvider>
+    </FFDBProvider>
+  );
+}

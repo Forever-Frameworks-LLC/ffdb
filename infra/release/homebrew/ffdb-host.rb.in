@@ -1,0 +1,16 @@
+class FfdbHost < Formula
+  desc "Versioned lifecycle controller for self-hosted FFDB containers"
+  homepage "https://ffdb.forever-frameworks.com/"
+  url "@ASSET_URL@"
+  version "@VERSION@"
+  sha256 "@SHA256@"
+  license "Apache-2.0"
+
+  def install
+    bin.install "ffdb-host-@VERSION@" => "ffdb-host"
+  end
+
+  test do
+    assert_match "ffdb-host @VERSION@", shell_output("#{bin}/ffdb-host --client-version")
+  end
+end

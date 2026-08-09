@@ -1,0 +1,228 @@
+name: ffdb
+
+services:
+  postgres:
+    image: postgres:17.5-alpine
+    command: ["postgres", "-c", "idle_in_transaction_session_timeout=60000"]
+    environment:
+      POSTGRES_DB: ffdb
+      POSTGRES_USER: ffdb
+      POSTGRES_PASSWORD: ffdb-local-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ffdb -d ffdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ffdb-local
+      MINIO_ROOT_PASSWORD: ffdb-local-secret-change-me
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+  minio-bootstrap:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        mc alias set local http://minio:9000 ffdb-local ffdb-local-secret-change-me &&
+        mc mb --ignore-existing local/ffdb &&
+        mc anonymous set none local/ffdb
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
+  volume-init:
+    image: alpine:3.22.1
+    user: "0:0"
+    command:
+      - /bin/sh
+      - -ec
+      - chown -R 10001:10001 /var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics /var/lib/ffdb/sync
+    read_only: true
+    volumes:
+      - project-data:/var/lib/ffdb/projects
+      - backup-data:/var/lib/ffdb/backups
+      - metrics-data:/var/lib/ffdb/metrics
+      - sync-data:/var/lib/ffdb/sync
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.rust
+    environment:
+      FFDB_ENVIRONMENT: development
+      FFDB_HTTP_BIND: 0.0.0.0:8080
+      FFDB_PUBLIC_BASE_URL: http://localhost:8080
+      FFDB_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      FFDB_DATABASE_URL: postgres://ffdb:ffdb-local-password@postgres:5432/ffdb
+      FFDB_POSTGRES_MIN_CONNECTIONS: "2"
+      FFDB_POSTGRES_MAX_CONNECTIONS: "20"
+      FFDB_POSTGRES_ACQUIRE_TIMEOUT_MS: "5000"
+      FFDB_POSTGRES_IDLE_TIMEOUT_SECONDS: "600"
+      FFDB_POSTGRES_MAX_LIFETIME_SECONDS: "1800"
+      FFDB_RATE_LIMIT_PRE_AUTH_CAPACITY: "120"
+      FFDB_RATE_LIMIT_PRE_AUTH_REFILL_PER_SECOND: "2"
+      FFDB_RATE_LIMIT_EXECUTION_CAPACITY: "2000"
+      FFDB_RATE_LIMIT_EXECUTION_REFILL_PER_SECOND: "200"
+      FFDB_RATE_LIMIT_IDLE_TTL_SECONDS: "3600"
+      FFDB_RATE_LIMIT_MAX_ENTRIES: "1000000"
+      FFDB_NODE_ID: 01965555-0000-7000-8000-000000000001
+      FFDB_NODE_NAME: ffdb-local-01
+      FFDB_METRICS_ROOT: /var/lib/ffdb/metrics
+      FFDB_WORKER_MAX_PROCESSES: "8"
+      FFDB_WORKER_QUEUE_CAPACITY: "32"
+      FFDB_TRUSTED_PROXY_CIDRS: 172.16.0.0/12
+      FFDB_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      FFDB_BACKUP_MASTER_KEY: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+      FFDB_CURSOR_HMAC_KEY: local-only-cursor-key-change-before-production
+      FFDB_BOOTSTRAP_TOKEN: local-bootstrap-token-change-before-production
+      FFDB_S3_ENDPOINT: http://minio:9000
+      FFDB_S3_PUBLIC_ENDPOINT: http://localhost:9000
+      FFDB_S3_REGION: us-east-1
+      FFDB_S3_BUCKET: ffdb
+      FFDB_S3_ACCESS_KEY_ID: ffdb-local
+      FFDB_S3_SECRET_ACCESS_KEY: ffdb-local-secret-change-me
+      FFDB_EMAIL_TRANSPORT: smtp
+      FFDB_SMTP_HOST: mailpit
+      FFDB_SMTP_PORT: "1025"
+      FFDB_EMAIL_FROM: FFDB <noreply@localhost.test>
+      FFDB_STRIPE_SECRET_KEY: ${FFDB_STRIPE_SECRET_KEY:-}
+      FFDB_STRIPE_WEBHOOK_SECRET: ${FFDB_STRIPE_WEBHOOK_SECRET:-}
+      FFDB_STRIPE_PRO_BASE_PRICE_ID: ${FFDB_STRIPE_PRO_BASE_PRICE_ID:-}
+      FFDB_STRIPE_READS_EVENT_NAME: ${FFDB_STRIPE_READS_EVENT_NAME:-}
+      FFDB_STRIPE_READS_METER_ID: ${FFDB_STRIPE_READS_METER_ID:-}
+      FFDB_STRIPE_PAYG_READS_PRICE_ID: ${FFDB_STRIPE_PAYG_READS_PRICE_ID:-}
+      FFDB_STRIPE_PRO_READS_PRICE_ID: ${FFDB_STRIPE_PRO_READS_PRICE_ID:-}
+      FFDB_STRIPE_WRITES_EVENT_NAME: ${FFDB_STRIPE_WRITES_EVENT_NAME:-}
+      FFDB_STRIPE_WRITES_METER_ID: ${FFDB_STRIPE_WRITES_METER_ID:-}
+      FFDB_STRIPE_PAYG_WRITES_PRICE_ID: ${FFDB_STRIPE_PAYG_WRITES_PRICE_ID:-}
+      FFDB_STRIPE_PRO_WRITES_PRICE_ID: ${FFDB_STRIPE_PRO_WRITES_PRICE_ID:-}
+      FFDB_STRIPE_STORAGE_EVENT_NAME: ${FFDB_STRIPE_STORAGE_EVENT_NAME:-}
+      FFDB_STRIPE_STORAGE_METER_ID: ${FFDB_STRIPE_STORAGE_METER_ID:-}
+      FFDB_STRIPE_PAYG_STORAGE_PRICE_ID: ${FFDB_STRIPE_PAYG_STORAGE_PRICE_ID:-}
+      FFDB_STRIPE_PRO_STORAGE_PRICE_ID: ${FFDB_STRIPE_PRO_STORAGE_PRICE_ID:-}
+      FFDB_STRIPE_MAU_EVENT_NAME: ${FFDB_STRIPE_MAU_EVENT_NAME:-}
+      FFDB_STRIPE_MAU_METER_ID: ${FFDB_STRIPE_MAU_METER_ID:-}
+      FFDB_STRIPE_PAYG_MAU_PRICE_ID: ${FFDB_STRIPE_PAYG_MAU_PRICE_ID:-}
+      FFDB_STRIPE_PRO_MAU_PRICE_ID: ${FFDB_STRIPE_PRO_MAU_PRICE_ID:-}
+      FFDB_STRIPE_PRO_BILLING_UNIT: ${FFDB_STRIPE_PRO_BILLING_UNIT:-organization}
+      FFDB_BILLING_SUCCESS_URL: ${FFDB_BILLING_SUCCESS_URL:-}
+      FFDB_BILLING_CANCEL_URL: ${FFDB_BILLING_CANCEL_URL:-}
+      FFDB_BILLING_PORTAL_RETURN_URL: ${FFDB_BILLING_PORTAL_RETURN_URL:-}
+      FFDB_INSTANCE_STRIPE_CONNECT_SECRET_KEY: ${FFDB_INSTANCE_STRIPE_CONNECT_SECRET_KEY:-}
+      FFDB_INSTANCE_STRIPE_CONNECT_WEBHOOK_SECRET: ${FFDB_INSTANCE_STRIPE_CONNECT_WEBHOOK_SECRET:-}
+      FFDB_COMMERCE_STRIPE_CONNECT_SECRET_KEY: ${FFDB_COMMERCE_STRIPE_CONNECT_SECRET_KEY:-}
+      FFDB_COMMERCE_STRIPE_CONNECT_WEBHOOK_SECRET: ${FFDB_COMMERCE_STRIPE_CONNECT_WEBHOOK_SECRET:-}
+      RUST_LOG: ffdb=info,tower_http=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    volumes:
+      - project-data:/var/lib/ffdb/projects
+      - backup-data:/var/lib/ffdb/backups
+      - metrics-data:/var/lib/ffdb/metrics
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  sync-worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.rust
+    command: ["/usr/local/bin/ffdb-sync-worker"]
+    environment:
+      FFDB_SYNC_STATE_DIR: /var/lib/ffdb/sync
+      FFDB_SYNC_MAINTENANCE_INTERVAL_SECONDS: "60"
+      FFDB_SYNC_STALE_TEMPORARY_SECONDS: "3600"
+      RUST_LOG: ffdb=info
+    depends_on:
+      api:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    volumes:
+      - sync-data:/var/lib/ffdb/sync
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  portal:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.portal
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      FFDB_S3_PUBLIC_ORIGIN: http://localhost:9000 http://127.0.0.1:9000
+    ports:
+      - "127.0.0.1:5173:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  minio-data:
+  project-data:
+  backup-data:
+  metrics-data:
+  sync-data:

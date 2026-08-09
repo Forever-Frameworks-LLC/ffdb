@@ -1,0 +1,537 @@
+#!/bin/sh
+set -eu
+
+FFDB_HOST_CLIENT_VERSION="@VERSION@"
+INSTALL_ROOT=${FFDB_INSTALL_ROOT:-/opt/ffdb}
+CONFIG_DIR=${FFDB_CONFIG_DIR:-/etc/ffdb}
+EXTERNAL_CONFIG_FILE=${FFDB_CONFIG_FILE:-$CONFIG_DIR/ffdb.env}
+SINGLE_HOST_CONFIG_FILE=${FFDB_SINGLE_HOST_CONFIG_FILE:-$CONFIG_DIR/single-host.env}
+PROFILE_FILE=$CONFIG_DIR/install-profile
+BIN_DIR=${FFDB_BIN_DIR:-/usr/local/bin}
+CURRENT_LINK=$INSTALL_ROOT/current
+RELEASES_DIR=$INSTALL_ROOT/releases
+CURRENT_PROFILE=external
+CONFIG_FILE=$EXTERNAL_CONFIG_FILE
+COMPOSE_FILENAME=compose.yaml
+
+say() { printf '%s\n' "ffdb-host: $*"; }
+warn() { printf '%s\n' "ffdb-host: warning: $*" >&2; }
+die() { printf '%s\n' "ffdb-host: error: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: ffdb-host COMMAND [options]
+
+Commands:
+  install    Install a verified local release bundle and select a profile
+  start      Verify configuration/signatures, pull, and start FFDB
+  stop       Stop containers while preserving volumes
+  status     Show installed version and Compose service status
+  logs       Show Compose logs (additional arguments are passed through)
+  backup     Create or restore a complete single-host recovery archive
+  verify     Validate configuration and image signatures when cosign is present
+  update-check  Compare the installed version with GitHub Releases
+  update     Download, verify, install, and start latest or selected version
+  upgrade    Backward-compatible alias for update
+  rollback   Activate an already-installed version (explicit risk acknowledgement)
+  uninstall  Remove software; preserve configuration and data by default
+  version    Print controller and installed versions
+
+Environment overrides:
+  FFDB_VERSION, FFDB_RELEASE_TAG, FFDB_GITHUB_REPOSITORY
+  FFDB_GITHUB_RELEASES_URL, FFDB_RELEASE_BASE_URL, FFDB_STABLE_URL
+  FFDB_INSTALL_PROFILE=external|single-host
+  FFDB_INSTALL_ROOT, FFDB_CONFIG_DIR, FFDB_CONFIG_FILE, FFDB_BIN_DIR
+  FFDB_REQUIRE_SIGNATURE=1, FFDB_SIGNATURE_IDENTITY
+
+Profiles:
+  external     Recommended production profile using operator-managed providers
+  single-host  Explicit loopback-only PostgreSQL/MinIO/Mailpit evaluation stack
+EOF
+}
+
+require_root() {
+  if [ "$(id -u)" -ne 0 ] && [ "${FFDB_ALLOW_UNPRIVILEGED:-0}" != 1 ]; then
+    die "this command manages system installation paths; run it as root"
+  fi
+}
+
+validate_paths() {
+  case "$INSTALL_ROOT:$CONFIG_DIR:$BIN_DIR" in
+    /*:/*:/*) ;;
+    *) die "installation, configuration, and binary directories must be absolute" ;;
+  esac
+  [ "$INSTALL_ROOT" != / ] || die "refusing to use / as FFDB_INSTALL_ROOT"
+  [ "$CONFIG_DIR" != / ] || die "refusing to use / as FFDB_CONFIG_DIR"
+  [ "$BIN_DIR" != / ] || die "refusing to use / as FFDB_BIN_DIR"
+}
+
+validate_version() {
+  printf '%s\n' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z][0-9A-Za-z.-]*)?$' \
+    || die "invalid version: $1"
+}
+
+select_profile() {
+  requested=${1:-}
+  if [ -z "$requested" ] && [ -f "$PROFILE_FILE" ]; then
+    requested=$(sed -n '1p' "$PROFILE_FILE")
+  fi
+  if [ -z "$requested" ]; then
+    requested=${FFDB_INSTALL_PROFILE:-}
+  fi
+  [ -n "$requested" ] || requested=external
+  case "$requested" in
+    external)
+      CONFIG_FILE=$EXTERNAL_CONFIG_FILE
+      COMPOSE_FILENAME=compose.yaml
+      ;;
+    single-host)
+      CONFIG_FILE=$SINGLE_HOST_CONFIG_FILE
+      COMPOSE_FILENAME=compose.single-host.yaml
+      ;;
+    *) die "profile must be external or single-host" ;;
+  esac
+  CURRENT_PROFILE=$requested
+}
+
+persist_profile() {
+  install -d -m 0750 "$CONFIG_DIR"
+  profile_tmp=$CONFIG_DIR/.install-profile.$$
+  printf '%s\n' "$CURRENT_PROFILE" > "$profile_tmp"
+  chmod 0600 "$profile_tmp"
+  mv "$profile_tmp" "$PROFILE_FILE"
+}
+
+refuse_implicit_profile_switch() {
+  if [ -f "$PROFILE_FILE" ]; then
+    installed_profile=$(sed -n '1p' "$PROFILE_FILE")
+    if [ "$installed_profile" != "$CURRENT_PROFILE" ]; then
+      die "profile $installed_profile owns this installation; purge it before selecting $CURRENT_PROFILE"
+    fi
+  fi
+}
+
+generate_single_host_config() {
+  command -v openssl >/dev/null 2>&1 \
+    || die "openssl is required to generate single-host secrets"
+  umask 077
+  postgres_password=$(openssl rand -hex 32)
+  minio_access=ffdb$(openssl rand -hex 8)
+  minio_secret=$(openssl rand -hex 32)
+  master_key=$(openssl rand -base64 32 | tr -d '\r\n')
+  backup_key=$(openssl rand -base64 32 | tr -d '\r\n')
+  while [ "$backup_key" = "$master_key" ]; do
+    backup_key=$(openssl rand -base64 32 | tr -d '\r\n')
+  done
+  cursor_key=$(openssl rand -hex 32)
+  bootstrap_token=$(openssl rand -hex 32)
+  node_hex=$(openssl rand -hex 16)
+  node_id=$(printf '%s-%s-%s-%s-%s\n' \
+    "$(printf '%s' "$node_hex" | cut -c1-8)" \
+    "$(printf '%s' "$node_hex" | cut -c9-12)" \
+    "$(printf '%s' "$node_hex" | cut -c13-16)" \
+    "$(printf '%s' "$node_hex" | cut -c17-20)" \
+    "$(printf '%s' "$node_hex" | cut -c21-32)")
+  config_tmp=$CONFIG_DIR/.single-host.env.$$
+  cat > "$config_tmp" <<EOF
+# Generated by ffdb-host for the explicit single-host evaluation profile.
+# Contains secrets: keep mode 0600 and do not publish or commit this file.
+FFDB_GATEWAY_PORT=5173
+FFDB_SINGLE_HOST_MINIO_PORT=9000
+FFDB_SINGLE_HOST_MINIO_CONSOLE_PORT=9001
+FFDB_SINGLE_HOST_SMTP_PORT=1025
+FFDB_SINGLE_HOST_MAILPIT_PORT=8025
+FFDB_PUBLIC_BASE_URL=http://localhost:5173
+FFDB_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+FFDB_DATABASE_URL=postgres://ffdb:$postgres_password@postgres:5432/ffdb
+FFDB_SINGLE_HOST_POSTGRES_PASSWORD=$postgres_password
+FFDB_NODE_ID=$node_id
+FFDB_NODE_NAME=ffdb-single-host-01
+FFDB_MASTER_KEY=$master_key
+FFDB_BACKUP_MASTER_KEY=$backup_key
+FFDB_CURSOR_HMAC_KEY=$cursor_key
+FFDB_BOOTSTRAP_TOKEN=$bootstrap_token
+FFDB_S3_PUBLIC_ENDPOINT=http://localhost:9000
+FFDB_S3_PUBLIC_ORIGIN=http://localhost:9000 http://127.0.0.1:9000
+FFDB_SINGLE_HOST_MINIO_ACCESS_KEY=$minio_access
+FFDB_SINGLE_HOST_MINIO_SECRET_KEY=$minio_secret
+FFDB_RUST_LOG=ffdb=info,tower_http=info
+EOF
+  chmod 0600 "$config_tmp"
+  mv "$config_tmp" "$SINGLE_HOST_CONFIG_FILE"
+  unset postgres_password minio_access minio_secret master_key backup_key
+  unset cursor_key bootstrap_token node_hex
+  say "generated single-host configuration at $SINGLE_HOST_CONFIG_FILE (secrets not displayed)"
+}
+
+release_value() {
+  key=$1
+  file=$2
+  awk -F= -v wanted="$key" '$1 == wanted {sub(/^[^=]*=/, ""); print; exit}' "$file"
+}
+
+current_dir() {
+  [ -L "$CURRENT_LINK" ] || die "FFDB is not installed; run ffdb-host install"
+  readlink "$CURRENT_LINK"
+}
+
+compose_dir() {
+  release_dir=$1
+  shift
+  command -v docker >/dev/null 2>&1 || die "docker is required"
+  [ -f "$release_dir/$COMPOSE_FILENAME" ] \
+    || die "release does not contain profile $CURRENT_PROFILE"
+  docker compose \
+    --env-file "$release_dir/release.env" \
+    --env-file "$CONFIG_FILE" \
+    -f "$release_dir/$COMPOSE_FILENAME" "$@"
+}
+
+check_config() {
+  release_dir=$1
+  [ -f "$CONFIG_FILE" ] || die "missing $CONFIG_FILE"
+  if grep -Eq 'replace-me|example\.com' "$CONFIG_FILE"; then
+    die "$CONFIG_FILE still contains placeholders"
+  fi
+  compose_dir "$release_dir" config --quiet
+}
+
+verify_images() {
+  release_dir=$1
+  runtime_image=$(release_value FFDB_RUNTIME_IMAGE "$release_dir/release.env")
+  gateway_image=$(release_value FFDB_GATEWAY_IMAGE "$release_dir/release.env")
+  identity=$(release_value FFDB_SIGNATURE_IDENTITY "$release_dir/release.env")
+  issuer=$(release_value FFDB_SIGNATURE_ISSUER "$release_dir/release.env")
+  [ -n "$runtime_image" ] && [ -n "$gateway_image" ] || die "release image metadata is incomplete"
+  images="$runtime_image $gateway_image"
+  if [ "$CURRENT_PROFILE" = single-host ]; then
+    postgres_image=$(release_value FFDB_POSTGRES_IMAGE "$release_dir/release.env")
+    minio_image=$(release_value FFDB_MINIO_IMAGE "$release_dir/release.env")
+    mailpit_image=$(release_value FFDB_MAILPIT_IMAGE "$release_dir/release.env")
+    [ -n "$postgres_image" ] && [ -n "$minio_image" ] && [ -n "$mailpit_image" ] \
+      || die "single-host image metadata is incomplete"
+    images="$images $postgres_image $minio_image $mailpit_image"
+  fi
+  for image in $images; do
+    printf '%s\n' "$image" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._/:+-]*@sha256:[0-9a-f]{64}$' \
+      || die "release image is not pinned by sha256 digest: $image"
+  done
+  if command -v cosign >/dev/null 2>&1; then
+    cosign verify --certificate-identity "$identity" \
+      --certificate-oidc-issuer "$issuer" "$runtime_image" >/dev/null
+    cosign verify --certificate-identity "$identity" \
+      --certificate-oidc-issuer "$issuer" "$gateway_image" >/dev/null
+    say "verified FFDB image signatures; all profile images are release-pinned by digest"
+  elif [ "${FFDB_REQUIRE_SIGNATURE:-0}" = 1 ]; then
+    die "cosign is required because FFDB_REQUIRE_SIGNATURE=1"
+  else
+    warn "cosign is unavailable; release metadata still pins image content by digest"
+  fi
+}
+
+activate_release() {
+  target=$1
+  link_tmp=$INSTALL_ROOT/.current.$$
+  rm -f "$link_tmp"
+  ln -s "$target" "$link_tmp"
+  rm -f "$CURRENT_LINK"
+  mv "$link_tmp" "$CURRENT_LINK"
+}
+
+install_bundle() {
+  require_root
+  validate_paths
+  version=
+  bundle=
+  profile=
+  supplied_config=
+  start_after=0
+  replace_config=0
+  require_signature=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --version) [ "$#" -ge 2 ] || die "--version requires a value"; version=$2; shift 2 ;;
+      --bundle) [ "$#" -ge 2 ] || die "--bundle requires a value"; bundle=$2; shift 2 ;;
+      --profile) [ "$#" -ge 2 ] || die "--profile requires a value"; profile=$2; shift 2 ;;
+      --env-file) [ "$#" -ge 2 ] || die "--env-file requires a value"; supplied_config=$2; shift 2 ;;
+      --start) start_after=1; shift ;;
+      --replace-config) replace_config=1; shift ;;
+      --require-signature) require_signature=1; shift ;;
+      *) die "unknown install option: $1" ;;
+    esac
+  done
+  [ -n "$version" ] && [ -n "$bundle" ] || die "install requires --version and --bundle"
+  validate_version "$version"
+  select_profile "$profile"
+  refuse_implicit_profile_switch
+  [ -f "$bundle" ] || die "bundle not found: $bundle"
+  prefix=ffdb-$version/
+  if ! tar -tzf "$bundle" | awk -v prefix="$prefix" '
+    index($0, prefix) != 1 || $0 ~ /(^|\/)\.\.($|\/)/ || $0 ~ /^\// {bad=1}
+    END {exit bad}
+  '; then
+    die "release archive contains an unsafe or unexpected path"
+  fi
+
+  install -d -m 0755 "$INSTALL_ROOT" "$RELEASES_DIR" "$BIN_DIR"
+  release_dir=$RELEASES_DIR/$version
+  if [ ! -d "$release_dir" ]; then
+    staging=$(mktemp -d "$INSTALL_ROOT/.install.XXXXXX")
+    trap 'rm -rf "$staging"' EXIT HUP INT TERM
+    tar -xzf "$bundle" -C "$staging"
+    [ -f "$staging/ffdb-$version/VERSION" ] || die "bundle is missing VERSION"
+    [ "$(sed -n '1p' "$staging/ffdb-$version/VERSION")" = "$version" ] \
+      || die "bundle version does not match requested version"
+    mv "$staging/ffdb-$version" "$release_dir"
+    rmdir "$staging"
+    trap - EXIT HUP INT TERM
+  else
+    [ "$(sed -n '1p' "$release_dir/VERSION")" = "$version" ] \
+      || die "existing release directory has inconsistent metadata"
+    say "release $version is already installed"
+  fi
+
+  install -d -m 0750 "$CONFIG_DIR"
+  if [ -n "$supplied_config" ]; then
+    [ -f "$supplied_config" ] || die "configuration file not found: $supplied_config"
+    if [ -e "$CONFIG_FILE" ] && [ "$replace_config" -ne 1 ]; then
+      say "preserving existing $CONFIG_FILE (use --replace-config to replace it)"
+    else
+      install -m 0600 "$supplied_config" "$CONFIG_FILE"
+    fi
+  elif [ "$CURRENT_PROFILE" = single-host ] && [ ! -e "$CONFIG_FILE" ]; then
+    generate_single_host_config
+  elif [ ! -e "$CONFIG_FILE" ]; then
+    install -m 0600 "$release_dir/ffdb.env.example" "$CONFIG_FILE"
+    say "installed configuration template at $CONFIG_FILE"
+  fi
+
+  persist_profile
+  activate_release "$release_dir"
+  install -m 0755 "$release_dir/ffdb-host" "$BIN_DIR/ffdb-host"
+  install -m 0755 "$release_dir/ffdb-backup" "$BIN_DIR/ffdb-backup"
+  say "installed FFDB $version in $release_dir"
+  if [ "$start_after" -eq 1 ]; then
+    [ "$require_signature" -eq 0 ] || FFDB_REQUIRE_SIGNATURE=1; export FFDB_REQUIRE_SIGNATURE
+    start_services
+  else
+    say "edit $CONFIG_FILE, then run: sudo ffdb-host start"
+  fi
+}
+
+start_services() {
+  require_root
+  validate_paths
+  profile=
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --profile) [ "$#" -ge 2 ] || die "--profile requires a value"; profile=$2; shift 2 ;;
+      *) die "unknown start option: $1" ;;
+    esac
+  done
+  select_profile "$profile"
+  refuse_implicit_profile_switch
+  [ -z "$profile" ] || persist_profile
+  release_dir=$(current_dir)
+  check_config "$release_dir"
+  verify_images "$release_dir"
+  compose_dir "$release_dir" pull
+  compose_dir "$release_dir" up --detach --force-recreate --wait
+  say "FFDB $(release_value FFDB_RELEASE_VERSION "$release_dir/release.env") is running"
+}
+
+stop_services() {
+  require_root
+  select_profile ""
+  release_dir=$(current_dir)
+  compose_dir "$release_dir" down --remove-orphans
+  say "FFDB containers stopped; named volumes were preserved"
+}
+
+show_status() {
+  select_profile ""
+  release_dir=$(current_dir)
+  say "installed version: $(release_value FFDB_RELEASE_VERSION "$release_dir/release.env")"
+  say "active profile: $CURRENT_PROFILE"
+  compose_dir "$release_dir" ps --all
+}
+
+show_logs() {
+  select_profile ""
+  release_dir=$(current_dir)
+  if [ "$#" -eq 0 ]; then
+    compose_dir "$release_dir" logs --tail 200 api sync-worker gateway
+  else
+    compose_dir "$release_dir" logs "$@"
+  fi
+}
+
+verify_installation() {
+  select_profile ""
+  release_dir=$(current_dir)
+  check_config "$release_dir"
+  verify_images "$release_dir"
+  say "release configuration is valid"
+}
+
+backup_host() {
+  require_root
+  validate_paths
+  select_profile ""
+  [ "$CURRENT_PROFILE" = single-host ] \
+    || die "host backup is available for the packaged single-host profile; external providers require their own coordinated backups"
+  release_dir=$(current_dir)
+  [ -x "$BIN_DIR/ffdb-backup" ] || die "installed release is missing ffdb-backup"
+  FFDB_BACKUP_MODE=compose \
+  FFDB_COMPOSE_RELEASE_DIR="$release_dir" \
+  FFDB_COMPOSE_CONFIG_FILE="$CONFIG_FILE" \
+  FFDB_COMPOSE_FILENAME="$COMPOSE_FILENAME" \
+  FFDB_COMPOSE_PROFILE="$CURRENT_PROFILE" \
+    exec "$BIN_DIR/ffdb-backup" "$@"
+}
+
+resolve_update_version() {
+  installer=$1
+  shift
+  requested_version=
+  requested_tag=
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --version) [ "$#" -ge 2 ] || die "--version requires a value"; requested_version=$2; shift 2 ;;
+      --tag) [ "$#" -ge 2 ] || die "--tag requires a value"; requested_tag=$2; shift 2 ;;
+      --) shift; break ;;
+      -*) die "unknown update option: $1" ;;
+      *) [ -z "$requested_version" ] || die "update accepts one version"; requested_version=$1; shift ;;
+    esac
+  done
+  [ "$#" -eq 0 ] || die "unexpected update arguments"
+  set -- --resolve-version
+  [ -z "$requested_version" ] || set -- "$@" --version "$requested_version"
+  [ -z "$requested_tag" ] || set -- "$@" --tag "$requested_tag"
+  "$installer" "$@"
+}
+
+check_update() {
+  validate_paths
+  release_dir=$(current_dir)
+  current_version=$(release_value FFDB_RELEASE_VERSION "$release_dir/release.env")
+  target_version=$(resolve_update_version "$release_dir/install.sh" "$@")
+  validate_version "$target_version"
+  if [ "$current_version" = "$target_version" ]; then
+    say "FFDB $current_version is up to date"
+  else
+    say "update available: FFDB $current_version -> $target_version"
+  fi
+}
+
+update_release() {
+  require_root
+  select_profile ""
+  release_dir=$(current_dir)
+  version=$(resolve_update_version "$release_dir/install.sh" "$@")
+  validate_version "$version"
+  if [ "$(release_value FFDB_RELEASE_VERSION "$release_dir/release.env")" = "$version" ]; then
+    say "FFDB $version is already active and up to date"
+    return 0
+  fi
+  set -- --version "$version" --profile "$CURRENT_PROFILE" --start
+  if [ "${FFDB_REQUIRE_SIGNATURE:-0}" = 1 ]; then
+    set -- "$@" --require-signature
+  fi
+  exec "$release_dir/install.sh" "$@"
+}
+
+rollback_release() {
+  require_root
+  select_profile ""
+  version=
+  acknowledged=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --acknowledge-migration-risk) acknowledged=1; shift ;;
+      *) [ -z "$version" ] || die "rollback accepts one version"; version=$1; shift ;;
+    esac
+  done
+  [ -n "$version" ] || die "rollback requires an installed version"
+  validate_version "$version"
+  [ "$acknowledged" -eq 1 ] \
+    || die "rollback can be migration-incompatible; pass --acknowledge-migration-risk"
+  target=$RELEASES_DIR/$version
+  [ -d "$target" ] || die "version $version is not installed"
+  check_config "$target"
+  verify_images "$target"
+  compose_dir "$target" pull
+  activate_release "$target"
+  install -m 0755 "$target/ffdb-host" "$BIN_DIR/ffdb-host"
+  install -m 0755 "$target/ffdb-backup" "$BIN_DIR/ffdb-backup"
+  compose_dir "$target" up --detach --force-recreate --wait
+  say "activated FFDB $version; named volumes and configuration were preserved"
+}
+
+uninstall_host() {
+  require_root
+  validate_paths
+  select_profile ""
+  purge=0
+  yes=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --purge-data) purge=1; shift ;;
+      --yes) yes=1; shift ;;
+      *) die "unknown uninstall option: $1" ;;
+    esac
+  done
+  if [ "$purge" -eq 1 ] && [ "$yes" -ne 1 ]; then
+    die "--purge-data irreversibly deletes FFDB volumes/config; also pass --yes"
+  fi
+  if [ -L "$CURRENT_LINK" ]; then
+    release_dir=$(current_dir)
+    if [ "$purge" -eq 1 ]; then
+      compose_dir "$release_dir" down --remove-orphans --volumes
+    else
+      compose_dir "$release_dir" down --remove-orphans
+    fi
+  elif [ "$purge" -eq 1 ]; then
+    die "cannot identify the installed Compose project for safe data purge"
+  fi
+  rm -f "$CURRENT_LINK" "$BIN_DIR/ffdb-host" "$BIN_DIR/ffdb-backup"
+  rm -rf "$RELEASES_DIR"
+  if [ "$purge" -eq 1 ]; then
+    rm -rf "$CONFIG_DIR"
+    say "removed FFDB software, configuration, and named volumes"
+  else
+    say "removed FFDB software; preserved $CONFIG_FILE and Docker named volumes"
+  fi
+  rmdir "$INSTALL_ROOT" 2>/dev/null || true
+}
+
+show_version() {
+  select_profile ""
+  printf 'ffdb-host %s\n' "$FFDB_HOST_CLIENT_VERSION"
+  if [ -L "$CURRENT_LINK" ]; then
+    release_dir=$(current_dir)
+    printf 'ffdb %s\n' "$(release_value FFDB_RELEASE_VERSION "$release_dir/release.env")"
+  else
+    printf 'ffdb not-installed\n'
+  fi
+}
+
+command_name=${1:-}
+[ -n "$command_name" ] || { usage; exit 2; }
+shift || true
+case "$command_name" in
+  install) install_bundle "$@" ;;
+  start) start_services "$@" ;;
+  stop) [ "$#" -eq 0 ] || die "stop accepts no arguments"; stop_services ;;
+  status) [ "$#" -eq 0 ] || die "status accepts no arguments"; show_status ;;
+  logs) show_logs "$@" ;;
+  backup) backup_host "$@" ;;
+  verify) [ "$#" -eq 0 ] || die "verify accepts no arguments"; verify_installation ;;
+  update-check) check_update "$@" ;;
+  update|upgrade) update_release "$@" ;;
+  rollback) rollback_release "$@" ;;
+  uninstall) uninstall_host "$@" ;;
+  version|--version|--client-version) show_version ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; die "unknown command: $command_name" ;;
+esac

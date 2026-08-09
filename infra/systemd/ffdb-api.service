@@ -1,0 +1,44 @@
+[Unit]
+Description=FFDB API and isolated SQLite worker supervisor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ffdb
+Group=ffdb
+WorkingDirectory=/var/lib/ffdb
+EnvironmentFile=/etc/ffdb/ffdb.env
+ExecStart=/usr/local/bin/ffdb-api
+Restart=on-failure
+RestartSec=5s
+# The current daemon installs a Ctrl-C handler for its graceful drain path.
+KillSignal=SIGINT
+TimeoutStopSec=30s
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+LimitNOFILE=65536
+TasksMax=512
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+[package]
+name = "ffdb-postgres"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "sqlx"
+
+[dependencies]
+# These are SQLx's semver-exempt implementation crates, so keep them on an
+# exact, lockstep version. Depending on the all-database facade would retain its
+# optional MySQL RSA implementation in Cargo.lock even though FFDB is
+# PostgreSQL-only.
+sqlx-core = { version = "=0.8.6", default-features = false, features = ["_rt-tokio", "_tls-rustls-ring-webpki", "json", "migrate"] }
+sqlx-postgres = { version = "=0.8.6", default-features = false, features = ["chrono", "json", "migrate", "uuid"] }
+
+[lints]
+workspace = true

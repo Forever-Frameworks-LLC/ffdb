@@ -1,0 +1,22 @@
+{
+  "name": "ffdb-monorepo",
+  "version": "0.3.0",
+  "private": true,
+  "packageManager": "pnpm@11.6.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "check": "pnpm build && pnpm -r --if-present check",
+    "api:check": "node scripts/check-api-contract.mjs",
+    "docs:reference": "node scripts/generate-public-doc-reference.mjs",
+    "docs:reference:check": "node scripts/generate-public-doc-reference.mjs --check",
+    "docs:check": "pnpm docs:reference:check && node scripts/check-doc-links.mjs && pnpm api:check",
+    "dev": "pnpm --filter @ffdb/portal dev",
+    "format": "pnpm -r --if-present format",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm build && pnpm -r --if-present test && pnpm docs:check",
+    "test:live": "node scripts/live-e2e.mjs"
+  }
+}

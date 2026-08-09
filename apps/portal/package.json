@@ -1,0 +1,41 @@
+{
+  "name": "@ffdb/portal",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "build:gateway": "tsc -b && vite build --base=/app/",
+    "check": "tsc -b --pretty false",
+    "dev": "vite --host 127.0.0.1",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.1",
+    "@codemirror/commands": "^6.10.0",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6",
+    "@ffdb/client": "workspace:*",
+    "@uiw/react-codemirror": "^4.25.9",
+    "@lezer/highlight": "^1.2.3",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-resizable-panels": "^4.9.0",
+    "sql-formatter": "^15.7.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.2.0",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.1",
+    "vitest": "^3.2.4"
+  }
+}

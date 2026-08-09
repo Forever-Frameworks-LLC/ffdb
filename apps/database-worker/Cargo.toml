@@ -1,0 +1,34 @@
+[package]
+name = "ffdb-database-worker"
+version = "0.3.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Isolated FFDB SQLite worker process"
+
+[dependencies]
+aes-gcm = "0.10.3"
+async-trait = "0.1.89"
+base64 = "0.22.1"
+ffdb-migration-engine = { path = "../../crates/migration-engine" }
+ffdb-object-storage = { path = "../../crates/object-storage" }
+ffdb-protocol = { path = "../../crates/protocol" }
+ffdb-sql-parser = { path = "../../crates/sql-parser" }
+ffdb-sqlite-runtime = { path = "../../crates/sqlite-runtime" }
+getrandom = "0.3.4"
+hmac = "0.12.1"
+hkdf = "0.12.4"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+sha2 = "0.10.9"
+thiserror = "2.0.18"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid = { version = "1.17", features = ["serde", "v7"] }
+zeroize = "1.8.2"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+tokio = { version = "1.47", features = ["macros", "rt"] }
+
+[lints]
+workspace = true

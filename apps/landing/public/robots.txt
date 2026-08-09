@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /docs/
+Disallow: /app/
+Disallow: /v1/
+Disallow: /metrics
+Disallow: /healthz
+Disallow: /readyz
+
+Sitemap: https://ffdb.forever-frameworks.com/sitemap.xml
+Sitemap: https://ffdb.forever-frameworks.com/docs/sitemap.xml

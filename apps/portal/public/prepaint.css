@@ -1,0 +1,23 @@
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  color: #18181b;
+  background: #f6f6f7;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  color: #ededf0;
+  background: #121214;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}

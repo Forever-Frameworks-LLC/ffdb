@@ -1,0 +1,729 @@
+- generic [ref=f34e3]:
+  - link "Skip to content" [ref=f34e4] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f34e5]:
+    - navigation "Primary navigation" [ref=f34e6]:
+      - link "FFDB home" [ref=f34e7] [cursor=pointer]:
+        - /url: /
+        - text: FFDB
+      - generic [ref=f34e8]:
+        - link "Capabilities" [ref=f34e9] [cursor=pointer]:
+          - /url: "#capabilities"
+        - link "Architecture" [ref=f34e10] [cursor=pointer]:
+          - /url: "#architecture"
+        - link "Security" [ref=f34e11] [cursor=pointer]:
+          - /url: "#security"
+        - link "Billing" [ref=f34e12] [cursor=pointer]:
+          - /url: "#billing"
+        - link "Documentation" [ref=f34e13] [cursor=pointer]:
+          - /url: /docs/
+      - generic [ref=f34e14]:
+        - link "Portal" [ref=f34e15] [cursor=pointer]:
+          - /url: /app/
+        - link "Install FFDB" [ref=f34e16] [cursor=pointer]:
+          - /url: /docs/install/docker
+          - text: Install FFDB
+          - generic [ref=f34e17]: →
+  - main [ref=f34e18]:
+    - generic [ref=f34e19]:
+      - generic [ref=f34e23]:
+        - paragraph [ref=f34e24]: The backend that stays on your side of the boundary
+        - heading "Your backend. Your boundary." [level=1] [ref=f34e26]:
+          - generic [ref=f34e27]: Your backend.
+          - generic [ref=f34e29]: Your boundary.
+        - generic [ref=f34e30]:
+          - paragraph [ref=f34e31]: Ship sign-in, scoped SQL, storage, offline sync, and billing without handing a hosted vendor your production database. Install one signed release with Docker or native Linux services.
+          - generic [ref=f34e32]:
+            - link "Install FFDB" [ref=f34e33] [cursor=pointer]:
+              - /url: /docs/install/docker
+              - text: Install FFDB
+              - generic [ref=f34e34]: →
+            - link "Read the docs" [ref=f34e35] [cursor=pointer]:
+              - /url: /docs/
+      - generic "FFDB architecture highlights" [ref=f34e36]:
+        - generic [ref=f34e37]:
+          - generic [ref=f34e38]:
+            - strong [ref=f34e39]: 1 SQLite DB
+            - generic [ref=f34e40]: per project
+          - generic [ref=f34e41]:
+            - strong [ref=f34e42]: Rust workers
+            - generic [ref=f34e43]: isolated execution
+          - generic [ref=f34e44]:
+            - strong [ref=f34e45]: Logical sync
+            - generic [ref=f34e46]: opaque cursors
+          - generic [ref=f34e47]:
+            - strong [ref=f34e48]: S3-compatible
+            - generic [ref=f34e49]: RLS-protected storage
+          - generic [ref=f34e50]:
+            - strong [ref=f34e51]: 1 SQLite DB
+            - generic [ref=f34e52]: per project
+          - generic [ref=f34e53]:
+            - strong [ref=f34e54]: Rust workers
+            - generic [ref=f34e55]: isolated execution
+          - generic [ref=f34e56]:
+            - strong [ref=f34e57]: Logical sync
+            - generic [ref=f34e58]: opaque cursors
+          - generic [ref=f34e59]:
+            - strong [ref=f34e60]: S3-compatible
+            - generic [ref=f34e61]: RLS-protected storage
+    - generic [ref=f34e63]:
+      - generic [ref=f34e64]:
+        - paragraph [ref=f34e65]: Capabilities
+        - heading [level=2] [ref=f34e67]:
+          - text: Everything at the boundary.
+          - emphasis [ref=f34e68]: Nothing hidden behind a service.
+      - list [ref=f34e69]:
+        - listitem [ref=f34e70]:
+          - button "Keep every project isolated" [expanded] [ref=f34e71] [cursor=pointer]:
+            - generic [ref=f34e73]: −
+          - generic [ref=f34e74]:
+            - img "Project database isolation diagram" [ref=f34e76]
+            - paragraph [ref=f34e89]: Each project gets a separate SQLite application database, so one app cannot accidentally read or exhaust another app’s data.
+            - link "Explore the capability" [ref=f34e90] [cursor=pointer]:
+              - /url: /docs/
+              - text: Explore the capability →
+        - listitem [ref=f34e91]:
+          - button "Give each user only their rows" [ref=f34e92] [cursor=pointer]:
+            - generic [ref=f34e94]: +
+          - generic:
+            - paragraph: Define access rules next to your schema. FFDB applies them to every supported read and write instead of relying on each screen to remember a filter.
+            - link:
+              - /url: /docs/
+              - text: Explore the capability →
+        - listitem [ref=f34e95]:
+          - button "Keep working through a connection drop" [ref=f34e96] [cursor=pointer]:
+            - generic [ref=f34e98]: +
+          - generic:
+            - paragraph: Built-in sessions and ordered logical sync let an app queue changes locally, reconnect, and reconcile with the server without downloading a database file.
+            - link:
+              - /url: /docs/
+              - text: Explore the capability →
+        - listitem [ref=f34e99]:
+          - button "Protect files with the same rules" [ref=f34e100] [cursor=pointer]:
+            - generic [ref=f34e102]: +
+          - generic:
+            - paragraph: Store uploads in S3-compatible infrastructure while FFDB keeps metadata, quotas, versions, and authorization tied to the project database.
+            - link:
+              - /url: /docs/
+              - text: Explore the capability →
+    - generic [ref=f34e105]:
+      - generic [ref=f34e106]:
+        - paragraph [ref=f34e107]: From install to protected data
+        - heading "One system. Three clear moves." [level=2] [ref=f34e109]: One system.Three clear moves.
+      - generic [ref=f34e110]:
+        - tablist "FFDB setup steps" [ref=f34e111]:
+          - tab "I Install FFDB Start a complete single-host release" [selected] [ref=f34e112] [cursor=pointer]:
+            - generic [ref=f34e113]: I
+            - strong [ref=f34e114]: Install FFDB
+            - generic [ref=f34e115]: Start a complete single-host release
+          - tab "II Protect data Describe data and access together" [ref=f34e116] [cursor=pointer]:
+            - generic [ref=f34e117]: II
+            - strong [ref=f34e118]: Protect data
+            - generic [ref=f34e119]: Describe data and access together
+          - tab "III Connect Connect with the typed client" [ref=f34e120] [cursor=pointer]:
+            - generic [ref=f34e121]: III
+            - strong [ref=f34e122]: Connect
+            - generic [ref=f34e123]: Connect with the typed client
+        - tabpanel "I Install FFDB Start a complete single-host release" [ref=f34e124]:
+          - generic [ref=f34e125]:
+            - generic [ref=f34e130]: install-ffdb.txt
+            - generic [ref=f34e131]: FFDB
+          - paragraph [ref=f34e132]: For an evaluation or isolated host, download the stable installer from the canonical GitHub Releases channel. It resolves the latest stable tag, verifies its signed assets, and starts PostgreSQL, object storage, captured email, FFDB, and a compiled nginx gateway. Port 5173 is that gateway—not a Vite development server. It serves the production landing, docs, and portal files and proxies API routes to the private Axum service on port 8080. It generates root-only secrets and preserves durable volumes. Pin an exact tag for reproducible production installs and use the external-provider profile before serving internet traffic.
+          - code [ref=f34e134]: "curl -fsSLo ffdb-install.sh \\ https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh less ffdb-install.sh sudo sh ffdb-install.sh --profile single-host \\ --start --require-signature sudo ffdb-host status # Compiled nginx gateway readiness; no Vite server runs here. curl --fail http://127.0.0.1:5173/readyz"
+    - region [ref=f34e135]:
+      - generic [ref=f34e136]:
+        - generic [ref=f34e138]:
+          - paragraph [ref=f34e139]: Control is a system property
+          - heading "Every request crosses a boundary you can name." [level=2] [ref=f34e141]:
+            - generic [ref=f34e142]: Every
+            - generic [ref=f34e143]: request
+            - generic [ref=f34e144]: crosses
+            - generic [ref=f34e145]: a
+            - generic [ref=f34e146]: boundary
+            - generic [ref=f34e147]: you
+            - generic [ref=f34e148]: can
+            - generic [ref=f34e149]: name.
+          - paragraph [ref=f34e150]: FFDB keeps the request path explicit from application session to project database, so policy and ownership do not disappear inside a hosted black box.
+        - generic [ref=f34e151]:
+          - article [ref=f34e152]:
+            - heading "Application" [level=3] [ref=f34e154]
+            - paragraph [ref=f34e155]: Use the typed client from browser, React Native, or Node without exposing a database credential.
+          - article [ref=f34e156]:
+            - heading "Policy boundary" [level=3] [ref=f34e158]
+            - paragraph [ref=f34e159]: Verify the project, user, claims, limits, and row rules before data reaches the worker.
+          - article [ref=f34e160]:
+            - heading "Operator boundary" [level=3] [ref=f34e162]
+            - paragraph [ref=f34e163]: Keep releases, storage, backups, metrics, and provider keys under the deployment owner’s control.
+    - generic [ref=f34e165]:
+      - generic [ref=f34e166]:
+        - paragraph [ref=f34e167]: Self-hosted architecture
+        - heading "SQLite where it fits. Boundaries where they matter." [level=2] [ref=f34e169]: SQLite where it fits.Boundaries where they matter.
+        - paragraph [ref=f34e170]: Your application talks to a normal HTTP API instead of opening a production database file. FFDB verifies the user, applies the project’s rules, and runs the query inside an isolated worker.
+        - generic [ref=f34e171]:
+          - generic [ref=f34e172]:
+            - strong [ref=f34e173]: SQLite
+            - generic [ref=f34e174]: Project data
+          - generic [ref=f34e175]:
+            - strong [ref=f34e176]: Rust
+            - generic [ref=f34e177]: Execution boundary
+          - generic [ref=f34e178]:
+            - strong [ref=f34e179]: Postgres
+            - generic [ref=f34e180]: Control plane
+      - generic [ref=f34e181]:
+        - generic [ref=f34e182]:
+          - generic [ref=f34e183]: Request path
+          - generic [ref=f34e184]: ready
+        - generic [ref=f34e186]:
+          - generic [ref=f34e188]:
+            - strong [ref=f34e189]: PostgreSQL control plane
+            - generic [ref=f34e190]: organizations · projects
+          - code [ref=f34e191]: "01"
+        - generic [ref=f34e192]:
+          - generic [ref=f34e194]:
+            - strong [ref=f34e195]: Rust API
+            - generic [ref=f34e196]: verified request context
+          - code [ref=f34e197]: "02"
+        - generic [ref=f34e198]:
+          - generic [ref=f34e200]:
+            - strong [ref=f34e201]: Isolated worker
+            - generic [ref=f34e202]: parser · limits · authorizer
+          - code [ref=f34e203]: "03"
+        - generic [ref=f34e204]:
+          - generic [ref=f34e206]:
+            - strong [ref=f34e207]: SQLite project DB
+            - generic [ref=f34e208]: views · triggers · RLS
+          - code [ref=f34e209]: "04"
+        - generic [ref=f34e210]:
+          - generic [ref=f34e212]:
+            - strong [ref=f34e213]: Logical sync
+            - generic [ref=f34e214]: snapshot · push · pull
+          - code [ref=f34e215]: "05"
+        - generic [ref=f34e216]:
+          - generic [ref=f34e218]:
+            - strong [ref=f34e219]: S3-compatible store
+            - generic [ref=f34e220]: short-lived signed operations
+          - code [ref=f34e221]: "06"
+    - generic [ref=f34e223]:
+      - generic [ref=f34e224]:
+        - generic [ref=f34e225]:
+          - paragraph [ref=f34e226]: Architecture facts
+          - heading "Specific by design. Auditable by default." [level=2] [ref=f34e228]: Specific by design.Auditable by default.
+        - paragraph [ref=f34e229]: Know where your data lives, which service can reach it, and which rules are applied before a query runs.
+      - generic [ref=f34e230]:
+        - generic [ref=f34e231]:
+          - strong [ref=f34e232]: "1"
+          - generic [ref=f34e233]: isolated SQLite application database per project
+        - generic [ref=f34e234]:
+          - strong [ref=f34e235]: "2"
+          - generic [ref=f34e236]: separate developer and end-user execution modes
+        - generic [ref=f34e237]:
+          - strong [ref=f34e238]: "1"
+          - generic [ref=f34e239]: ordered logical change stream for every replica
+        - generic [ref=f34e240]:
+          - strong [ref=f34e241]: "0"
+          - generic [ref=f34e242]: raw SQLite files exposed through the public API
+    - generic [ref=f34e243]:
+      - generic [ref=f34e244]:
+        - paragraph [ref=f34e245]: Shipped interfaces
+        - heading "One platform. Clear runtime boundaries." [level=2] [ref=f34e248]: One platform.Clear runtime boundaries.
+        - paragraph [ref=f34e249]: Start with one HTTP client, then add the session and local-replica adapter that matches browser, server, React, or React Native code.
+      - generic [ref=f34e251]:
+        - generic [ref=f34e252]:
+          - strong [ref=f34e253]: @ffdb/client
+          - generic [ref=f34e254]: Browser, Node + native HTTP
+        - generic [ref=f34e255]:
+          - strong [ref=f34e256]: "@ffdb/react"
+          - generic [ref=f34e257]: React providers and hooks
+        - generic [ref=f34e258]:
+          - strong [ref=f34e259]: "@ffdb/react-native"
+          - generic [ref=f34e260]: Native storage + SQLite adapter
+        - generic [ref=f34e261]:
+          - strong [ref=f34e262]: "@ffdb/sync-client"
+          - generic [ref=f34e263]: Browser + Node durable replicas
+        - generic [ref=f34e264]:
+          - strong [ref=f34e265]: "@ffdb/email-components"
+          - generic [ref=f34e266]: Transactional email defaults
+        - generic [ref=f34e267]:
+          - strong [ref=f34e268]: @ffdb/cli
+          - generic [ref=f34e269]: Projects, migrations + operations
+        - generic [ref=f34e270]:
+          - strong [ref=f34e271]: Stripe Checkout
+          - generic [ref=f34e272]: Platform plan subscriptions
+        - generic [ref=f34e273]:
+          - strong [ref=f34e274]: Stripe Billing
+          - generic [ref=f34e275]: Tier catalog + customer portal
+        - generic [ref=f34e276]:
+          - strong [ref=f34e277]: Verified webhooks
+          - generic [ref=f34e278]: Replay-safe entitlements
+        - generic [ref=f34e279]:
+          - strong [ref=f34e280]: React
+          - generic [ref=f34e281]: Web applications
+        - generic [ref=f34e282]:
+          - strong [ref=f34e283]: React Native
+          - generic [ref=f34e284]: Native applications
+        - generic [ref=f34e285]:
+          - strong [ref=f34e286]: Expo
+          - generic [ref=f34e287]: Native SQLite integration
+        - generic [ref=f34e288]:
+          - strong [ref=f34e289]: Node.js
+          - generic [ref=f34e290]: Servers and tooling
+        - generic [ref=f34e291]:
+          - strong [ref=f34e292]: S3-compatible
+          - generic [ref=f34e293]: Object bytes
+        - generic [ref=f34e294]:
+          - strong [ref=f34e295]: PostgreSQL
+          - generic [ref=f34e296]: Control plane
+        - generic [ref=f34e297]:
+          - strong [ref=f34e298]: SQLite
+          - generic [ref=f34e299]: Project data
+        - generic [ref=f34e300]:
+          - strong [ref=f34e301]: @ffdb/client
+          - generic [ref=f34e302]: Browser, Node + native HTTP
+        - generic [ref=f34e303]:
+          - strong [ref=f34e304]: "@ffdb/react"
+          - generic [ref=f34e305]: React providers and hooks
+        - generic [ref=f34e306]:
+          - strong [ref=f34e307]: "@ffdb/react-native"
+          - generic [ref=f34e308]: Native storage + SQLite adapter
+        - generic [ref=f34e309]:
+          - strong [ref=f34e310]: "@ffdb/sync-client"
+          - generic [ref=f34e311]: Browser + Node durable replicas
+        - generic [ref=f34e312]:
+          - strong [ref=f34e313]: "@ffdb/email-components"
+          - generic [ref=f34e314]: Transactional email defaults
+        - generic [ref=f34e315]:
+          - strong [ref=f34e316]: @ffdb/cli
+          - generic [ref=f34e317]: Projects, migrations + operations
+        - generic [ref=f34e318]:
+          - strong [ref=f34e319]: Stripe Checkout
+          - generic [ref=f34e320]: Platform plan subscriptions
+        - generic [ref=f34e321]:
+          - strong [ref=f34e322]: Stripe Billing
+          - generic [ref=f34e323]: Tier catalog + customer portal
+        - generic [ref=f34e324]:
+          - strong [ref=f34e325]: Verified webhooks
+          - generic [ref=f34e326]: Replay-safe entitlements
+        - generic [ref=f34e327]:
+          - strong [ref=f34e328]: React
+          - generic [ref=f34e329]: Web applications
+        - generic [ref=f34e330]:
+          - strong [ref=f34e331]: React Native
+          - generic [ref=f34e332]: Native applications
+        - generic [ref=f34e333]:
+          - strong [ref=f34e334]: Expo
+          - generic [ref=f34e335]: Native SQLite integration
+        - generic [ref=f34e336]:
+          - strong [ref=f34e337]: Node.js
+          - generic [ref=f34e338]: Servers and tooling
+        - generic [ref=f34e339]:
+          - strong [ref=f34e340]: S3-compatible
+          - generic [ref=f34e341]: Object bytes
+        - generic [ref=f34e342]:
+          - strong [ref=f34e343]: PostgreSQL
+          - generic [ref=f34e344]: Control plane
+        - generic [ref=f34e345]:
+          - strong [ref=f34e346]: SQLite
+          - generic [ref=f34e347]: Project data
+      - generic [ref=f34e349]:
+        - generic [ref=f34e350]:
+          - strong [ref=f34e351]: SQLite
+          - generic [ref=f34e352]: Project data
+        - generic [ref=f34e353]:
+          - strong [ref=f34e354]: PostgreSQL
+          - generic [ref=f34e355]: Control plane
+        - generic [ref=f34e356]:
+          - strong [ref=f34e357]: S3-compatible
+          - generic [ref=f34e358]: Object bytes
+        - generic [ref=f34e359]:
+          - strong [ref=f34e360]: Node.js
+          - generic [ref=f34e361]: Servers and tooling
+        - generic [ref=f34e362]:
+          - strong [ref=f34e363]: Expo
+          - generic [ref=f34e364]: Native SQLite integration
+        - generic [ref=f34e365]:
+          - strong [ref=f34e366]: React Native
+          - generic [ref=f34e367]: Native applications
+        - generic [ref=f34e368]:
+          - strong [ref=f34e369]: React
+          - generic [ref=f34e370]: Web applications
+        - generic [ref=f34e371]:
+          - strong [ref=f34e372]: Verified webhooks
+          - generic [ref=f34e373]: Replay-safe entitlements
+        - generic [ref=f34e374]:
+          - strong [ref=f34e375]: Stripe Billing
+          - generic [ref=f34e376]: Tier catalog + customer portal
+        - generic [ref=f34e377]:
+          - strong [ref=f34e378]: Stripe Checkout
+          - generic [ref=f34e379]: Platform plan subscriptions
+        - generic [ref=f34e380]:
+          - strong [ref=f34e381]: @ffdb/cli
+          - generic [ref=f34e382]: Projects, migrations + operations
+        - generic [ref=f34e383]:
+          - strong [ref=f34e384]: "@ffdb/email-components"
+          - generic [ref=f34e385]: Transactional email defaults
+        - generic [ref=f34e386]:
+          - strong [ref=f34e387]: "@ffdb/sync-client"
+          - generic [ref=f34e388]: Browser + Node durable replicas
+        - generic [ref=f34e389]:
+          - strong [ref=f34e390]: "@ffdb/react-native"
+          - generic [ref=f34e391]: Native storage + SQLite adapter
+        - generic [ref=f34e392]:
+          - strong [ref=f34e393]: "@ffdb/react"
+          - generic [ref=f34e394]: React providers and hooks
+        - generic [ref=f34e395]:
+          - strong [ref=f34e396]: @ffdb/client
+          - generic [ref=f34e397]: Browser, Node + native HTTP
+        - generic [ref=f34e398]:
+          - strong [ref=f34e399]: SQLite
+          - generic [ref=f34e400]: Project data
+        - generic [ref=f34e401]:
+          - strong [ref=f34e402]: PostgreSQL
+          - generic [ref=f34e403]: Control plane
+        - generic [ref=f34e404]:
+          - strong [ref=f34e405]: S3-compatible
+          - generic [ref=f34e406]: Object bytes
+        - generic [ref=f34e407]:
+          - strong [ref=f34e408]: Node.js
+          - generic [ref=f34e409]: Servers and tooling
+        - generic [ref=f34e410]:
+          - strong [ref=f34e411]: Expo
+          - generic [ref=f34e412]: Native SQLite integration
+        - generic [ref=f34e413]:
+          - strong [ref=f34e414]: React Native
+          - generic [ref=f34e415]: Native applications
+        - generic [ref=f34e416]:
+          - strong [ref=f34e417]: React
+          - generic [ref=f34e418]: Web applications
+        - generic [ref=f34e419]:
+          - strong [ref=f34e420]: Verified webhooks
+          - generic [ref=f34e421]: Replay-safe entitlements
+        - generic [ref=f34e422]:
+          - strong [ref=f34e423]: Stripe Billing
+          - generic [ref=f34e424]: Tier catalog + customer portal
+        - generic [ref=f34e425]:
+          - strong [ref=f34e426]: Stripe Checkout
+          - generic [ref=f34e427]: Platform plan subscriptions
+        - generic [ref=f34e428]:
+          - strong [ref=f34e429]: @ffdb/cli
+          - generic [ref=f34e430]: Projects, migrations + operations
+        - generic [ref=f34e431]:
+          - strong [ref=f34e432]: "@ffdb/email-components"
+          - generic [ref=f34e433]: Transactional email defaults
+        - generic [ref=f34e434]:
+          - strong [ref=f34e435]: "@ffdb/sync-client"
+          - generic [ref=f34e436]: Browser + Node durable replicas
+        - generic [ref=f34e437]:
+          - strong [ref=f34e438]: "@ffdb/react-native"
+          - generic [ref=f34e439]: Native storage + SQLite adapter
+        - generic [ref=f34e440]:
+          - strong [ref=f34e441]: "@ffdb/react"
+          - generic [ref=f34e442]: React providers and hooks
+        - generic [ref=f34e443]:
+          - strong [ref=f34e444]: @ffdb/client
+          - generic [ref=f34e445]: Browser, Node + native HTTP
+    - generic [ref=f34e447]:
+      - generic [ref=f34e448]:
+        - paragraph [ref=f34e449]: Security model
+        - heading "Defense in depth. Visible in the source." [level=2] [ref=f34e451]: Defense in depth.Visible in the source.
+        - paragraph [ref=f34e452]: Keep access decisions in the backend instead of duplicating them across screens and jobs. You can review the parser, policy compiler, worker limits, and storage authorization in the software you deploy.
+        - generic [ref=f34e453]:
+          - generic [ref=f34e454]: Default-deny RLS
+          - generic [ref=f34e455]: Worker isolation
+          - generic [ref=f34e456]: Opaque cursors
+          - generic [ref=f34e457]: Short-lived grants
+          - generic [ref=f34e458]: Encrypted backups
+      - generic [ref=f34e459]:
+        - generic [ref=f34e460]:
+          - generic [ref=f34e461]: "01"
+          - generic [ref=f34e462]:
+            - heading "Constrained SQL execution" [level=3] [ref=f34e463]
+            - paragraph [ref=f34e464]: Parsing, SQLite preparation, authorizer rules, resource limits, and generated RLS machinery work together.
+        - generic [ref=f34e465]:
+          - generic [ref=f34e466]: "02"
+          - generic [ref=f34e467]:
+            - heading "Immutable request context" [level=3] [ref=f34e468]
+            - paragraph [ref=f34e469]: Policy functions read verified subject, role, claims, and token context—not caller-authored SQL values.
+        - generic [ref=f34e470]:
+          - generic [ref=f34e471]: "03"
+          - generic [ref=f34e472]:
+            - heading "Durable storage authorization" [level=3] [ref=f34e473]
+            - paragraph [ref=f34e474]: State-changing provider work uses short-lived grants and authoritative SQLite reservations across nodes.
+        - generic [ref=f34e475]:
+          - generic [ref=f34e476]: "04"
+          - generic [ref=f34e477]:
+            - heading "Explicit compatibility" [level=3] [ref=f34e478]
+            - paragraph [ref=f34e479]: Documented SQLite differences fail closed instead of pretending to be byte-for-byte PostgreSQL.
+    - generic [ref=f34e481]:
+      - generic [ref=f34e482]:
+        - paragraph [ref=f34e483]: For developers
+        - heading "One typed client. No hidden connection." [level=2] [ref=f34e485]: One typed client.No hidden connection.
+        - paragraph [ref=f34e486]: Add sign-in, queries, storage, offline sync, platform billing, and complete project commerce without shipping a database credential to the app. Install the public client and CLI from npm; download version-matched framework, native, sync, and email integrations from the corresponding tagged GitHub Release.
+        - generic [ref=f34e487]:
+          - generic [ref=f34e488]:
+            - strong [ref=f34e489]: Tagged values
+            - generic [ref=f34e490]: Lossless SQL parameters
+          - generic [ref=f34e491]:
+            - strong [ref=f34e492]: AbortSignal
+            - generic [ref=f34e493]: Cancellable operations
+          - generic [ref=f34e494]:
+            - strong [ref=f34e495]: Idempotency
+            - generic [ref=f34e496]: Safe state changes
+          - generic [ref=f34e497]:
+            - strong [ref=f34e498]: Stable errors
+            - generic [ref=f34e499]: Codes + request IDs
+      - generic [ref=f34e500]:
+        - generic [ref=f34e501]:
+          - tablist "Client examples" [ref=f34e502]:
+            - tab "Install SDK" [selected] [ref=f34e503] [cursor=pointer]
+            - tab "Create client" [ref=f34e504] [cursor=pointer]
+            - tab "Query" [ref=f34e505] [cursor=pointer]
+          - button "Copy code example" [ref=f34e506] [cursor=pointer]: Copy
+        - tabpanel "Install SDK" [ref=f34e507]:
+          - code [ref=f34e508]: "# Keep the client and CLI on the server release version. VERSION=0.3.0 npm install --save-exact \"@ffdb/client@$VERSION\" npm install --global \"@ffdb/cli@$VERSION\" ffdb --help"
+        - generic [ref=f34e509]:
+          - link "Client docs" [ref=f34e510] [cursor=pointer]:
+            - /url: /docs/client
+          - generic [ref=f34e511]: "|"
+          - link "CLI guide" [ref=f34e512] [cursor=pointer]:
+            - /url: /docs/cli
+    - region [ref=f34e513]:
+      - generic [ref=f34e514]:
+        - generic [ref=f34e515]:
+          - paragraph [ref=f34e516]: One product, three points of view
+          - heading "The right surface for the person doing the work." [level=2] [ref=f34e518]
+        - generic [ref=f34e519]:
+          - tabpanel "Platform owner" [ref=f34e520]:
+            - heading "One install, an explicit operating model." [level=3] [ref=f34e522]
+            - paragraph [ref=f34e523]: Choose private, team, BYO Stripe, or Connect during first-owner onboarding. The portal then exposes only the billing and administration surfaces that apply to that instance.
+          - tablist "Product perspectives" [ref=f34e524]:
+            - tab "Platform owner" [selected] [ref=f34e525] [cursor=pointer]
+            - tab "Application developer" [ref=f34e528] [cursor=pointer]
+            - tab "Product operator" [ref=f34e531] [cursor=pointer]
+    - generic [ref=f34e535]:
+      - generic [ref=f34e536]:
+        - paragraph [ref=f34e537]: Billing and payments
+        - heading [level=2] [ref=f34e539]:
+          - text: Start with two projects.
+          - emphasis [ref=f34e540]: Charge for what grows.
+        - paragraph [ref=f34e541]: "FFDB keeps the organization plan that pays for FFDB separate from commerce inside a customer project. Platform usage billing and project commerce are both implemented: each project can use encrypted BYO Stripe credentials or optional Connect direct charges for products, immutable prices, one-time purchases, memberships, refunds, entitlements, and paid-order fulfillment."
+      - generic [ref=f34e542]:
+        - article [ref=f34e543]:
+          - generic [ref=f34e544]: "01"
+          - heading "Free" [level=3] [ref=f34e545]
+          - paragraph [ref=f34e546]: On a monetized instance, start with two projects and enforced included usage; private and team instances stay uncharged while retaining usage analytics.
+          - strong [ref=f34e547]:
+            - text: $0
+            - generic [ref=f34e548]: No payment method
+          - list [ref=f34e549]:
+            - listitem [ref=f34e550]:
+              - generic [ref=f34e551]: ✓
+              - text: 2 active projects on a monetized instance's Free policy
+            - listitem [ref=f34e552]:
+              - generic [ref=f34e553]: ✓
+              - text: 1 GB organization storage allowance
+            - listitem [ref=f34e554]:
+              - generic [ref=f34e555]: ✓
+              - text: 1M reads and 50k writes / month
+            - listitem [ref=f34e556]:
+              - generic [ref=f34e557]: ✓
+              - text: 5k monthly active users
+            - listitem [ref=f34e558]:
+              - generic [ref=f34e559]: ✓
+              - text: Automatic metering with write, signup, and storage admission
+          - link "Billing model" [ref=f34e560] [cursor=pointer]:
+            - /url: /docs/billing/platform
+            - text: Billing model
+            - generic [ref=f34e561]: →
+        - article [ref=f34e562]:
+          - generic [ref=f34e563]: "02"
+          - heading "Pay as you go" [level=3] [ref=f34e564]
+          - paragraph [ref=f34e565]: Enable additional projects with durable usage reporting, reconciliation, invoices, and transparent metered overage.
+          - strong [ref=f34e566]:
+            - text: Usage
+            - generic [ref=f34e567]: Free base + metered overage
+          - list [ref=f34e568]:
+            - listitem [ref=f34e569]:
+              - generic [ref=f34e570]: ✓
+              - text: $0.20 / GB-month, prorated from byte-hours
+            - listitem [ref=f34e571]:
+              - generic [ref=f34e572]: ✓
+              - text: $0.25 / million reads
+            - listitem [ref=f34e573]:
+              - generic [ref=f34e574]: ✓
+              - text: $1.50 / million writes up to 1M
+            - listitem [ref=f34e575]:
+              - generic [ref=f34e576]: ✓
+              - text: $2.25 / million writes after 1M
+            - listitem [ref=f34e577]:
+              - generic [ref=f34e578]: ✓
+              - text: $0.005 / MAU up to 50k; $0.015 beyond
+          - link "Billing model" [ref=f34e579] [cursor=pointer]:
+            - /url: /docs/billing/platform
+            - text: Billing model
+            - generic [ref=f34e580]: →
+        - article [ref=f34e581]:
+          - generic [ref=f34e582]: Predictable usage
+          - generic [ref=f34e583]: "03"
+          - heading "Pro" [level=3] [ref=f34e584]
+          - paragraph [ref=f34e585]: A predictable subscription with larger included allowances, automatic overage reporting, and invoice history.
+          - strong [ref=f34e586]:
+            - text: $7
+            - generic [ref=f34e587]: Monthly subscription
+          - list [ref=f34e588]:
+            - listitem [ref=f34e589]:
+              - generic [ref=f34e590]: ✓
+              - text: 10 GB storage
+            - listitem [ref=f34e591]:
+              - generic [ref=f34e592]: ✓
+              - text: 15M reads / month
+            - listitem [ref=f34e593]:
+              - generic [ref=f34e594]: ✓
+              - text: 750k writes / month
+            - listitem [ref=f34e595]:
+              - generic [ref=f34e596]: ✓
+              - text: 50k monthly active users
+            - listitem [ref=f34e597]:
+              - generic [ref=f34e598]: ✓
+              - text: Customer Portal upgrades and cancellation
+          - link "Billing model" [ref=f34e599] [cursor=pointer]:
+            - /url: /docs/billing/platform
+            - text: Billing model
+            - generic [ref=f34e600]: →
+      - paragraph [ref=f34e601]: No free organization is charged automatically. The owner chooses Stripe BYO or Connect during instance setup, FFDB provisions the plan catalog, and verified webhooks—not browser redirects—change plan entitlements. The two-project Free cap and automated read, write, logical-storage, storage byte-hour, and MAU metering are enforced through the durable reporting and reconciliation pipeline.
+    - generic [ref=f34e603]:
+      - generic [ref=f34e604]:
+        - paragraph [ref=f34e605]: Deployment
+        - heading [level=2] [ref=f34e607]:
+          - text: Install the product.
+          - emphasis [ref=f34e608]: Keep the source optional.
+        - paragraph [ref=f34e609]: Choose a tagged GitHub Release for a reproducible server install. Its bundle pins images, verifies signatures, installs the gateway and services, and supplies the complete lifecycle command.
+      - generic [ref=f34e610]:
+        - article [ref=f34e611]:
+          - generic [ref=f34e612]: "01"
+          - heading "Single-host evaluation" [level=3] [ref=f34e613]
+          - paragraph [ref=f34e614]: Start FFDB and its local dependencies from one signed, pinned release.
+          - strong [ref=f34e615]: Apache-2.0
+          - list [ref=f34e616]:
+            - listitem [ref=f34e617]:
+              - generic [ref=f34e618]: ✓
+              - text: PostgreSQL, MinIO, and Mailpit included
+            - listitem [ref=f34e619]:
+              - generic [ref=f34e620]: ✓
+              - text: Signature and checksum verification
+            - listitem [ref=f34e621]:
+              - generic [ref=f34e622]: ✓
+              - text: Root-only generated secrets
+            - listitem [ref=f34e623]:
+              - generic [ref=f34e624]: ✓
+              - text: Data-preserving upgrades and rollback
+          - link "Deployment guide" [ref=f34e625] [cursor=pointer]:
+            - /url: /docs/self-hosting
+            - text: Deployment guide
+            - generic [ref=f34e626]: →
+        - article [ref=f34e627]:
+          - generic [ref=f34e628]: Production path
+          - generic [ref=f34e629]: "02"
+          - heading "Production self-hosting" [level=3] [ref=f34e630]
+          - paragraph [ref=f34e631]: Run the external-provider release profile or install the same release binaries as Linux systemd services.
+          - strong [ref=f34e632]: Your infrastructure
+          - list [ref=f34e633]:
+            - listitem [ref=f34e634]:
+              - generic [ref=f34e635]: ✓
+              - text: Docker Compose or systemd
+            - listitem [ref=f34e636]:
+              - generic [ref=f34e637]: ✓
+              - text: Bring PostgreSQL, HTTPS S3, email, and TLS
+            - listitem [ref=f34e638]:
+              - generic [ref=f34e639]: ✓
+              - text: Choose your region and network
+            - listitem [ref=f34e640]:
+              - generic [ref=f34e641]: ✓
+              - text: Own upgrades and backups
+          - link "Deployment guide" [ref=f34e642] [cursor=pointer]:
+            - /url: /docs/self-hosting
+            - text: Deployment guide
+            - generic [ref=f34e643]: →
+        - article [ref=f34e644]:
+          - generic [ref=f34e645]: "03"
+          - heading "Monetized FFDB instance" [level=3] [ref=f34e646]
+          - paragraph [ref=f34e647]: Choose Stripe BYO or Connect during first-run setup to offer Free, usage, and subscription plans from your own deployment.
+          - strong [ref=f34e648]: Operator-owned
+          - list [ref=f34e649]:
+            - listitem [ref=f34e650]:
+              - generic [ref=f34e651]: ✓
+              - text: Automatic Stripe catalog provisioning
+            - listitem [ref=f34e652]:
+              - generic [ref=f34e653]: ✓
+              - text: Free, pay-as-you-go, and Pro
+            - listitem [ref=f34e654]:
+              - generic [ref=f34e655]: ✓
+              - text: Durable metering and reconciliation
+            - listitem [ref=f34e656]:
+              - generic [ref=f34e657]: ✓
+              - text: Operator-owned invoices and Customer Portal
+          - link "Deployment guide" [ref=f34e658] [cursor=pointer]:
+            - /url: /docs/self-hosting
+            - text: Deployment guide
+            - generic [ref=f34e659]: →
+    - generic [ref=f34e663]:
+      - heading "Give your app a backend. Keep control of the data." [level=2] [ref=f34e664]: Give your app a backend.Keep control of the data.
+      - paragraph [ref=f34e665]: Install a release, create an organization and project, choose its billing policy, apply its data rules, and make the first query from your application.
+      - generic [ref=f34e666]:
+        - link "Install FFDB" [ref=f34e667] [cursor=pointer]:
+          - /url: /docs/install/docker
+          - text: Install FFDB
+          - generic [ref=f34e668]: →
+        - link "Build the first project" [ref=f34e669] [cursor=pointer]:
+          - /url: /docs/quickstart
+      - generic [ref=f34e670]: Apache-2.0 · Release bundle · Platform billing · Project commerce
+  - contentinfo [ref=f34e676]:
+    - generic [ref=f34e678]:
+      - generic [ref=f34e679]:
+        - link "FFDB" [ref=f34e680] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=f34e681]: A self-hostable Rust data platform with one hardened SQLite database per project.
+      - generic [ref=f34e682]:
+        - heading "Product" [level=3] [ref=f34e683]
+        - link "Capabilities" [ref=f34e684] [cursor=pointer]:
+          - /url: "#capabilities"
+        - link "Architecture" [ref=f34e685] [cursor=pointer]:
+          - /url: "#architecture"
+        - link "Security" [ref=f34e686] [cursor=pointer]:
+          - /url: "#security"
+        - link "Billing" [ref=f34e687] [cursor=pointer]:
+          - /url: "#billing"
+        - link "Deployment" [ref=f34e688] [cursor=pointer]:
+          - /url: "#deployment"
+      - generic [ref=f34e689]:
+        - heading "Developers" [level=3] [ref=f34e690]
+        - link "Documentation" [ref=f34e691] [cursor=pointer]:
+          - /url: /docs/
+        - link "Quickstart" [ref=f34e692] [cursor=pointer]:
+          - /url: /docs/quickstart
+        - link "HTTP API" [ref=f34e693] [cursor=pointer]:
+          - /url: /docs/reference/http-api
+        - link "Client packages" [ref=f34e694] [cursor=pointer]:
+          - /url: /docs/client
+      - generic [ref=f34e695]:
+        - heading "Operations" [level=3] [ref=f34e696]
+        - link "Install FFDB" [ref=f34e697] [cursor=pointer]:
+          - /url: /docs/install/docker
+        - link "Self-hosting" [ref=f34e698] [cursor=pointer]:
+          - /url: /docs/self-hosting
+        - link "Backups" [ref=f34e699] [cursor=pointer]:
+          - /url: /docs/backups
+        - link "Observability" [ref=f34e700] [cursor=pointer]:
+          - /url: /docs/observability
+      - generic [ref=f34e701]:
+        - heading "Legal" [level=3] [ref=f34e702]
+        - link "Terms" [ref=f34e703] [cursor=pointer]:
+          - /url: /terms/
+        - link "Privacy" [ref=f34e704] [cursor=pointer]:
+          - /url: /privacy/
+        - link "Security & disclaimer" [ref=f34e705] [cursor=pointer]:
+          - /url: /security/
+        - link "Apache-2.0 ↗" [ref=f34e706] [cursor=pointer]:
+          - /url: https://www.apache.org/licenses/LICENSE-2.0
+    - generic [ref=f34e707]:
+      - generic [ref=f34e708]: © 2026 Forever Frameworks LLC.
+      - generic [ref=f34e709]: SQLite at the edge of your trust boundary.

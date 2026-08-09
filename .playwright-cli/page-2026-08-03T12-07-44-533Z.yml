@@ -1,0 +1,73 @@
+- generic [ref=f2e38]:
+  - complementary [ref=f2e39]:
+    - generic [ref=f2e40]: FFDB
+    - navigation "Project" [ref=f2e41]:
+      - button "Overview" [ref=f2e42] [cursor=pointer]
+      - button "SQL Editor" [ref=f2e47] [cursor=pointer]
+      - button "Database" [ref=f2e53] [cursor=pointer]
+      - button "Policies" [ref=f2e59] [cursor=pointer]
+      - button "Auth" [ref=f2e64] [cursor=pointer]
+      - button "Storage" [ref=f2e71] [cursor=pointer]
+      - button "Sync" [ref=f2e76] [cursor=pointer]
+      - button "Email" [ref=f2e83] [cursor=pointer]
+      - button "Billing" [active] [ref=f2e88] [cursor=pointer]
+      - button "Payments" [ref=f2e92] [cursor=pointer]
+      - button "Logs" [ref=f2e98] [cursor=pointer]
+      - button "Backups" [ref=f2e101] [cursor=pointer]
+      - button "Settings" [ref=f2e106] [cursor=pointer]
+  - generic [ref=f2e111]:
+    - banner [ref=f2e112]:
+      - strong [ref=f2e118]: Atlas
+      - button "Create" [ref=f2e121] [cursor=pointer]
+    - main [ref=f2e123]:
+      - generic [ref=f2e124]:
+        - heading "Billing" [level=1] [ref=f2e241]
+        - paragraph [ref=f2e126]: Plans and entitlements for the organization that hosts this project.
+      - generic [ref=f2e242]:
+        - generic [ref=f2e243]:
+          - heading "Northstar Labs plan" [level=2] [ref=f2e245]
+          - generic [ref=f2e246]:
+            - generic [ref=f2e247]:
+              - generic [ref=f2e248]: free
+              - heading "Free" [level=3] [ref=f2e249]
+              - paragraph [ref=f2e250]: "Billing unit: organization"
+            - strong [ref=f2e251]:
+              - text: "2"
+              - generic [ref=f2e252]: projects
+          - generic [ref=f2e253]:
+            - generic [ref=f2e254]:
+              - generic [ref=f2e255]: Storage
+              - strong [ref=f2e256]: 953.7 MB
+            - generic [ref=f2e257]:
+              - generic [ref=f2e258]: Reads / month
+              - strong [ref=f2e259]: 1M
+            - generic [ref=f2e260]:
+              - generic [ref=f2e261]: Writes / month
+              - strong [ref=f2e262]: 50K
+            - generic [ref=f2e263]:
+              - generic [ref=f2e264]: Active users
+              - strong [ref=f2e265]: 5K
+          - paragraph [ref=f2e266]: This plan does not permit billable overage. The two-project cap is enforced today; automated usage metering is not yet released.
+          - paragraph [ref=f2e267]: Billing is disabled on this self-hosted instance. Free entitlements and the two-project limit still apply; configure the server-side Stripe variables to enable paid Checkout and Customer Portal sessions.
+          - generic [ref=f2e268]:
+            - button "Choose pay as you go" [disabled] [ref=f2e269]
+            - button "Choose Pro" [disabled] [ref=f2e270]
+            - button "Manage payment method" [disabled] [ref=f2e271]
+        - article [ref=f2e272]:
+          - generic [ref=f2e273]: FFDB plan
+          - heading "Free" [level=2] [ref=f2e274]
+          - strong [ref=f2e275]: $0
+          - paragraph [ref=f2e276]: Two projects with hard included limits and no surprise overage charges.
+        - article [ref=f2e277]:
+          - generic [ref=f2e278]: FFDB plan
+          - heading "Pay as you go" [level=2] [ref=f2e279]
+          - strong [ref=f2e280]: Usage
+          - paragraph [ref=f2e281]: $0.20/GB storage, metered reads, writes, and monthly active users.
+        - article [ref=f2e282]:
+          - generic [ref=f2e283]: FFDB plan
+          - heading "Pro" [level=2] [ref=f2e284]
+          - strong [ref=f2e285]: $7/mo
+          - paragraph [ref=f2e286]: Larger included allowances, then the same transparent usage pricing.
+  - status [ref=f2e238]:
+    - text: Atlas is now the active project
+    - button "Dismiss" [ref=f2e240] [cursor=pointer]: ×

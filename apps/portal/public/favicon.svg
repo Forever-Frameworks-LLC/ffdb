@@ -1,0 +1,25 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="primary" x1="0" y1="0" x2="256" y2="256">
+      <stop stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(128 120) scale(90)">
+      <stop stop-color="#2dd4bf" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#020617"/>
+  <ellipse cx="128" cy="120" rx="90" ry="60" fill="url(#glow)"/>
+  <ellipse cx="128" cy="80" rx="72" ry="24" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
+  <path d="M56 80V128C56 142 88 160 128 160C168 160 200 142 200 128V80" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
+  <ellipse cx="128" cy="128" rx="72" ry="24" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
+  <ellipse cx="128" cy="86" rx="72" ry="24" fill="url(#primary)" opacity="0.05"/>
+  <ellipse cx="128" cy="92" rx="72" ry="24" fill="url(#primary)" opacity="0.15"/>
+  <ellipse cx="128" cy="98" rx="72" ry="24" fill="url(#primary)" opacity="0.2"/>
+  <ellipse cx="128" cy="104" rx="72" ry="24" fill="url(#primary)" opacity="0.25"/>
+  <ellipse cx="128" cy="110" rx="72" ry="24" fill="url(#primary)" opacity="0.3"/>
+  <ellipse cx="128" cy="116" rx="72" ry="24" fill="url(#primary)" opacity="0.4"/>
+  <ellipse cx="128" cy="122" rx="72" ry="24" fill="url(#primary)" opacity="0.5"/>
+  <text x="128" y="220" text-anchor="middle" font-size="22" font-weight="600" letter-spacing="2" fill="#2dd4bf" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">ffdb</text>
+</svg>

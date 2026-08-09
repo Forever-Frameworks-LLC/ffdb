@@ -1,0 +1,42 @@
+.managed-table-workspace { min-width: 0; display: grid; gap: 9px; }
+.managed-table-toolbar { min-height: 34px; display: flex; align-items: center; gap: 9px; color: var(--theme-muted-foreground); font-size: 11px; }
+.managed-table-toolbar > span { margin-left: auto; white-space: nowrap; }
+.managed-table-toolbar > button { min-height: 30px; padding: 0 9px; color: var(--foreground); background: transparent; border: 1px solid var(--theme-border); border-radius: var(--radius); cursor: pointer; }
+.managed-table-search { width: min(100%, 280px); height: 32px; padding: 0 9px; display: flex; align-items: center; gap: 7px; color: var(--theme-muted-foreground); background: color-mix(in oklab, var(--input) 16%, transparent); border: 1px solid var(--input); border-radius: var(--radius); }
+.managed-table-search:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent); }
+.managed-table-search input { width: 100%; min-width: 0; color: var(--foreground); background: transparent; border: 0; outline: 0; }
+.managed-table-search input::placeholder { color: var(--theme-muted-foreground); }
+.managed-table-scroll { min-width: 0; overflow: auto; overscroll-behavior-x: contain; border: 1px solid var(--theme-border); border-radius: var(--radius); }
+.managed-table-scroll table { width: 100%; min-width: 680px; border-collapse: collapse; table-layout: auto; color: var(--card-foreground); font-size: 12px; }
+.managed-table-scroll th { width: auto !important; height: 35px; padding: 0 10px; color: var(--theme-muted-foreground); background: color-mix(in oklab, var(--theme-muted) 36%, var(--card)); border-bottom: 1px solid var(--theme-border); font-weight: 520; text-align: left; white-space: nowrap; }
+.managed-table-workspace .managed-table-scroll th > button { width: auto; min-height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; color: inherit; background: transparent; border: 0; border-radius: 0; cursor: pointer; text-align: left; font-size: 10px; font-weight: 650; letter-spacing: .025em; text-transform: uppercase; }
+.managed-table-workspace .managed-table-scroll th > button svg { opacity: .35; }
+.managed-table-workspace .managed-table-scroll th > button:hover { color: var(--foreground); background: transparent; border-color: transparent; }
+.managed-table-workspace .managed-table-scroll th > button:hover svg,
+.managed-table-workspace .managed-table-scroll th[aria-sort="ascending"] > button svg,
+.managed-table-workspace .managed-table-scroll th[aria-sort="descending"] > button svg { opacity: 1; }
+.managed-table-scroll th[aria-sort="ascending"] > button,
+.managed-table-scroll th[aria-sort="descending"] > button { color: var(--foreground); }
+.managed-table-scroll td { width: auto !important; max-width: 420px; height: auto; min-height: 40px; padding: 8px 10px; display: table-cell !important; color: var(--card-foreground); border-bottom: 1px solid var(--theme-border); overflow: hidden; text-overflow: ellipsis; vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.managed-table-scroll tbody tr { cursor: default; }
+.managed-table-scroll tbody tr:last-child td { border-bottom: 0; }
+.managed-table-empty { min-height: 120px; padding: 24px; display: grid; place-items: center; color: var(--theme-muted-foreground); background: color-mix(in oklab, var(--theme-muted) 25%, transparent); border: 1px dashed var(--theme-border); border-radius: var(--radius); text-align: center; }
+.managed-table-footer { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--theme-muted-foreground); font-size: 11px; }
+.managed-table-footer > div { display: flex; align-items: center; gap: 8px; }
+.managed-table-footer label { display: flex; align-items: center; gap: 5px; }
+.managed-table-footer select,
+.managed-table-footer button { height: 30px; color: var(--foreground); background: transparent; border: 1px solid var(--theme-border); border-radius: var(--radius); }
+.managed-table-footer select { padding: 0 7px; }
+.managed-table-footer button { width: 30px; display: grid; place-items: center; cursor: pointer; }
+.managed-table-footer button:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 600px) {
+  .managed-table-toolbar { flex-wrap: wrap; }
+  .managed-table-search { width: 100%; max-width: none; }
+  .managed-table-toolbar > span { margin-left: 0; }
+  .managed-table-footer { align-items: flex-start; flex-direction: column; }
+  .managed-table-footer > div { width: 100%; justify-content: space-between; }
+  .managed-table-scroll table { min-width: 620px; }
+  .managed-table-scroll th { padding-inline: 8px; }
+  .managed-table-scroll td { padding: 7px 8px; }
+}

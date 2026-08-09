@@ -1,0 +1,114 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.96.1
+          components: rustfmt,clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - run: cargo test --workspace --all-targets --all-features --locked
+      - name: Bounded API load smoke
+        run: cargo test -p ffdb-api --test load_smoke --locked
+
+  rust-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.96.1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets --locked
+
+  fuzz:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz -> target
+      - run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Compile fuzz targets with their locked dependency graph
+        run: cargo check --manifest-path fuzz/Cargo.toml --bins --locked
+      - name: Prepare writable fuzz corpora from reviewed seeds
+        run: |
+          mkdir -p fuzz/corpus/sql_parser fuzz/corpus/rls_bypass
+          cp fuzz/seeds/sql_parser/*.sql fuzz/corpus/sql_parser/
+          cp fuzz/seeds/rls_bypass/*.sql fuzz/corpus/rls_bypass/
+      - name: Fuzz SQL parsing and classification
+        run: >-
+          cargo fuzz run --fuzz-dir fuzz sql_parser fuzz/corpus/sql_parser --
+          -dict=${{ github.workspace }}/fuzz/sql.dict
+          -max_total_time=30 -max_len=4096 -timeout=5
+      - name: Fuzz the SQLite RLS execution boundary
+        run: >-
+          cargo fuzz run --fuzz-dir fuzz rls_bypass fuzz/corpus/rls_bypass --
+          -dict=${{ github.workspace }}/fuzz/sql.dict
+          -max_total_time=30 -max_len=2048 -timeout=5
+
+  typescript:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+
+  supply-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm audit --audit-level high
+
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: make production-config-check
+      - run: make release-check
+      - run: make native-install-linux-test

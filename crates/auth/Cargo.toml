@@ -1,0 +1,28 @@
+[package]
+name = "ffdb-auth"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+argon2 = { version = "0.5", features = ["std"] }
+async-trait = "0.1"
+base64 = "0.22"
+ed25519-dalek = { version = "2.2", features = ["rand_core"] }
+ffdb-protocol = { path = "../protocol" }
+hmac = "0.12"
+password-hash = { version = "0.5", features = ["rand_core"] }
+rand = "0.8"
+ring = "0.17.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlx.workspace = true
+subtle = "2.6"
+thiserror = "2"
+tokio = { version = "1", features = ["sync"] }
+uuid = { version = "1", features = ["serde", "v7"] }
+zeroize = "1.8"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

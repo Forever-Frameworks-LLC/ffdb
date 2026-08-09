@@ -1,0 +1,4722 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FFDB HTTP API",
+    "version": "1.0.0",
+    "description": "Versioned management, project SQL, authentication, sync, object-storage, email-template, and operations API. Error responses use a stable code/message/request_id envelope. Mutation routes marked with x-ffdb-idempotency require an Idempotency-Key header."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current FFDB deployment"
+    }
+  ],
+  "tags": [
+    {
+      "name": "System"
+    },
+    {
+      "name": "Instance"
+    },
+    {
+      "name": "Developer auth"
+    },
+    {
+      "name": "Organizations"
+    },
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "End-user auth"
+    },
+    {
+      "name": "Data"
+    },
+    {
+      "name": "Billing"
+    },
+    {
+      "name": "Commerce"
+    },
+    {
+      "name": "Sync"
+    },
+    {
+      "name": "Storage"
+    },
+    {
+      "name": "Email"
+    },
+    {
+      "name": "Operations"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "operationId": "readiness",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "Prometheus exposition",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "operationId": "openapi",
+        "responses": {
+          "200": {
+            "description": "This OpenAPI document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/instance/setup/status": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "getPublicInstanceSetupStatus",
+        "description": "Public first-run discovery. Reports whether an owner and deployment mode are configured and which paid modes this build can activate; never returns credentials.",
+        "security": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "getInstance",
+        "description": "Return the authenticated actor's instance configuration and administration capabilities.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "completeOrReconfigureInstance",
+        "description": "Complete first-run setup or atomically change the owner-controlled deployment and platform-billing mode. Non-canceled organization billing accounts lock the instance to its current mode and Stripe account; unsafe changes fail with instance.billing_in_use until every subscription is canceled and reconciled.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/observability": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "getInstanceObservability",
+        "description": "Return retained request, query-fingerprint, worker, and storage telemetry for the entire instance or an optional project. Requires an instance owner or administrator session. Raw SQL, identifiers, comments, literals, and parameter values are never returned or retained.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ObservabilityRange"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Optional project filter."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained observability summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservabilitySummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/organization-creation-policy": {
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "updateOrganizationCreationPolicy",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/billing/connect/onboarding": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "createInstanceConnectOnboarding",
+        "description": "Create or resume Stripe Connect onboarding for the platform merchant account.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/billing/refresh": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "refreshInstanceBillingAccount",
+        "description": "Refresh Connect readiness and provision or validate the instance billing catalog.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/administrators": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "listInstanceAdministrators",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "grantInstanceAdministrator",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/administrators/{user_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "revokeInstanceAdministrator",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/organizations": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "listInstanceOrganizations",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/organizations/{organization_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "setInstanceOrganizationDisabled",
+        "description": "Disable or re-enable an organization globally without deleting its durable state.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "disabled"
+                ],
+                "properties": {
+                  "disabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/users": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "listInstanceUsers",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/users/{user_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "setInstanceUserDisabled",
+        "description": "Disable or re-enable a platform account. The immutable instance owner cannot be disabled.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "disabled"
+                ],
+                "properties": {
+                  "disabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/billing-exemptions": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "listInstanceBillingExemptions",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/billing-exemptions/{organization_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "grantInstanceBillingExemption",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "revokeInstanceBillingExemption",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/plans": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "listInstancePlans",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/plans/{tier}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InstancePlanTier"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "putInstancePlan",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "retireInstancePlan",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/developer/bootstrap": {
+      "post": {
+        "tags": [
+          "Developer auth"
+        ],
+        "operationId": "bootstrapDeveloper",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/developer/sign-in": {
+      "post": {
+        "tags": [
+          "Developer auth"
+        ],
+        "operationId": "developerSignIn",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/developer/refresh": {
+      "post": {
+        "tags": [
+          "Developer auth"
+        ],
+        "operationId": "developerRefresh",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/developer/sign-out": {
+      "post": {
+        "tags": [
+          "Developer auth"
+        ],
+        "operationId": "developerSignOut",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/developer/invitations/accept": {
+      "post": {
+        "tags": [
+          "Developer auth"
+        ],
+        "operationId": "acceptOrganizationInvitation",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "listOrganizations",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "createOrganization",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/projects": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "listProjects",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/members": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "listMembers",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "addMember",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/members/{user_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "updateMember",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "removeMember",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/invitations": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "inviteMember",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/billing": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "getOrganizationBilling",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization subscription selection and effective entitlements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformBillingSummary"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/billing/checkout": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "createOrganizationBillingCheckout",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlatformCheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Short-lived Stripe-hosted Checkout redirect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRedirect"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/billing/portal": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "createOrganizationBillingPortal",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Short-lived Stripe-hosted Customer Portal redirect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRedirect"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/billing/invoices": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "listOrganizationBillingInvoices",
+        "description": "List durable local invoice records reconciled with the configured platform billing provider.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organization_id}/billing/usage": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "getOrganizationBillingUsage",
+        "description": "Return the current reads, writes, byte-hours/GB-month, and MAU ledger totals and allowance position.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/webhooks/stripe": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "operationId": "receiveStripeBillingWebhook",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StripeSignature"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified event accepted or safely deduplicated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "received"
+                  ],
+                  "properties": {
+                    "received": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "duplicate": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "createProject",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/payments": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "getProjectPaymentsSummary",
+        "description": "Compatibility capability summary. Use the /commerce routes for complete project-commerce administration.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project commerce provider and capability summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPaymentsSummary"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/account": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "getCommerceAccount",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Write-only credential configuration status and provider capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommerceAccountSummary"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "disconnectCommerceAccount",
+        "description": "Remove an unused local BYO or Connect binding and its encrypted project secrets. Returns commerce.account_in_use when provider-bound commerce data exists; it never closes the external Stripe account.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Local commerce account binding removed"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/account/byo": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "configureCommerceByo",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureCommerceByoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/account/connect/onboarding": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createCommerceConnectOnboarding",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/account/refresh": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "refreshCommerceAccount",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/products": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommerceProducts",
+        "security": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createCommerceProduct",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/products/{product_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "product_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "archiveCommerceProduct",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "responses": {
+          "204": {
+            "description": "Product archived"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/prices": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommercePrices",
+        "security": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createCommercePrice",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/prices/{price_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "price_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "retireCommercePrice",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "responses": {
+          "204": {
+            "description": "Price retired"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/checkouts/one-time": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createOneTimeCommerceCheckout",
+        "security": [
+          {
+            "projectBearer": []
+          },
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/checkouts/recurring": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createRecurringCommerceCheckout",
+        "security": [
+          {
+            "projectBearer": []
+          },
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/customer-portal": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createCommerceCustomerPortal",
+        "security": [
+          {
+            "projectBearer": []
+          },
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "subject",
+                  "return_url"
+                ],
+                "properties": {
+                  "subject": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind",
+                      "id"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "individual",
+                          "team",
+                          "organization"
+                        ]
+                      },
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                      }
+                    }
+                  },
+                  "return_url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Short-lived project Stripe Customer Portal redirect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRedirect"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/orders": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommerceOrders",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/orders/{order_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "order_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "getCommerceOrder",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/orders/{order_id}/fulfillment": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "order_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "updateCommerceFulfillment",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/payments": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommercePayments",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/refunds": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "createCommerceRefund",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/subscriptions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommerceSubscriptions",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/subscriptions/{subscription_id}/cancel": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "subscription_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "cancelCommerceSubscription",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/entitlements": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "listCommerceEntitlements",
+        "security": [
+          {
+            "projectBearer": []
+          },
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/commerce/webhooks/stripe": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/StripeSignature"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "receiveProjectCommerceByoStripeWebhook",
+        "description": "BYO-only endpoint. Connect events are rejected and must use the global account-routed Connect endpoint.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified BYO event processed or deduplicated"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/commerce/webhooks/stripe-connect": {
+      "post": {
+        "tags": [
+          "Commerce"
+        ],
+        "operationId": "receiveProjectCommerceConnectStripeWebhook",
+        "description": "Global Stripe Connect endpoint. FFDB verifies the deployment's project-Connect endpoint secret before parsing event.account, resolves exactly one connected project, and enforces that account and livemode binding.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StripeSignature"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified account-routed Connect event processed or deduplicated"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/api-keys": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "listApiKeys",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "createApiKey",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/api-keys/{api_key_id}/revoke": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/ApiKeyId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "revokeApiKey",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/keys/rotate": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "rotateSigningKey",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/register": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "registerUser",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/verify": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/sign-in": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "userSignIn",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/refresh": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "userRefresh",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/sign-out": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "userSignOut",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/password/reset": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "startPasswordReset",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/password/reset/complete": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "completePasswordReset",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/password/change": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "changePassword",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/sessions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "listSessions",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/sessions/{session_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/SessionId"
+        }
+      ],
+      "delete": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "revokeSession",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/settings": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "getAuthSettings",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "updateAuthSettings",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/users": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "listAuthUsers",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/auth/users/{user_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "End-user auth"
+        ],
+        "operationId": "updateAuthUser",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/query": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "query",
+        "security": [
+          {
+            "projectBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/transaction": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "transaction",
+        "security": [
+          {
+            "projectBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/schema": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "schema",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/policies": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "policies",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/migrations": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "migrationHistory",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "applyMigration",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/migrations/{migration_id}/rollback": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/MigrationId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "rollbackMigration",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/seed": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "operationId": "seed",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/snapshot": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Sync"
+        ],
+        "operationId": "snapshot",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/sync": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Sync"
+        ],
+        "operationId": "syncPull",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/sync/push": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Sync"
+        ],
+        "operationId": "syncPush",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/buckets": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "listBuckets",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "createBucket",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/sign": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "signStorageOperation",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/commit": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "commitStorageOperation",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/release": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "releaseStorageOperation",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/objects": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "listObjects",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/cleanup": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "cleanupStorageReservations",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/multipart/authorize": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "authorizeMultipartCreate",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "bucket",
+                  "key",
+                  "size_bytes"
+                ],
+                "properties": {
+                  "bucket": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "content_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "checksum_sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bound multipart-create authorization",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "authorization_token"
+                  ],
+                  "properties": {
+                    "authorization_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/multipart/create": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "createMultipartUpload",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "authorization_token"
+                ],
+                "properties": {
+                  "authorization_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Provider multipart upload created and durably committed",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "upload_id"
+                  ],
+                  "properties": {
+                    "upload_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/storage/multipart/commit": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "operationId": "commitMultipartStage",
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/email/templates": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Email"
+        ],
+        "operationId": "listEmailTemplates",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/email/templates/artifacts": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "operationId": "importEmailArtifact",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/email/templates/{kind}/{version}/publish": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/TemplateKind"
+        },
+        {
+          "$ref": "#/components/parameters/TemplateVersion"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "operationId": "publishEmailTemplate",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/email/templates/{kind}/{version}/preview": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/TemplateKind"
+        },
+        {
+          "$ref": "#/components/parameters/TemplateVersion"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "operationId": "previewEmailTemplate",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/backups": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "listBackups",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "createBackup",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/backups/{backup_id}/restore": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/BackupId"
+        },
+        {
+          "$ref": "#/components/parameters/IdempotencyKey"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "restoreBackup",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "x-ffdb-idempotency": "required",
+        "responses": {
+          "200": {
+            "description": "Restore completed and verified by the isolated database worker",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerRestoreResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/logs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "auditLogs",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/observability": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "getProjectObservability",
+        "description": "Return retained request, privacy-safe normalized query-fingerprint, worker, and storage telemetry for one project. Any member of the owning organization may read this operational view.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ObservabilityRange"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained project observability summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservabilitySummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/integrity-check": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "integrityCheck",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "developerBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque",
+        "description": "Opaque platform developer access token."
+      },
+      "userBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Project end-user access token."
+      },
+      "projectBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT or API key",
+        "description": "Project end-user JWT or scoped developer API key as permitted by the route."
+      }
+    },
+    "parameters": {
+      "OrganizationId": {
+        "name": "organization_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ProjectId": {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "UserId": {
+        "name": "user_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ApiKeyId": {
+        "name": "api_key_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "MigrationId": {
+        "name": "migration_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "BackupId": {
+        "name": "backup_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "TemplateKind": {
+        "name": "kind",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "verification",
+            "password_reset",
+            "email_change",
+            "invitation",
+            "magic_link"
+          ]
+        }
+      },
+      "TemplateVersion": {
+        "name": "version",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "InstancePlanTier": {
+        "name": "tier",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pay_as_you_go",
+            "pro"
+          ]
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        }
+      },
+      "StripeSignature": {
+        "name": "Stripe-Signature",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "description": "Stripe HMAC signature over the exact raw request body."
+      },
+      "ObservabilityRange": {
+        "name": "range",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "1h",
+            "6h",
+            "24h",
+            "7d",
+            "30d"
+          ],
+          "default": "24h"
+        },
+        "description": "Retained time window. Server-selected chart resolution keeps responses bounded."
+      }
+    },
+    "requestBodies": {
+      "JsonObject": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Successful JSON response",
+        "headers": {
+          "X-Request-Id": {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "Stable FFDB error envelope",
+        "headers": {
+          "X-Request-Id": {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "PlatformBillingTier": {
+        "type": "string",
+        "enum": [
+          "free",
+          "pay_as_you_go",
+          "pro"
+        ]
+      },
+      "PlatformBillingStatus": {
+        "type": "string",
+        "enum": [
+          "free",
+          "checkout_pending",
+          "trialing",
+          "active",
+          "past_due",
+          "unpaid",
+          "canceled",
+          "paused",
+          "incomplete"
+        ]
+      },
+      "PlatformUsageAllowance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "storage_bytes",
+          "monthly_reads",
+          "monthly_writes",
+          "monthly_active_users",
+          "overage_enabled"
+        ],
+        "properties": {
+          "storage_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "monthly_reads": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "monthly_writes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "monthly_active_users": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "overage_enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PlatformBillingSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "organization_id",
+          "tier",
+          "status",
+          "billing_unit",
+          "seat_quantity",
+          "project_limit",
+          "usage_allowance",
+          "current_period_end_ms",
+          "cancel_at_period_end",
+          "provider_configured"
+        ],
+        "properties": {
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/PlatformBillingTier"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlatformBillingStatus"
+          },
+          "billing_unit": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "seat"
+            ]
+          },
+          "seat_quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "project_limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "usage_allowance": {
+            "$ref": "#/components/schemas/PlatformUsageAllowance"
+          },
+          "current_period_end_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "provider_configured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreatePlatformCheckoutRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tier"
+        ],
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "pay_as_you_go",
+              "pro"
+            ]
+          }
+        }
+      },
+      "BillingRedirect": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://(checkout|billing)\\.stripe\\.com/"
+          }
+        }
+      },
+      "ProjectPaymentsSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id",
+          "organization_id",
+          "status",
+          "provider",
+          "capabilities"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_configured",
+              "enabled",
+              "restricted"
+            ]
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "checkout_sessions",
+              "recurring_billing",
+              "customer_portal",
+              "webhooks"
+            ],
+            "properties": {
+              "checkout_sessions": {
+                "type": "boolean"
+              },
+              "recurring_billing": {
+                "type": "boolean"
+              },
+              "customer_portal": {
+                "type": "boolean"
+              },
+              "webhooks": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "CommerceAccountSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id",
+          "mode",
+          "status",
+          "livemode",
+          "provider_account_id",
+          "capabilities",
+          "requirements_due",
+          "disabled_reason",
+          "webhook_url",
+          "secrets_configured"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "bring_your_own_keys",
+              "stripe_connect"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "configuring",
+              "onboarding",
+              "enabled",
+              "restricted",
+              "disconnected"
+            ]
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "provider_account_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^acct_"
+          },
+          "capabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "one_time_payments",
+              "recurring_payments",
+              "refunds",
+              "customer_portal"
+            ],
+            "properties": {
+              "one_time_payments": {
+                "type": "boolean"
+              },
+              "recurring_payments": {
+                "type": "boolean"
+              },
+              "refunds": {
+                "type": "boolean"
+              },
+              "customer_portal": {
+                "type": "boolean"
+              }
+            }
+          },
+          "requirements_due": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disabled_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhook_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "secrets_configured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ConfigureCommerceByoRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "secret_key",
+          "webhook_secret"
+        ],
+        "properties": {
+          "secret_key": {
+            "type": "string",
+            "writeOnly": true,
+            "pattern": "^sk_(test|live)_"
+          },
+          "webhook_secret": {
+            "type": "string",
+            "writeOnly": true,
+            "pattern": "^whsec_"
+          }
+        }
+      },
+      "ObservabilitySummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Bounded retained operational telemetry. Query shapes are structurally normalized and never contain raw SQL identifiers, comments, literals, or parameter values.",
+        "required": [
+          "scope",
+          "generated_at_ms",
+          "window_start_ms",
+          "window_end_ms",
+          "resolution_seconds",
+          "retention_days",
+          "current_inflight",
+          "dropped_samples",
+          "totals",
+          "series",
+          "busiest_routes",
+          "slowest_routes",
+          "frequent_queries",
+          "slow_queries",
+          "runtime",
+          "storage"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "project",
+              "instance"
+            ]
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generated_at_ms": {
+            "type": "integer"
+          },
+          "window_start_ms": {
+            "type": "integer"
+          },
+          "window_end_ms": {
+            "type": "integer"
+          },
+          "resolution_seconds": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "retention_days": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "current_inflight": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dropped_samples": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ObservabilityHttpTotals"
+          },
+          "series": {
+            "type": "array",
+            "maxItems": 121,
+            "items": {
+              "$ref": "#/components/schemas/ObservabilityTimePoint"
+            }
+          },
+          "busiest_routes": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/ObservabilityRouteMetric"
+            }
+          },
+          "slowest_routes": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/ObservabilityRouteMetric"
+            }
+          },
+          "frequent_queries": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/ObservabilityQueryMetric"
+            }
+          },
+          "slow_queries": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/ObservabilityQueryMetric"
+            }
+          },
+          "runtime": {
+            "$ref": "#/components/schemas/ObservabilityRuntimeSnapshot"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/ObservabilityStorageSnapshot"
+          }
+        }
+      },
+      "ObservabilityHttpTotals": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requests",
+          "qps",
+          "client_errors",
+          "server_errors",
+          "error_rate",
+          "average_latency_ms",
+          "p50_latency_ms",
+          "p95_latency_ms",
+          "p99_latency_ms",
+          "max_latency_ms"
+        ],
+        "properties": {
+          "requests": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "qps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "client_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "server_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "average_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p50_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p95_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p99_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "max_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "ObservabilityTimePoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "timestamp_ms",
+          "requests",
+          "qps",
+          "client_errors",
+          "server_errors",
+          "p50_latency_ms",
+          "p95_latency_ms",
+          "p99_latency_ms"
+        ],
+        "properties": {
+          "timestamp_ms": {
+            "type": "integer"
+          },
+          "requests": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "qps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "client_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "server_errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "p50_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p95_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p99_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "ObservabilityRouteMetric": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method",
+          "route",
+          "requests",
+          "qps",
+          "error_rate",
+          "average_latency_ms",
+          "p50_latency_ms",
+          "p95_latency_ms",
+          "p99_latency_ms",
+          "max_latency_ms"
+        ],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string",
+            "description": "Stable route template; concrete project and resource IDs are excluded."
+          },
+          "requests": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "qps": {
+            "type": "number",
+            "minimum": 0
+          },
+          "error_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "average_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p50_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p95_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p99_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "max_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "ObservabilityQueryMetric": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fingerprint",
+          "shape",
+          "statement_kind",
+          "read_only",
+          "executions",
+          "errors",
+          "error_rate",
+          "average_latency_ms",
+          "p50_latency_ms",
+          "p95_latency_ms",
+          "p99_latency_ms",
+          "max_latency_ms",
+          "rows_returned",
+          "rows_affected"
+        ],
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "SHA-256 of the privacy-safe normalized query shape."
+          },
+          "shape": {
+            "type": "string",
+            "maxLength": 320,
+            "description": "Bounded SQL structure with identifiers, comments, literals, and parameters replaced."
+          },
+          "statement_kind": {
+            "type": "string"
+          },
+          "read_only": {
+            "type": "boolean"
+          },
+          "executions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "average_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p50_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p95_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "p99_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "max_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "rows_returned": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rows_affected": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ObservabilityRuntimeSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "healthy",
+          "active_workers",
+          "max_workers",
+          "worker_saturation",
+          "execution_slots_in_use",
+          "queue_capacity",
+          "queue_saturation"
+        ],
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "active_workers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_workers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "worker_saturation": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "execution_slots_in_use": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "queue_capacity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "queue_saturation": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "ObservabilityStorageSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "logical_database_bytes",
+          "sampled_projects"
+        ],
+        "properties": {
+          "logical_database_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sampled_projects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "database_disk_total_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "database_disk_available_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "database_disk_used_percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "backup_disk_total_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "backup_disk_available_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "backup_disk_used_percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "last_sample_at_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "RestoreResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "backup_id",
+          "integrity_ok",
+          "schema_version"
+        ],
+        "properties": {
+          "backup_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "integrity_ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "schema_version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "WorkerRestoreResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "payload"
+        ],
+        "properties": {
+          "type": {
+            "const": "restore"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RestoreResult"
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "request_id"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "details": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "@ffdb/react-native",
+  "version": "0.3.0",
+  "description": "FFDB secure-session and native SQLite adapter contracts for React Native",
+  "keywords": ["ffdb", "react-native", "sqlite", "offline-first", "sync"],
+  "homepage": "https://ffdb.forever-frameworks.com/docs/react-native",
+  "license": "Apache-2.0",
+  "author": "Forever Frameworks <admin@forever-frameworks.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Forever-Frameworks-LLC/ffdb.git",
+    "directory": "packages/react-native"
+  },
+  "bugs": { "url": "https://github.com/Forever-Frameworks-LLC/ffdb/issues" },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "react-native": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "react-native": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "!dist/**/*.test.*"],
+  "engines": { "node": ">=24" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm check && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@ffdb/client": "workspace:*",
+    "@ffdb/sync-client": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,600 @@
+#!/bin/sh
+set -eu
+
+BACKUP_TOOL_VERSION="@VERSION@"
+BACKUP_SCHEMA_VERSION=1
+ARCHIVE_ROOT=ffdb-host-backup
+MODE=${FFDB_BACKUP_MODE:-native}
+DOCKER=${FFDB_DOCKER_COMMAND:-docker}
+SYSTEMCTL=${FFDB_SYSTEMCTL_COMMAND:-systemctl}
+CURL=${FFDB_CURL_COMMAND:-curl}
+PG_DUMP=${FFDB_PG_DUMP_COMMAND:-pg_dump}
+PG_RESTORE=${FFDB_PG_RESTORE_COMMAND:-pg_restore}
+SQLITE3=${FFDB_SQLITE3_COMMAND:-sqlite3}
+NATIVE_CONFIG_FILE=${FFDB_NATIVE_CONFIG_FILE:-/etc/ffdb/ffdb.env}
+NATIVE_STATE_ROOT=${FFDB_NATIVE_STATE_ROOT:-/var/lib/ffdb}
+NATIVE_OWNER=${FFDB_NATIVE_OWNER:-ffdb}
+NATIVE_GROUP=${FFDB_NATIVE_GROUP:-ffdb}
+NATIVE_CONFIG_OWNER=${FFDB_NATIVE_CONFIG_OWNER:-root}
+NATIVE_CONFIG_GROUP=${FFDB_NATIVE_CONFIG_GROUP:-ffdb}
+COMPOSE_RELEASE_DIR=${FFDB_COMPOSE_RELEASE_DIR:-}
+COMPOSE_CONFIG_FILE=${FFDB_COMPOSE_CONFIG_FILE:-}
+COMPOSE_FILENAME=${FFDB_COMPOSE_FILENAME:-compose.single-host.yaml}
+COMPOSE_PROFILE=${FFDB_COMPOSE_PROFILE:-}
+
+say() { printf '%s\n' "ffdb backup: $*"; }
+die() { printf '%s\n' "ffdb backup: error: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ffdb-host backup create /absolute/path/ffdb-backup.tar.gz
+  ffdb-host backup restore /absolute/path/ffdb-backup.tar.gz --yes
+
+Native/systemd installations use the equivalent `ffdb-backup` command.
+Create never overwrites an archive. Restore requires stopped mutation-serving
+services, validates the complete archive first, and requires `--yes`.
+EOF
+}
+
+require_root() {
+  if [ "$(id -u)" -ne 0 ] && [ "${FFDB_ALLOW_UNPRIVILEGED:-0}" != 1 ]; then
+    die "run this command as root"
+  fi
+}
+
+require_absolute_path() {
+  case "$1" in
+    /*) ;;
+    *) die "backup archive path must be absolute" ;;
+  esac
+  [ "$1" != / ] || die "refusing to use / as a backup archive"
+}
+
+file_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+env_value() {
+  key=$1
+  file=$2
+  awk -F= -v wanted="$key" '$1 == wanted {sub(/^[^=]*=/, ""); print; exit}' "$file"
+}
+
+safe_relative_name() {
+  case "$1" in
+    ./*) ;;
+    *) return 1 ;;
+  esac
+  case "/${1#./}/" in
+    */../*|*/./*|*//* ) return 1 ;;
+  esac
+  return 0
+}
+
+validate_tar_members() {
+  vtm_archive=$1
+  vtm_expected_prefix=$2
+  tar -tf "$vtm_archive" | awk -v prefix="$vtm_expected_prefix" '
+    index($0, prefix) != 1 || $0 ~ /(^|\/)\.\.($|\/)/ || $0 ~ /^\// {bad=1}
+    END {exit bad}
+  ' || die "archive contains an unsafe or unexpected path"
+  tar -tvf "$vtm_archive" | awk '
+    substr($1,1,1) != "-" && substr($1,1,1) != "d" {bad=1}
+    END {exit bad}
+  ' || die "archive contains a link or special file"
+}
+
+validate_outer_archive() {
+  voa_archive=$1
+  tar -tzf "$voa_archive" | awk -v prefix="$ARCHIVE_ROOT/" '
+    index($0, prefix) != 1 || $0 ~ /(^|\/)\.\.($|\/)/ || $0 ~ /^\// {bad=1}
+    END {exit bad}
+  ' || die "backup archive contains an unsafe or unexpected path"
+  tar -tvzf "$voa_archive" | awk '
+    substr($1,1,1) != "-" && substr($1,1,1) != "d" {bad=1}
+    END {exit bad}
+  ' || die "backup archive contains a link or special file"
+}
+
+write_checksums() {
+  root=$1
+  checksums=$root/SHA256SUMS
+  : > "$checksums"
+  find "$root" -type f ! -path "$checksums" -print | sort |
+    while IFS= read -r path; do
+      relative=.${path#"$root"}
+      printf '%s  %s\n' "$(file_sha256 "$path")" "$relative"
+    done > "$checksums"
+}
+
+verify_checksums() {
+  root=$1
+  checksums=$root/SHA256SUMS
+  [ -f "$checksums" ] || die "backup archive is missing SHA256SUMS"
+  awk '
+    NF != 2 || $2 !~ /^\.\/[A-Za-z0-9._\/-]+$/ || seen[$2]++ {bad=1}
+    END {exit bad}
+  ' "$checksums" || die "backup checksum manifest is invalid"
+  while IFS= read -r line; do
+    expected=${line%%  *}
+    relative=${line#*  }
+    [ "$relative" != "$line" ] && safe_relative_name "$relative" \
+      || die "backup checksum manifest is invalid"
+    path=$root/${relative#./}
+    [ -f "$path" ] || die "backup checksum target is missing"
+    [ "$(file_sha256 "$path")" = "$expected" ] \
+      || die "backup checksum verification failed"
+  done < "$checksums"
+  actual_count=$(find "$root" -type f ! -path "$checksums" | wc -l | tr -d ' ')
+  listed_count=$(wc -l < "$checksums" | tr -d ' ')
+  [ "$actual_count" = "$listed_count" ] \
+    || die "backup archive contains an unverified file"
+}
+
+write_manifest() {
+  root=$1
+  profile=$2
+  version=$3
+  components=$4
+  created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  {
+    printf 'FFDB_HOST_BACKUP_SCHEMA=%s\n' "$BACKUP_SCHEMA_VERSION"
+    printf 'FFDB_HOST_BACKUP_PROFILE=%s\n' "$profile"
+    printf 'FFDB_HOST_BACKUP_VERSION=%s\n' "$version"
+    printf 'FFDB_HOST_BACKUP_CREATED_AT=%s\n' "$created_at"
+    printf 'FFDB_HOST_BACKUP_COMPONENTS=%s\n' "$components"
+  } > "$root/manifest.env"
+  chmod 0600 "$root/manifest.env"
+}
+
+validate_manifest() {
+  root=$1
+  expected_profile=$2
+  current_version=$3
+  manifest=$root/manifest.env
+  [ -f "$manifest" ] || die "backup archive is missing manifest.env"
+  [ "$(env_value FFDB_HOST_BACKUP_SCHEMA "$manifest")" = "$BACKUP_SCHEMA_VERSION" ] \
+    || die "backup archive schema is unsupported"
+  [ "$(env_value FFDB_HOST_BACKUP_PROFILE "$manifest")" = "$expected_profile" ] \
+    || die "backup archive belongs to another installation profile"
+  [ "$(env_value FFDB_HOST_BACKUP_VERSION "$manifest")" = "$current_version" ] \
+    || die "backup archive must be restored with its exact FFDB version"
+  [ -f "$root/VERSION" ] \
+    && [ "$(sed -n '1p' "$root/VERSION")" = "$current_version" ] \
+    || die "backup archive version metadata is inconsistent"
+}
+
+make_archive() {
+  root_parent=$1
+  output=$2
+  parent=$(dirname "$output")
+  archive_tmp=$(mktemp "$parent/.ffdb-backup-archive.XXXXXX")
+  if ! tar -czf "$archive_tmp" -C "$root_parent" "$ARCHIVE_ROOT" \
+    || ! chmod 0600 "$archive_tmp" \
+    || ! ln "$archive_tmp" "$output"; then
+    rm -f "$archive_tmp"
+    die "could not publish backup archive without overwriting an existing path"
+  fi
+  rm -f "$archive_tmp"
+}
+
+prepare_output() {
+  output=$1
+  require_absolute_path "$output"
+  [ ! -e "$output" ] || die "refusing to overwrite existing backup archive"
+  parent=$(dirname "$output")
+  [ -d "$parent" ] || die "backup archive parent directory does not exist"
+  stage=$(mktemp -d "$parent/.ffdb-backup-stage.XXXXXX")
+  chmod 0700 "$stage"
+  install -d -m 0700 "$stage/$ARCHIVE_ROOT/config" "$stage/$ARCHIVE_ROOT/volumes"
+  printf '%s\n' "$stage"
+}
+
+expand_archive() {
+  archive=$1
+  require_absolute_path "$archive"
+  [ -f "$archive" ] || die "backup archive does not exist"
+  validate_outer_archive "$archive"
+  stage=$(mktemp -d "${TMPDIR:-/tmp}/ffdb-backup-restore.XXXXXX")
+  chmod 0700 "$stage"
+  tar -xzf "$archive" -C "$stage"
+  printf '%s\n' "$stage"
+}
+
+extract_volume_for_validation() {
+  ev_archive=$1
+  ev_destination=$2
+  validate_tar_members "$ev_archive" ./
+  install -d -m 0700 "$ev_destination"
+  tar -xpf "$ev_archive" -C "$ev_destination"
+}
+
+validate_sqlite_tree() {
+  vst_root=$1
+  command -v "$SQLITE3" >/dev/null 2>&1 || die "sqlite3 is required"
+  find "$vst_root" -type f -name '*.sqlite3' -print |
+    while IFS= read -r vst_database; do
+      vst_result=$($SQLITE3 "$vst_database" 'PRAGMA quick_check(1);') \
+        || exit 1
+      [ "$vst_result" = ok ] || exit 1
+    done || die "SQLite integrity validation failed"
+}
+
+compose_command() {
+  "$DOCKER" compose \
+    --env-file "$COMPOSE_RELEASE_DIR/release.env" \
+    --env-file "$COMPOSE_CONFIG_FILE" \
+    -f "$COMPOSE_RELEASE_DIR/$COMPOSE_FILENAME" "$@"
+}
+
+compose_with_config() {
+  config=$1
+  shift
+  "$DOCKER" compose \
+    --env-file "$COMPOSE_RELEASE_DIR/release.env" \
+    --env-file "$config" \
+    -f "$COMPOSE_RELEASE_DIR/$COMPOSE_FILENAME" "$@"
+}
+
+compose_release_value() {
+  env_value "$1" "$COMPOSE_RELEASE_DIR/release.env"
+}
+
+compose_volume_name() {
+  logical=$1
+  names=$("$DOCKER" volume ls \
+    --filter label=com.docker.compose.project=ffdb-single-host \
+    --filter "label=com.docker.compose.volume=$logical" \
+    --format '{{.Name}}')
+  [ "$(printf '%s\n' "$names" | awk 'NF {count++} END {print count+0}')" -eq 1 ] \
+    || die "could not resolve the $logical Compose volume"
+  printf '%s\n' "$names"
+}
+
+compose_archive_volume() {
+  cav_logical=$1
+  cav_output=$2
+  cav_volume=$(compose_volume_name "$cav_logical")
+  cav_destination=$(dirname "$cav_output")
+  cav_filename=$(basename "$cav_output")
+  "$DOCKER" run --rm --user 0:0 --entrypoint /bin/sh \
+    --volume "$cav_volume:/source:ro" --volume "$cav_destination:/destination" \
+    "$(compose_release_value FFDB_RUNTIME_IMAGE)" -ec \
+    "cd /source && tar -cpf /destination/$cav_filename ."
+}
+
+compose_restore_volume() {
+  crv_logical=$1
+  crv_archive=$2
+  crv_volume=$(compose_volume_name "$crv_logical")
+  crv_source=$(dirname "$crv_archive")
+  crv_filename=$(basename "$crv_archive")
+  "$DOCKER" run --rm --user 0:0 --entrypoint /bin/sh \
+    --volume "$crv_volume:/destination" --volume "$crv_source:/source:ro" \
+    "$(compose_release_value FFDB_RUNTIME_IMAGE)" -ec \
+    "cd /destination && tar -xpf /source/$crv_filename"
+}
+
+compose_validate_postgres_dump() {
+  cvpd_root=$1
+  "$DOCKER" run --rm --entrypoint pg_restore \
+    --volume "$cvpd_root:/backup:ro" "$(compose_release_value FFDB_POSTGRES_IMAGE)" \
+    --list /backup/postgres.dump >/dev/null
+}
+
+compose_validate_sqlite() {
+  cvs_root=$1
+  "$DOCKER" run --rm --entrypoint /bin/sh --volume "$cvs_root:/check:ro" \
+    "$(compose_release_value FFDB_RUNTIME_IMAGE)" -ec '
+      find /check/project-data /check/metrics-data -type f -name "*.sqlite3" -print |
+        while IFS= read -r database; do
+          result=$(sqlite3 "$database" "PRAGMA quick_check(1);") || exit 1
+          [ "$result" = ok ] || exit 1
+        done
+    '
+}
+
+compose_validate_restored_sqlite() {
+  project=$(compose_volume_name project-data)
+  metrics=$(compose_volume_name metrics-data)
+  "$DOCKER" run --rm --entrypoint /bin/sh \
+    --volume "$project:/check/project-data:ro" \
+    --volume "$metrics:/check/metrics-data:ro" \
+    "$(compose_release_value FFDB_RUNTIME_IMAGE)" -ec '
+      find /check -type f -name "*.sqlite3" -print |
+        while IFS= read -r database; do
+          result=$(sqlite3 "$database" "PRAGMA quick_check(1);") || exit 1
+          [ "$result" = ok ] || exit 1
+        done
+    '
+}
+
+compose_require_context() {
+  [ "$COMPOSE_PROFILE" = single-host ] \
+    || die "host backup currently supports only the packaged single-host profile"
+  [ -d "$COMPOSE_RELEASE_DIR" ] && [ -f "$COMPOSE_RELEASE_DIR/release.env" ] \
+    || die "release directory is unavailable"
+  [ -f "$COMPOSE_RELEASE_DIR/VERSION" ] \
+    && [ "$(sed -n '1p' "$COMPOSE_RELEASE_DIR/VERSION")" = "$BACKUP_TOOL_VERSION" ] \
+    || die "ffdb-backup does not match the active FFDB release"
+  [ -f "$COMPOSE_CONFIG_FILE" ] || die "single-host configuration is unavailable"
+  command -v "$DOCKER" >/dev/null 2>&1 || die "docker is required"
+}
+
+compose_create() {
+  output=$1
+  compose_require_context
+  running=$(compose_command ps --status running --services)
+  printf '%s\n' "$running" | grep -qx api || die "FFDB API must be running before backup create"
+  printf '%s\n' "$running" | grep -qx postgres \
+    || die "FFDB PostgreSQL must be running before backup create"
+  stage=$(prepare_output "$output")
+  root=$stage/$ARCHIVE_ROOT
+  resume=0
+  cleanup_compose_create() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    if [ "$resume" -eq 1 ]; then
+      if ! compose_command up --detach --wait; then
+        printf '%s\n' "ffdb backup: error: backup failed and FFDB could not be resumed" >&2
+        status=1
+      fi
+    fi
+    rm -rf "$stage"
+    exit "$status"
+  }
+  trap cleanup_compose_create EXIT HUP INT TERM
+
+  install -m 0600 "$COMPOSE_CONFIG_FILE" "$root/config/ffdb.env"
+  install -m 0644 "$COMPOSE_RELEASE_DIR/release.env" "$root/release.env"
+  install -m 0644 "$COMPOSE_RELEASE_DIR/VERSION" "$root/VERSION"
+  write_manifest "$root" single-host "$BACKUP_TOOL_VERSION" \
+    postgres,project,metrics,backups,sync,objects,mail,config
+
+  resume=1
+  compose_command stop gateway api sync-worker
+  compose_command stop minio mailpit
+  compose_command exec -T postgres pg_dump --format=custom --no-owner \
+    --no-privileges --username ffdb --dbname ffdb > "$root/postgres.dump"
+  for logical in project-data metrics-data backup-data sync-data minio-data mailpit-data; do
+    compose_archive_volume "$logical" "$root/volumes/$logical.tar"
+  done
+  write_checksums "$root"
+  make_archive "$stage" "$output"
+  compose_command up --detach --wait
+  resume=0
+  say "created $output"
+}
+
+compose_restore() {
+  archive=$1
+  compose_require_context
+  running=$(compose_command ps --status running --services)
+  [ -z "$running" ] || die "stop FFDB before restoring a backup"
+  stage=$(expand_archive "$archive")
+  root=$stage/$ARCHIVE_ROOT
+  cleanup_compose_restore() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    rm -rf "$stage"
+    exit "$status"
+  }
+  trap cleanup_compose_restore EXIT HUP INT TERM
+  validate_manifest "$root" single-host "$BACKUP_TOOL_VERSION"
+  verify_checksums "$root"
+  [ -f "$root/config/ffdb.env" ] && [ -f "$root/postgres.dump" ] \
+    || die "backup archive is incomplete"
+  validation=$stage/validation
+  install -d -m 0700 "$validation"
+  for logical in project-data metrics-data backup-data sync-data minio-data mailpit-data; do
+    [ -f "$root/volumes/$logical.tar" ] || die "backup archive is missing $logical"
+    extract_volume_for_validation "$root/volumes/$logical.tar" "$validation/$logical"
+  done
+  compose_validate_sqlite "$validation"
+  compose_validate_postgres_dump "$root"
+  compose_with_config "$root/config/ffdb.env" config --quiet
+
+  compose_command down --remove-orphans --volumes
+  install -m 0600 "$root/config/ffdb.env" "$COMPOSE_CONFIG_FILE"
+  compose_command create
+  for logical in project-data metrics-data backup-data sync-data minio-data mailpit-data; do
+    compose_restore_volume "$logical" "$root/volumes/$logical.tar"
+  done
+  compose_validate_restored_sqlite
+  compose_command up --detach --wait postgres
+  compose_command exec -T postgres pg_restore --clean --if-exists --no-owner \
+    --no-privileges --single-transaction --username ffdb --dbname ffdb \
+    < "$root/postgres.dump"
+  compose_command stop postgres
+  compose_command up --detach --wait
+  gateway_port=$(env_value FFDB_GATEWAY_PORT "$COMPOSE_CONFIG_FILE")
+  [ -n "$gateway_port" ] || gateway_port=5173
+  "$CURL" --fail --silent --show-error "http://127.0.0.1:$gateway_port/readyz" >/dev/null
+  say "restored $archive and verified FFDB readiness"
+}
+
+native_version() {
+  version_file=${FFDB_NATIVE_VERSION_FILE:-$NATIVE_STATE_ROOT/installed-version}
+  [ -f "$version_file" ] || die "native installed-version metadata is unavailable"
+  sed -n '1p' "$version_file"
+}
+
+native_require_context() {
+  case "$NATIVE_STATE_ROOT:$NATIVE_CONFIG_FILE" in
+    /*:/*) ;;
+    *) die "native state and configuration paths must be absolute" ;;
+  esac
+  [ "$NATIVE_STATE_ROOT" != / ] || die "refusing to use / as native state root"
+  [ -f "$NATIVE_CONFIG_FILE" ] || die "native FFDB configuration is unavailable"
+  for command in "$SYSTEMCTL" "$CURL" "$PG_DUMP" "$PG_RESTORE" "$SQLITE3" tar; do
+    command -v "$command" >/dev/null 2>&1 || die "$command is required"
+  done
+}
+
+native_service_active() {
+  "$SYSTEMCTL" is-active --quiet "$1"
+}
+
+native_restart_selected() {
+  api_active=$1
+  sync_active=$2
+  [ "$api_active" -eq 0 ] || "$SYSTEMCTL" start ffdb-api.service
+  [ "$sync_active" -eq 0 ] || "$SYSTEMCTL" start ffdb-sync-worker.service
+}
+
+native_archive_directory() {
+  nad_directory=$1
+  nad_output=$2
+  [ -d "$nad_directory" ] || die "native state directory is missing: $nad_directory"
+  tar -cpf "$nad_output" -C "$nad_directory" .
+}
+
+native_create() {
+  output=$1
+  native_require_context
+  stage=$(prepare_output "$output")
+  root=$stage/$ARCHIVE_ROOT
+  api_active=0
+  sync_active=0
+  native_service_active ffdb-api.service && api_active=1 || true
+  native_service_active ffdb-sync-worker.service && sync_active=1 || true
+  resume=0
+  cleanup_native_create() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    if [ "$resume" -eq 1 ]; then
+      if ! native_restart_selected "$api_active" "$sync_active"; then
+        printf '%s\n' "ffdb backup: error: backup failed and native services could not be resumed" >&2
+        status=1
+      fi
+    fi
+    rm -rf "$stage"
+    exit "$status"
+  }
+  trap cleanup_native_create EXIT HUP INT TERM
+
+  install -m 0600 "$NATIVE_CONFIG_FILE" "$root/config/ffdb.env"
+  installed_version=$(native_version)
+  [ "$installed_version" = "$BACKUP_TOOL_VERSION" ] \
+    || die "ffdb-backup does not match the installed native FFDB release"
+  printf '%s\n' "$installed_version" > "$root/VERSION"
+  write_manifest "$root" native "$BACKUP_TOOL_VERSION" \
+    postgres,project,metrics,backups,sync,object-metadata,config
+  resume=1
+  [ "$api_active" -eq 0 ] || "$SYSTEMCTL" stop ffdb-api.service
+  [ "$sync_active" -eq 0 ] || "$SYSTEMCTL" stop ffdb-sync-worker.service
+  database_url=$(env_value FFDB_DATABASE_URL "$NATIVE_CONFIG_FILE")
+  [ -n "$database_url" ] || die "FFDB_DATABASE_URL is missing"
+  "$PG_DUMP" --format=custom --no-owner --no-privileges \
+    --dbname="$database_url" --file="$root/postgres.dump"
+  for logical in projects metrics backups sync; do
+    native_archive_directory "$NATIVE_STATE_ROOT/$logical" "$root/volumes/$logical.tar"
+  done
+  write_checksums "$root"
+  make_archive "$stage" "$output"
+  native_restart_selected "$api_active" "$sync_active"
+  resume=0
+  say "created $output"
+}
+
+native_wait_ready() {
+  attempts=0
+  until "$CURL" --fail --silent --show-error http://127.0.0.1:8080/readyz >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    [ "$attempts" -lt 30 ] || die "native API did not become ready after restore"
+    sleep 1
+  done
+}
+
+native_restore_directory() {
+  nrd_logical=$1
+  nrd_archive=$2
+  nrd_destination=$NATIVE_STATE_ROOT/$nrd_logical
+  install -d -m 0700 "$nrd_destination"
+  find "$nrd_destination" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  tar -xpf "$nrd_archive" -C "$nrd_destination"
+  chown -R "$NATIVE_OWNER:$NATIVE_GROUP" "$nrd_destination"
+  chmod 0700 "$nrd_destination"
+}
+
+native_restore() {
+  archive=$1
+  native_require_context
+  native_service_active ffdb-api.service && die "stop ffdb-api.service before restore"
+  native_service_active ffdb-sync-worker.service \
+    && die "stop ffdb-sync-worker.service before restore"
+  stage=$(expand_archive "$archive")
+  root=$stage/$ARCHIVE_ROOT
+  cleanup_native_restore() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    rm -rf "$stage"
+    exit "$status"
+  }
+  trap cleanup_native_restore EXIT HUP INT TERM
+  validate_manifest "$root" native "$(native_version)"
+  verify_checksums "$root"
+  [ -f "$root/config/ffdb.env" ] && [ -f "$root/postgres.dump" ] \
+    || die "backup archive is incomplete"
+  grep -Eq 'replace-me|example\.com' "$root/config/ffdb.env" \
+    && die "archived native configuration contains placeholders"
+  validation=$stage/validation
+  install -d -m 0700 "$validation"
+  for logical in projects metrics backups sync; do
+    [ -f "$root/volumes/$logical.tar" ] || die "backup archive is missing $logical"
+    extract_volume_for_validation "$root/volumes/$logical.tar" "$validation/$logical"
+  done
+  validate_sqlite_tree "$validation/projects"
+  validate_sqlite_tree "$validation/metrics"
+  "$PG_RESTORE" --list "$root/postgres.dump" >/dev/null
+  database_url=$(env_value FFDB_DATABASE_URL "$root/config/ffdb.env")
+  [ -n "$database_url" ] || die "archived FFDB_DATABASE_URL is missing"
+
+  install -m 0640 -o "$NATIVE_CONFIG_OWNER" -g "$NATIVE_CONFIG_GROUP" \
+    "$root/config/ffdb.env" "$NATIVE_CONFIG_FILE"
+  for logical in projects metrics backups sync; do
+    native_restore_directory "$logical" "$root/volumes/$logical.tar"
+  done
+  validate_sqlite_tree "$NATIVE_STATE_ROOT/projects"
+  validate_sqlite_tree "$NATIVE_STATE_ROOT/metrics"
+  "$PG_RESTORE" --clean --if-exists --no-owner --no-privileges \
+    --single-transaction --dbname="$database_url" "$root/postgres.dump"
+  "$SYSTEMCTL" start ffdb-api.service
+  native_wait_ready
+  "$SYSTEMCTL" start ffdb-sync-worker.service
+  if native_service_active ffdb-gateway.service; then
+    "$CURL" --fail --silent --show-error http://127.0.0.1:5173/readyz >/dev/null
+  fi
+  say "restored $archive and verified native FFDB readiness"
+}
+
+require_root
+command_name=${1:-}
+[ -n "$command_name" ] || { usage; exit 2; }
+shift || true
+case "$command_name" in
+  create)
+    [ "$#" -eq 1 ] || die "create requires one absolute output path"
+    case "$MODE" in
+      compose) compose_create "$1" ;;
+      native) native_create "$1" ;;
+      *) die "unsupported backup mode" ;;
+    esac
+    ;;
+  restore)
+    [ "$#" -eq 2 ] && [ "$2" = --yes ] \
+      || die "restore requires one absolute archive path and --yes"
+    case "$MODE" in
+      compose) compose_restore "$1" ;;
+      native) native_restore "$1" ;;
+      *) die "unsupported backup mode" ;;
+    esac
+    ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; die "unknown backup command: $command_name" ;;
+esac

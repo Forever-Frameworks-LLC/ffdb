@@ -1,0 +1,202 @@
+.commerce-workspace,
+.commerce-route-state {
+  --commerce-card: var(--card);
+  --commerce-text: var(--card-foreground);
+  --commerce-muted: var(--theme-muted-foreground);
+  --commerce-border: var(--theme-border);
+  --commerce-subtle: color-mix(in oklab, var(--theme-muted) 32%, transparent);
+  --commerce-primary: var(--theme-primary);
+  width: 100%;
+  min-width: 0;
+}
+
+.commerce-workspace {
+  display: grid;
+  gap: 12px;
+}
+
+.commerce-route-state {
+  min-height: 220px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: var(--commerce-muted);
+  background: var(--commerce-card);
+  border: 1px solid var(--commerce-border);
+  border-radius: 12px;
+}
+.commerce-route-state h2 { margin: 0; color: var(--commerce-text); font-size: 15px; }
+.commerce-route-state p { max-width: 520px; margin: 5px 0 0; font-size: 11px; line-height: 1.5; }
+.commerce-route-state__spinner { width: 22px; height: 22px; flex: 0 0 auto; border: 2px solid var(--commerce-border); border-top-color: var(--commerce-primary); border-radius: 50%; animation: commerce-spin .8s linear infinite; }
+@keyframes commerce-spin { to { transform: rotate(1turn); } }
+
+.commerce-workspace .commerce-workspace-bar {
+  min-height: 48px;
+  padding: 5px;
+  grid-template-columns: minmax(210px, auto) minmax(0, 1fr);
+  border-radius: 10px;
+  box-shadow: none;
+}
+.commerce-workspace .commerce-provider-chip {
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: 7px;
+}
+.commerce-workspace .commerce-provider-chip strong { font-size: 11px; }
+.commerce-workspace .commerce-provider-chip small { font-size: 10px; }
+.commerce-workspace .commerce-task-tabs {
+  padding: 2px;
+  gap: 2px;
+  border: 0;
+  background: var(--commerce-subtle);
+}
+.commerce-workspace .commerce-task-tabs button {
+  min-height: 34px;
+  padding-inline: 11px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 620;
+}
+.commerce-workspace .commerce-task-tabs button[aria-selected="true"] {
+  color: var(--commerce-text);
+  background: var(--commerce-card);
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+.commerce-workspace .commerce-task-panel { min-width: 0; }
+.commerce-workspace .management-panel,
+.commerce-workspace .commerce-account-panel {
+  min-width: 0;
+  padding: 16px;
+  color: var(--commerce-text);
+  background: var(--commerce-card);
+  border-color: var(--commerce-border);
+  border-radius: 10px;
+  box-shadow: none;
+}
+.commerce-workspace .management-header { margin-bottom: 13px; }
+.commerce-workspace .management-header h2 { font-size: 15px; font-weight: 640; }
+.commerce-workspace .management-header p { font-size: 11px; }
+.commerce-workspace .commerce-catalog-grid { gap: 12px; }
+
+.commerce-workspace .commerce-inline-form,
+.commerce-workspace .price-editor,
+.commerce-workspace .commerce-provider-form {
+  margin-bottom: 14px;
+  padding: 12px;
+  gap: 10px;
+  background: var(--commerce-subtle);
+  border: 1px solid var(--commerce-border);
+  border-radius: 8px;
+}
+.commerce-workspace .commerce-provider-form { max-width: none; }
+.commerce-workspace .field { min-width: 0; color: var(--commerce-text); font-size: 11px; }
+.commerce-workspace .field > span { color: var(--commerce-muted); }
+.commerce-workspace .field input,
+.commerce-workspace .field select,
+.commerce-workspace .fulfillment-control select {
+  color: var(--commerce-text);
+  background: var(--background);
+  border-color: var(--input);
+  border-radius: 7px;
+}
+.commerce-workspace .field input:focus,
+.commerce-workspace .field select:focus,
+.commerce-workspace .fulfillment-control select:focus {
+  border-color: var(--ring);
+  outline: 2px solid color-mix(in oklab, var(--ring) 20%, transparent);
+  outline-offset: 0;
+}
+.commerce-workspace .primary-action,
+.commerce-workspace .billing-redirect {
+  min-height: 36px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+.commerce-workspace .commerce-provider-form > p {
+  color: var(--commerce-muted);
+  font-size: 10px;
+}
+
+.commerce-workspace .commerce-account-status {
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--commerce-subtle);
+  border: 1px solid var(--commerce-border);
+  border-radius: 8px;
+}
+.commerce-workspace .commerce-account-status strong { color: var(--commerce-text); font-size: 12px; }
+.commerce-workspace .commerce-account-status p { color: var(--commerce-muted); font-size: 10px; }
+.commerce-workspace .commerce-capability { padding: 5px 8px; font-size: 10px; }
+.commerce-workspace .provider-mode-tabs { margin-top: 2px; gap: 2px; border-bottom-color: var(--commerce-border); }
+.commerce-workspace .provider-mode-tabs button {
+  min-height: 36px;
+  padding-inline: 12px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 620;
+}
+.commerce-workspace .provider-mode-tabs button:focus-visible,
+.commerce-workspace [role="tabpanel"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.commerce-workspace .commerce-provider-form[role="tabpanel"] { margin-top: 12px; outline: 0; }
+
+.commerce-workspace .commerce-empty {
+  min-height: 120px;
+  padding: 20px;
+  color: var(--commerce-muted);
+  background: var(--commerce-subtle);
+  border-color: var(--commerce-border);
+  border-radius: 8px;
+  text-align: center;
+  line-height: 1.5;
+}
+.commerce-workspace .access-error { margin-block: 10px; border-radius: 7px; font-size: 11px; }
+.commerce-workspace .entity-primary strong { color: var(--commerce-text); }
+.commerce-workspace .entity-primary small { color: var(--commerce-muted); }
+.commerce-workspace .commerce-table button,
+.commerce-workspace .fulfillment-control button,
+.commerce-workspace .action-row button,
+.commerce-workspace .management-header button {
+  min-height: 32px;
+  padding-inline: 10px;
+  color: var(--commerce-text);
+  background: transparent;
+  border-color: var(--commerce-border);
+  border-radius: 6px;
+  font-size: 10px;
+}
+.commerce-workspace .commerce-table button:hover:not(:disabled),
+.commerce-workspace .fulfillment-control button:hover:not(:disabled),
+.commerce-workspace .action-row button:hover:not(:disabled),
+.commerce-workspace .management-header button:hover:not(:disabled) { background: var(--commerce-subtle); }
+.commerce-workspace .danger-action { color: var(--destructive) !important; border-color: color-mix(in oklab, var(--destructive) 36%, var(--commerce-border)) !important; }
+
+@media (max-width: 820px) {
+  .commerce-workspace .commerce-workspace-bar { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .commerce-workspace .commerce-provider-chip { width: 100%; max-width: none; }
+  .commerce-workspace .commerce-task-tabs { width: 100%; justify-self: stretch; }
+  .commerce-workspace .commerce-account-status { align-items: flex-start; flex-wrap: wrap; }
+  .commerce-workspace .commerce-capabilities { width: 100%; margin-left: 0; justify-content: flex-start; }
+  .commerce-workspace .commerce-provider-form,
+  .commerce-workspace .commerce-inline-form,
+  .commerce-workspace .price-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .commerce-workspace .management-panel,
+  .commerce-workspace .commerce-account-panel { padding: 13px; }
+  .commerce-workspace .commerce-provider-form,
+  .commerce-workspace .commerce-inline-form,
+  .commerce-workspace .price-editor { grid-template-columns: minmax(0, 1fr); padding: 10px; }
+  .commerce-workspace .commerce-task-tabs button { min-height: 40px; }
+  .commerce-workspace .provider-mode-tabs { overflow-x: auto; }
+  .commerce-workspace .provider-mode-tabs button { flex: 0 0 auto; }
+  .commerce-workspace .fulfillment-control { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .commerce-route-state__spinner { animation: none; }
+}

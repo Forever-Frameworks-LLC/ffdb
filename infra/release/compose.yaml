@@ -1,0 +1,177 @@
+name: ffdb-production
+
+# Versioned release bundle. Image values come from the bundle's signed
+# release.env and are immutable manifest-list digests for amd64 and arm64.
+services:
+  volume-init:
+    image: ${FFDB_RUNTIME_IMAGE:?release bundle is missing FFDB_RUNTIME_IMAGE}
+    user: "0:0"
+    command:
+      - /bin/sh
+      - -ec
+      - chown -R 10001:10001 /var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics /var/lib/ffdb/sync
+    read_only: true
+    volumes:
+      - project-data:/var/lib/ffdb/projects
+      - backup-data:/var/lib/ffdb/backups
+      - metrics-data:/var/lib/ffdb/metrics
+      - sync-data:/var/lib/ffdb/sync
+    restart: "no"
+
+  api:
+    image: ${FFDB_RUNTIME_IMAGE:?release bundle is missing FFDB_RUNTIME_IMAGE}
+    environment:
+      FFDB_ENVIRONMENT: production
+      FFDB_HTTP_BIND: 0.0.0.0:8080
+      FFDB_PUBLIC_BASE_URL: ${FFDB_PUBLIC_BASE_URL:?set FFDB_PUBLIC_BASE_URL}
+      FFDB_CORS_ALLOWED_ORIGINS: ${FFDB_CORS_ALLOWED_ORIGINS:?set FFDB_CORS_ALLOWED_ORIGINS}
+      # Only containers on this deployment's isolated network may supply the
+      # client chain used by pre-auth rate limiting and audit records.
+      FFDB_TRUSTED_PROXY_CIDRS: ${FFDB_TRUSTED_PROXY_CIDRS:-172.30.0.0/24}
+      FFDB_DATABASE_URL: ${FFDB_DATABASE_URL:?set FFDB_DATABASE_URL}
+      FFDB_POSTGRES_MIN_CONNECTIONS: ${FFDB_POSTGRES_MIN_CONNECTIONS:-2}
+      FFDB_POSTGRES_MAX_CONNECTIONS: ${FFDB_POSTGRES_MAX_CONNECTIONS:-20}
+      FFDB_POSTGRES_ACQUIRE_TIMEOUT_MS: ${FFDB_POSTGRES_ACQUIRE_TIMEOUT_MS:-5000}
+      FFDB_POSTGRES_IDLE_TIMEOUT_SECONDS: ${FFDB_POSTGRES_IDLE_TIMEOUT_SECONDS:-600}
+      FFDB_POSTGRES_MAX_LIFETIME_SECONDS: ${FFDB_POSTGRES_MAX_LIFETIME_SECONDS:-1800}
+      FFDB_RATE_LIMIT_PRE_AUTH_CAPACITY: ${FFDB_RATE_LIMIT_PRE_AUTH_CAPACITY:-120}
+      FFDB_RATE_LIMIT_PRE_AUTH_REFILL_PER_SECOND: ${FFDB_RATE_LIMIT_PRE_AUTH_REFILL_PER_SECOND:-2}
+      FFDB_RATE_LIMIT_EXECUTION_CAPACITY: ${FFDB_RATE_LIMIT_EXECUTION_CAPACITY:-2000}
+      FFDB_RATE_LIMIT_EXECUTION_REFILL_PER_SECOND: ${FFDB_RATE_LIMIT_EXECUTION_REFILL_PER_SECOND:-200}
+      FFDB_RATE_LIMIT_IDLE_TTL_SECONDS: ${FFDB_RATE_LIMIT_IDLE_TTL_SECONDS:-3600}
+      FFDB_RATE_LIMIT_MAX_ENTRIES: ${FFDB_RATE_LIMIT_MAX_ENTRIES:-1000000}
+      FFDB_NODE_ID: ${FFDB_NODE_ID:?set a stable FFDB_NODE_ID}
+      FFDB_NODE_NAME: ${FFDB_NODE_NAME:-ffdb-production-01}
+      FFDB_DATABASE_ROOT: /var/lib/ffdb/projects
+      FFDB_BACKUP_ROOT: /var/lib/ffdb/backups
+      FFDB_METRICS_ROOT: /var/lib/ffdb/metrics
+      FFDB_DATABASE_WORKER: /usr/local/bin/ffdb-database-worker
+      FFDB_WORKER_MAX_PROCESSES: ${FFDB_WORKER_MAX_PROCESSES:-8}
+      FFDB_WORKER_QUEUE_CAPACITY: ${FFDB_WORKER_QUEUE_CAPACITY:-32}
+      FFDB_MASTER_KEY: ${FFDB_MASTER_KEY:?set FFDB_MASTER_KEY}
+      FFDB_BACKUP_MASTER_KEY: ${FFDB_BACKUP_MASTER_KEY:?set FFDB_BACKUP_MASTER_KEY}
+      FFDB_CURSOR_HMAC_KEY: ${FFDB_CURSOR_HMAC_KEY:?set FFDB_CURSOR_HMAC_KEY}
+      FFDB_BOOTSTRAP_TOKEN: ${FFDB_BOOTSTRAP_TOKEN:?set FFDB_BOOTSTRAP_TOKEN}
+      FFDB_S3_ENDPOINT: ${FFDB_S3_ENDPOINT:?set FFDB_S3_ENDPOINT}
+      FFDB_S3_ALLOW_PRIVATE_NETWORK: ${FFDB_S3_ALLOW_PRIVATE_NETWORK:-false}
+      FFDB_S3_PUBLIC_ENDPOINT: ${FFDB_S3_PUBLIC_ENDPOINT:?set FFDB_S3_PUBLIC_ENDPOINT}
+      FFDB_S3_REGION: ${FFDB_S3_REGION:-us-east-1}
+      FFDB_S3_BUCKET: ${FFDB_S3_BUCKET:?set FFDB_S3_BUCKET}
+      FFDB_S3_ACCESS_KEY_ID: ${FFDB_S3_ACCESS_KEY_ID:?set FFDB_S3_ACCESS_KEY_ID}
+      FFDB_S3_SECRET_ACCESS_KEY: ${FFDB_S3_SECRET_ACCESS_KEY:?set FFDB_S3_SECRET_ACCESS_KEY}
+      FFDB_EMAIL_TRANSPORT: resend
+      FFDB_RESEND_API_KEY: ${FFDB_RESEND_API_KEY:?set FFDB_RESEND_API_KEY}
+      FFDB_EMAIL_FROM: ${FFDB_EMAIL_FROM:?set FFDB_EMAIL_FROM}
+      FFDB_STRIPE_SECRET_KEY: ${FFDB_STRIPE_SECRET_KEY:-}
+      FFDB_STRIPE_WEBHOOK_SECRET: ${FFDB_STRIPE_WEBHOOK_SECRET:-}
+      FFDB_STRIPE_PRO_BASE_PRICE_ID: ${FFDB_STRIPE_PRO_BASE_PRICE_ID:-}
+      FFDB_STRIPE_READS_EVENT_NAME: ${FFDB_STRIPE_READS_EVENT_NAME:-}
+      FFDB_STRIPE_READS_METER_ID: ${FFDB_STRIPE_READS_METER_ID:-}
+      FFDB_STRIPE_PAYG_READS_PRICE_ID: ${FFDB_STRIPE_PAYG_READS_PRICE_ID:-}
+      FFDB_STRIPE_PRO_READS_PRICE_ID: ${FFDB_STRIPE_PRO_READS_PRICE_ID:-}
+      FFDB_STRIPE_WRITES_EVENT_NAME: ${FFDB_STRIPE_WRITES_EVENT_NAME:-}
+      FFDB_STRIPE_WRITES_METER_ID: ${FFDB_STRIPE_WRITES_METER_ID:-}
+      FFDB_STRIPE_PAYG_WRITES_PRICE_ID: ${FFDB_STRIPE_PAYG_WRITES_PRICE_ID:-}
+      FFDB_STRIPE_PRO_WRITES_PRICE_ID: ${FFDB_STRIPE_PRO_WRITES_PRICE_ID:-}
+      FFDB_STRIPE_STORAGE_EVENT_NAME: ${FFDB_STRIPE_STORAGE_EVENT_NAME:-}
+      FFDB_STRIPE_STORAGE_METER_ID: ${FFDB_STRIPE_STORAGE_METER_ID:-}
+      FFDB_STRIPE_PAYG_STORAGE_PRICE_ID: ${FFDB_STRIPE_PAYG_STORAGE_PRICE_ID:-}
+      FFDB_STRIPE_PRO_STORAGE_PRICE_ID: ${FFDB_STRIPE_PRO_STORAGE_PRICE_ID:-}
+      FFDB_STRIPE_MAU_EVENT_NAME: ${FFDB_STRIPE_MAU_EVENT_NAME:-}
+      FFDB_STRIPE_MAU_METER_ID: ${FFDB_STRIPE_MAU_METER_ID:-}
+      FFDB_STRIPE_PAYG_MAU_PRICE_ID: ${FFDB_STRIPE_PAYG_MAU_PRICE_ID:-}
+      FFDB_STRIPE_PRO_MAU_PRICE_ID: ${FFDB_STRIPE_PRO_MAU_PRICE_ID:-}
+      FFDB_STRIPE_PRO_BILLING_UNIT: ${FFDB_STRIPE_PRO_BILLING_UNIT:-organization}
+      FFDB_BILLING_SUCCESS_URL: ${FFDB_BILLING_SUCCESS_URL:-}
+      FFDB_BILLING_CANCEL_URL: ${FFDB_BILLING_CANCEL_URL:-}
+      FFDB_BILLING_PORTAL_RETURN_URL: ${FFDB_BILLING_PORTAL_RETURN_URL:-}
+      FFDB_INSTANCE_STRIPE_CONNECT_SECRET_KEY: ${FFDB_INSTANCE_STRIPE_CONNECT_SECRET_KEY:-}
+      FFDB_INSTANCE_STRIPE_CONNECT_WEBHOOK_SECRET: ${FFDB_INSTANCE_STRIPE_CONNECT_WEBHOOK_SECRET:-}
+      FFDB_COMMERCE_STRIPE_CONNECT_SECRET_KEY: ${FFDB_COMMERCE_STRIPE_CONNECT_SECRET_KEY:-}
+      FFDB_COMMERCE_STRIPE_CONNECT_WEBHOOK_SECRET: ${FFDB_COMMERCE_STRIPE_CONNECT_WEBHOOK_SECRET:-}
+      RUST_LOG: ${FFDB_RUST_LOG:-ffdb=info,tower_http=info}
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    expose: ["8080"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    volumes:
+      - project-data:/var/lib/ffdb/projects
+      - backup-data:/var/lib/ffdb/backups
+      - metrics-data:/var/lib/ffdb/metrics
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${FFDB_API_CPUS:-2.0}
+    mem_limit: ${FFDB_API_MEMORY_LIMIT:-2g}
+    pids_limit: ${FFDB_API_PIDS_LIMIT:-512}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  sync-worker:
+    image: ${FFDB_RUNTIME_IMAGE:?release bundle is missing FFDB_RUNTIME_IMAGE}
+    command: ["/usr/local/bin/ffdb-sync-worker"]
+    environment:
+      FFDB_SYNC_STATE_DIR: /var/lib/ffdb/sync
+      FFDB_SYNC_MAINTENANCE_INTERVAL_SECONDS: ${FFDB_SYNC_MAINTENANCE_INTERVAL_SECONDS:-60}
+      FFDB_SYNC_STALE_TEMPORARY_SECONDS: ${FFDB_SYNC_STALE_TEMPORARY_SECONDS:-3600}
+      RUST_LOG: ${FFDB_RUST_LOG:-ffdb=info}
+    depends_on:
+      api:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    volumes:
+      - sync-data:/var/lib/ffdb/sync
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${FFDB_SYNC_CPUS:-0.5}
+    mem_limit: ${FFDB_SYNC_MEMORY_LIMIT:-256m}
+    pids_limit: ${FFDB_SYNC_PIDS_LIMIT:-64}
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  gateway:
+    image: ${FFDB_GATEWAY_IMAGE:?release bundle is missing FFDB_GATEWAY_IMAGE}
+    environment:
+      FFDB_S3_PUBLIC_ORIGIN: ${FFDB_S3_PUBLIC_ORIGIN:?set the exact public S3 origin}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FFDB_GATEWAY_PORT:-5173}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${FFDB_GATEWAY_CPUS:-0.5}
+    mem_limit: ${FFDB_GATEWAY_MEMORY_LIMIT:-256m}
+    pids_limit: ${FFDB_GATEWAY_PIDS_LIMIT:-64}
+    restart: unless-stopped
+
+volumes:
+  project-data:
+  backup-data:
+  metrics-data:
+  sync-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${FFDB_DOCKER_SUBNET:-172.30.0.0/24}

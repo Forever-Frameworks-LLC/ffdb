@@ -1,0 +1,12 @@
+import { FFDBClient } from "@ffdb/client";
+
+const baseUrl = process.env.FFDB_URL;
+const projectId = process.env.FFDB_PROJECT_ID;
+const developerKey = process.env.FFDB_DEVELOPER_KEY;
+
+if (!baseUrl || !projectId || !developerKey) {
+  throw new Error("FFDB_URL, FFDB_PROJECT_ID, and FFDB_DEVELOPER_KEY are required");
+}
+
+// Developer keys are privileged. Use this client only in trusted server-side code.
+export const ffdb = new FFDBClient({ baseUrl, projectId, developerKey });

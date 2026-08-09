@@ -1,0 +1,57 @@
+# FFDB's native gateway is one Caddy process, not Caddy in front of nginx.
+# The public site uses automatic HTTPS; the loopback listener supports local
+# health checks and administration without traversing public DNS.
+(ffdb_routes) {
+	root * /var/www/ffdb
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; connect-src 'self' https://s3.example.com; img-src 'self' data:; style-src 'self' 'nonce-ffdb-codemirror'; style-src-attr 'unsafe-inline'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	}
+
+	@metrics path /metrics /metrics/*
+	respond @metrics 404
+
+	@api path /v1 /v1/* /healthz /readyz /openapi.json
+	handle @api {
+		reverse_proxy 127.0.0.1:8080 {
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 35s
+			}
+		}
+	}
+
+	@docs_root path /docs
+	redir @docs_root /docs/ 308
+	handle /docs/* {
+		try_files {path} {path}/ /docs/index.html
+		file_server
+	}
+
+	@app_root path /app
+	redir @app_root /app/ 308
+	handle /app/* {
+		try_files {path} {path}/ /app/index.html
+		file_server
+	}
+
+	handle {
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+}
+
+https://ffdb.example.com {
+	import ffdb_routes
+}
+
+http://127.0.0.1:5173 {
+	import ffdb_routes
+}

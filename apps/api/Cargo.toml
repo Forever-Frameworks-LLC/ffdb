@@ -1,0 +1,53 @@
+[package]
+name = "ffdb-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+base64.workspace = true
+chrono.workspace = true
+ffdb-auth = { path = "../../crates/auth" }
+ffdb-audit = { path = "../../crates/audit" }
+ffdb-billing = { path = "../../crates/billing" }
+ffdb-config = { path = "../../crates/config" }
+ffdb-control-plane = { path = "../../crates/control-plane" }
+ffdb-commerce = { path = "../../crates/commerce" }
+ffdb-database-router = { path = "../../crates/database-router" }
+ffdb-email = { path = "../../crates/email" }
+ffdb-observability = { path = "../../crates/observability" }
+ffdb-object-storage = { path = "../../crates/object-storage" }
+ffdb-org-metrics = { path = "../../crates/org-metrics" }
+ffdb-protocol = { path = "../../crates/protocol" }
+ffdb-rate-limits = { path = "../../crates/rate-limits" }
+ffdb-sql-parser = { path = "../../crates/sql-parser" }
+fs2.workspace = true
+http.workspace = true
+ipnet.workspace = true
+reqwest.workspace = true
+ring = "0.17"
+serde.workspace = true
+serde_json.workspace = true
+secrecy.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+subtle = "2.6"
+thiserror.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+zeroize = "1.8"
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3.27"
+tower.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,233 @@
+- generic [ref=f1e3]:
+  - link "Skip to documentation" [ref=f1e4] [cursor=pointer]:
+    - /url: "#documentation"
+  - banner [ref=f1e5]:
+    - generic [ref=f1e6]:
+      - button "Open navigation" [ref=f1e7] [cursor=pointer]
+      - link "FFDB" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+    - button "Search documentation" [ref=f1e12] [cursor=pointer]
+    - button "Use dark theme" [ref=f1e17] [cursor=pointer]:
+      - generic [ref=f1e18]: ◐
+  - main [ref=f1e19]:
+    - article [ref=f1e20]:
+      - generic [ref=f1e21]:
+        - generic [ref=f1e22]: Start here
+        - generic [ref=f1e23]: ›
+        - generic [ref=f1e24]: Quickstart
+      - heading "Quickstart" [level=1] [ref=f1e25]
+      - paragraph [ref=f1e26]: Install a verified packaged release, bootstrap a project, and make one authenticated parameterized query.
+      - generic [ref=f1e27]:
+        - heading [level=2] [ref=f1e28]:
+          - link "What, why, and when" [ref=f1e29] [cursor=pointer]:
+            - /url: "#what-why-and-when"
+            - text: What, why, and when#
+        - paragraph [ref=f1e30]: Quickstart takes the packaged, zero-source single-host evaluation profile from reviewed installer to one authenticated application query.
+        - paragraph [ref=f1e31]: It proves the complete product with digest-pinned PostgreSQL, MinIO, Mailpit, FFDB services, and gateway before you invest in production providers, schema, policies, uploads, or offline behavior.
+        - paragraph [ref=f1e32]: Use it for a local evaluation, demo, or isolated clean host; single-host is not the internet-production topology, and contributors should use the separate source-development runbook.
+      - generic [ref=f1e33]:
+        - heading [level=2] [ref=f1e34]:
+          - link "Prerequisites and required values" [ref=f1e35] [cursor=pointer]:
+            - /url: "#prerequisites-and-required-values"
+            - text: Prerequisites and required values#
+        - list [ref=f1e36]:
+          - listitem [ref=f1e37]: Prerequisite — A supported host with Docker Compose and curl, plus permission to create durable volumes.
+          - listitem [ref=f1e38]: Prerequisite — Access to the official release channel or an operator-supplied verified bundle.
+          - listitem [ref=f1e39]: Required value — Release installer URL, published checksum/signature material, and the explicit single-host profile selection.
+          - listitem [ref=f1e40]: Required value — Loopback FFDB origin, owner email/password, root-only generated bootstrap token, organization slug, and project name.
+      - generic [ref=f1e41]:
+        - heading [level=2] [ref=f1e42]:
+          - link "Install a zero-source evaluation host" [ref=f1e43] [cursor=pointer]:
+            - /url: "#install-a-zero-source-evaluation-host"
+            - text: Install a zero-source evaluation host#
+        - paragraph [ref=f1e44]: The packaged single-host profile evaluates the complete product without a repository checkout, Rust compiler, Node toolchain, or hand-assembled dependency stack. After signature verification, one release starts digest-pinned PostgreSQL, MinIO, persistent Mailpit capture, the FFDB API and workers, and the unified gateway.
+        - figure "Public single-host command (not published yet) sh Copy Public single-host command (not published yet) code" [ref=f1e45]:
+          - generic [ref=f1e46]:
+            - generic [ref=f1e47]: Public single-host command (not published yet)
+            - generic [ref=f1e48]: sh
+            - button "Copy Public single-host command (not published yet) code" [ref=f1e49] [cursor=pointer]:
+              - generic [ref=f1e53]: Copy
+            - status [ref=f1e54]
+          - generic "Public single-host command (not published yet), sh code" [ref=f1e55]:
+            - code [ref=f1e56]: curl -fsSL https://ffdb.forever-frameworks.com/install.sh -o ffdb-install.sh less ffdb-install.sh sudo sh ffdb-install.sh --profile single-host --start --require-signature
+        - figure "Pre-public local bundle validation sh Copy Pre-public local bundle validation code" [ref=f1e57]:
+          - generic [ref=f1e58]:
+            - generic [ref=f1e59]: Pre-public local bundle validation
+            - generic [ref=f1e60]: sh
+            - button "Copy Pre-public local bundle validation code" [ref=f1e61] [cursor=pointer]:
+              - generic [ref=f1e65]: Copy
+            - status [ref=f1e66]
+          - generic "Pre-public local bundle validation, sh code" [ref=f1e67]:
+            - code [ref=f1e68]: sudo env \ FFDB_VERSION=0.1.0 \ FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases \ sh ./install.sh
+        - complementary [ref=f1e69]:
+          - text: "!"
+          - strong [ref=f1e70]: Public channel status
+          - paragraph [ref=f1e71]: The public install URL and container images are not published yet. The first command is the release-ready interface, not a working download today. Until release notes enable it, validate only a trusted local or directly supplied bundle and its checksum.
+      - generic [ref=f1e72]:
+        - heading [level=2] [ref=f1e73]:
+          - link "Verify the single-host services" [ref=f1e74] [cursor=pointer]:
+            - /url: "#verify-the-single-host-services"
+            - text: Verify the single-host services#
+        - paragraph [ref=f1e75]: The installer generates independent strong credentials with OpenSSL, writes them root-only to /etc/ffdb/single-host.env at mode 0600, and never prints them. Every exposed host port is loopback-only, PostgreSQL has no host port, and six named volumes preserve database, object, captured-mail, project, backup, and sync state across normal stop, upgrade, rollback, and uninstall operations.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e76]:
+          - generic [ref=f1e77]:
+            - generic [ref=f1e78]: Terminal
+            - generic [ref=f1e79]: sh
+            - button "Copy Terminal code" [ref=f1e80] [cursor=pointer]:
+              - generic [ref=f1e84]: Copy
+            - status [ref=f1e85]
+          - generic "Terminal, sh code" [ref=f1e86]:
+            - code [ref=f1e87]: sudo ffdb-host status curl --fail http://127.0.0.1:5173/readyz
+        - complementary [ref=f1e88]:
+          - text: "!"
+          - strong [ref=f1e89]: Evaluation and local use only
+          - paragraph [ref=f1e90]: single-host sets FFDB_ENVIRONMENT=development, uses local HTTP MinIO and Mailpit mail capture, and concentrates every durable dependency on one host. Do not expose it to the internet. The external-provider release profile with independently backed-up PostgreSQL, HTTPS object storage, real email delivery, and TLS remains the recommended internet-production topology.
+      - generic [ref=f1e91]:
+        - heading [level=2] [ref=f1e92]:
+          - link "Retrieve the bootstrap token without printing it" [ref=f1e93] [cursor=pointer]:
+            - /url: "#retrieve-the-bootstrap-token-without-printing-it"
+            - text: Retrieve the bootstrap token without printing it#
+        - paragraph [ref=f1e94]: The generated one-time token remains in the root-readable single-host environment file. Copy only that value into a root-owned file for ingestion by a secret manager; ffdb-host status and logs never reveal it.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e95]:
+          - generic [ref=f1e96]:
+            - generic [ref=f1e97]: Terminal
+            - generic [ref=f1e98]: sh
+            - button "Copy Terminal code" [ref=f1e99] [cursor=pointer]:
+              - generic [ref=f1e103]: Copy
+            - status [ref=f1e104]
+          - generic "Terminal, sh code" [ref=f1e105]:
+            - code [ref=f1e106]: sudo sh -c 'umask 077; sed -n "s/^FFDB_BOOTSTRAP_TOKEN=//p" \ /etc/ffdb/single-host.env > /root/ffdb-bootstrap-token'
+      - generic [ref=f1e107]:
+        - heading [level=2] [ref=f1e108]:
+          - link "Operate the packaged lifecycle" [ref=f1e109] [cursor=pointer]:
+            - /url: "#operate-the-packaged-lifecycle"
+            - text: Operate the packaged lifecycle#
+        - paragraph [ref=f1e110]: ffdb-host selects the installed signed release and keeps configuration and durable volumes outside its immutable release directory.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e111]:
+          - generic [ref=f1e112]:
+            - generic [ref=f1e113]: Terminal
+            - generic [ref=f1e114]: sh
+            - button "Copy Terminal code" [ref=f1e115] [cursor=pointer]:
+              - generic [ref=f1e119]: Copy
+            - status [ref=f1e120]
+          - generic "Terminal, sh code" [ref=f1e121]:
+            - code [ref=f1e122]: sudo ffdb-host verify sudo ffdb-host status sudo ffdb-host logs api sudo ffdb-host stop sudo ffdb-host start
+      - generic [ref=f1e123]:
+        - heading [level=2] [ref=f1e124]:
+          - link "Bootstrap the first owner" [ref=f1e125] [cursor=pointer]:
+            - /url: "#bootstrap-the-first-owner"
+            - text: Bootstrap the first owner#
+        - paragraph [ref=f1e126]: A new installation accepts the generated one-time bootstrap token only until the first platform owner exists. Provision it from the root-only file or secret manager into the trusted operator process, and never print it, copy it into browser code, or use a documented default.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e127]:
+          - generic [ref=f1e128]:
+            - generic [ref=f1e129]: Terminal
+            - generic [ref=f1e130]: sh
+            - button "Copy Terminal code" [ref=f1e131] [cursor=pointer]:
+              - generic [ref=f1e135]: Copy
+            - status [ref=f1e136]
+          - generic "Terminal, sh code" [ref=f1e137]:
+            - code [ref=f1e138]: "export FFDB_OWNER_EMAIL=admin@example.test read -r -s -p \"Owner password: \" FFDB_OWNER_PASSWORD export FFDB_OWNER_PASSWORD read -r -s -p \"Bootstrap token: \" FFDB_BOOTSTRAP_TOKEN export FFDB_BOOTSTRAP_TOKEN node -e ' const response = await fetch(\"http://127.0.0.1:5173/v1/developer/bootstrap\", { method: \"POST\", headers: { \"content-type\": \"application/json\", \"x-ffdb-bootstrap-token\": process.env.FFDB_BOOTSTRAP_TOKEN, }, body: JSON.stringify({ email: process.env.FFDB_OWNER_EMAIL, password: process.env.FFDB_OWNER_PASSWORD, }), }); if (!response.ok) throw new Error(\"bootstrap failed: \" + response.status); console.log(\"owner created\"); ' unset FFDB_BOOTSTRAP_TOKEN"
+        - complementary [ref=f1e139]:
+          - text: "!"
+          - strong [ref=f1e140]: One-time credential
+          - paragraph [ref=f1e141]: Production requires a unique bootstrap token of at least 32 characters. Remove it from the operator workflow after the first owner is created and never expose it to browsers.
+      - generic [ref=f1e142]:
+        - heading [level=2] [ref=f1e143]:
+          - link "Install the packaged CLI" [ref=f1e144] [cursor=pointer]:
+            - /url: "#install-the-packaged-cli"
+            - text: Install the packaged CLI#
+        - paragraph [ref=f1e145]: SDK packages are versioned release artifacts separate from the server bundle. The public npm channel is not enabled yet; install the reviewed CLI tarball supplied with the candidate release into an operator environment.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e146]:
+          - generic [ref=f1e147]:
+            - generic [ref=f1e148]: Terminal
+            - generic [ref=f1e149]: sh
+            - button "Copy Terminal code" [ref=f1e150] [cursor=pointer]:
+              - generic [ref=f1e154]: Copy
+            - status [ref=f1e155]
+          - generic "Terminal, sh code" [ref=f1e156]:
+            - code [ref=f1e157]: pnpm add --global /path/to/@ffdb/cli-0.1.0.tgz ffdb --help
+      - generic [ref=f1e158]:
+        - heading [level=2] [ref=f1e159]:
+          - link "Create and link a project" [ref=f1e160] [cursor=pointer]:
+            - /url: "#create-and-link-a-project"
+            - text: Create and link a project#
+        - paragraph [ref=f1e161]: Log in with the CLI, create an organization and project, then link that project in the local credential file.
+        - figure "Terminal sh Copy Terminal code" [ref=f1e162]:
+          - generic [ref=f1e163]:
+            - generic [ref=f1e164]: Terminal
+            - generic [ref=f1e165]: sh
+            - button "Copy Terminal code" [ref=f1e166] [cursor=pointer]:
+              - generic [ref=f1e170]: Copy
+            - status [ref=f1e171]
+          - generic "Terminal, sh code" [ref=f1e172]:
+            - code [ref=f1e173]: FFDB_PASSWORD="$FFDB_OWNER_PASSWORD" ffdb login "$FFDB_OWNER_EMAIL" ffdb org create "Example" example export FFDB_ORG_ID="copy-the-returned-organization-id" ffdb project create "$FFDB_ORG_ID" "Notes" notes local export FFDB_PROJECT_ID="copy-the-returned-project-id" ffdb project link "$FFDB_PROJECT_ID" unset FFDB_OWNER_PASSWORD
+        - complementary [ref=f1e174]:
+          - text: "!"
+          - strong [ref=f1e175]: Credential separation
+          - paragraph [ref=f1e176]: Platform login manages organizations and projects. Database administration uses a separate scoped project developer key. Do not ship either credential in a browser bundle.
+      - generic [ref=f1e177]:
+        - heading [level=2] [ref=f1e178]:
+          - link "Connect the client" [ref=f1e179] [cursor=pointer]:
+            - /url: "#connect-the-client"
+            - text: Connect the client#
+        - paragraph [ref=f1e180]: Sign in an end user before issuing RLS-scoped application queries. Use a developer key only in trusted tooling and server environments.
+        - figure "src/ffdb.ts ts Copy src/ffdb.ts code" [ref=f1e181]:
+          - generic [ref=f1e182]:
+            - generic [ref=f1e183]: src/ffdb.ts
+            - generic [ref=f1e184]: ts
+            - button "Copy src/ffdb.ts code" [ref=f1e185] [cursor=pointer]:
+              - generic [ref=f1e189]: Copy
+            - status [ref=f1e190]
+          - generic "src/ffdb.ts, ts code" [ref=f1e191]:
+            - code [ref=f1e192]: "import { BrowserSessionStore, FFDBClient } from \"@ffdb/client\"; export const ffdb = new FFDBClient({ baseUrl: \"https://ffdb.example.com\", projectId: \"your-project-id\", sessionStore: new BrowserSessionStore( window.sessionStorage, \"my-app.ffdb-session\", ), });"
+      - generic [ref=f1e193]:
+        - heading [level=2] [ref=f1e194]:
+          - link "Step by step" [ref=f1e195] [cursor=pointer]:
+            - /url: "#step-by-step"
+            - text: Step by step#
+        - list [ref=f1e196]:
+          - listitem [ref=f1e197]: 1. Download ffdb-install.sh to a file, inspect it, and run it with --profile single-host --start --require-signature.
+          - listitem [ref=f1e198]: 2. Verify sudo ffdb-host status and the loopback gateway readiness endpoint before creating credentials.
+          - listitem [ref=f1e199]: 3. Extract the generated bootstrap token into a root-only file without printing it, bootstrap the first platform owner once, then remove the token from routine use.
+          - listitem [ref=f1e200]: 4. Create and link a project with the packaged CLI.
+          - listitem [ref=f1e201]: 5. Install the client SDK package, sign in an end user, and run the sample query.
+      - generic [ref=f1e202]:
+        - heading [level=2] [ref=f1e203]:
+          - link "Expected result" [ref=f1e204] [cursor=pointer]:
+            - /url: "#expected-result"
+            - text: Expected result#
+        - paragraph [ref=f1e205]: The preserved-volume evaluation stack is ready on loopback, the project exists, an end-user session is stored, and the query returns only rows visible to that user.
+      - generic [ref=f1e206]:
+        - heading [level=2] [ref=f1e207]:
+          - link "Failure modes and recovery" [ref=f1e208] [cursor=pointer]:
+            - /url: "#failure-modes-and-recovery"
+            - text: Failure modes and recovery#
+        - list [ref=f1e209]:
+          - listitem [ref=f1e210]: Checksum or signature verification fails — delete the artifact and stop; do not install it.
+          - listitem [ref=f1e211]: Readiness fails — inspect packaged service status and logs before creating credentials.
+          - listitem [ref=f1e212]: A single-host port is exposed beyond loopback — stop the stack and restore the packaged bindings; do not use this profile on the internet.
+          - listitem [ref=f1e213]: The query returns unauthorized rows — stop the evaluation and treat it as a security incident.
+      - generic [ref=f1e214]:
+        - heading [level=2] [ref=f1e215]:
+          - link "Next steps" [ref=f1e216] [cursor=pointer]:
+            - /url: "#next-steps"
+            - text: Next steps#
+        - list [ref=f1e217]:
+          - listitem [ref=f1e218]: Define schema and row-level policies.
+          - listitem [ref=f1e219]: Move internet production to the external-provider Docker profile or packaged systemd installation.
+      - generic [ref=f1e220]:
+        - generic [ref=f1e221]: Was this page useful?
+        - button "This page was useful" [ref=f1e222] [cursor=pointer]: "Yes"
+        - button "This page needs improvement" [ref=f1e223] [cursor=pointer]: Not yet
+      - navigation "Previous and next pages" [ref=f1e224]:
+        - link "Previous ← FFDB documentation" [ref=f1e225] [cursor=pointer]:
+          - /url: /docs/
+          - generic [ref=f1e226]: Previous
+          - strong [ref=f1e227]: ← FFDB documentation
+        - link "Next Install with Docker Compose →" [ref=f1e228] [cursor=pointer]:
+          - /url: /docs/install/docker
+          - generic [ref=f1e229]: Next
+          - strong [ref=f1e230]: Install with Docker Compose →
+  - contentinfo [ref=f1e231]:
+    - generic [ref=f1e232]: © 2026 Forever Frameworks LLC.
+    - generic [ref=f1e233]: FFDB is Apache-2.0 software.

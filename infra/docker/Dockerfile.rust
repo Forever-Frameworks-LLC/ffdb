@@ -1,0 +1,38 @@
+FROM rust:1.96.1-bookworm AS builder
+
+WORKDIR /build
+COPY . .
+RUN cargo build --locked --release \
+      -p ffdb-api \
+      -p ffdb-database-worker \
+      -p ffdb-sync-worker
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates curl sqlite3 tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 ffdb \
+    && useradd --system --uid 10001 --gid ffdb --home-dir /var/lib/ffdb ffdb \
+    && install -d -o ffdb -g ffdb \
+         /var/lib/ffdb/projects \
+         /var/lib/ffdb/backups \
+         /var/lib/ffdb/metrics \
+         /var/lib/ffdb/sync
+
+COPY --from=builder /build/target/release/ffdb-api /usr/local/bin/ffdb-api
+COPY --from=builder /build/target/release/ffdb-database-worker /usr/local/bin/ffdb-database-worker
+COPY --from=builder /build/target/release/ffdb-sync-worker /usr/local/bin/ffdb-sync-worker
+
+USER ffdb:ffdb
+WORKDIR /var/lib/ffdb
+ENV FFDB_DATABASE_ROOT=/var/lib/ffdb/projects \
+    FFDB_BACKUP_ROOT=/var/lib/ffdb/backups \
+    FFDB_METRICS_ROOT=/var/lib/ffdb/metrics \
+    FFDB_DATABASE_WORKER=/usr/local/bin/ffdb-database-worker \
+    FFDB_SYNC_STATE_DIR=/var/lib/ffdb/sync
+
+EXPOSE 8080
+STOPSIGNAL SIGINT
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/usr/local/bin/ffdb-api"]

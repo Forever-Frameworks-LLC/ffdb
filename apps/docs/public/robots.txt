@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /docs/
+
+Sitemap: https://ffdb.forever-frameworks.com/sitemap.xml
+Sitemap: https://ffdb.forever-frameworks.com/docs/sitemap.xml

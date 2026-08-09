@@ -1,0 +1,17 @@
+[package]
+name = "ffdb-sql-parser"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Conservative SQLite statement classifier and FFDB RLS syntax parser"
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
+
+[dev-dependencies]
+proptest = "1.9.0"
+rusqlite = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0b0c" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="%BASE_URL%prepaint.css" />
+    <meta
+      name="description"
+      content="FFDB is a self-hostable Rust backend with one hardened SQLite database per project, scoped access, object storage, offline sync, and operator-owned billing."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://ffdb.forever-frameworks.com/" />
+    <link rel="license" href="https://www.apache.org/licenses/LICENSE-2.0" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FFDB" />
+    <meta property="og:title" content="FFDB — the self-hosted backend for SQLite" />
+    <meta property="og:description" content="Own sign-in, scoped data, storage, offline sync, and billing on a backend you can run yourself." />
+    <meta property="og:url" content="https://ffdb.forever-frameworks.com/" />
+    <meta property="og:image" content="https://ffdb.forever-frameworks.com/social-card.jpg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FFDB — the self-hosted backend for SQLite" />
+    <meta name="twitter:description" content="Own sign-in, scoped data, storage, offline sync, and billing on a backend you can run yourself." />
+    <meta name="twitter:image" content="https://ffdb.forever-frameworks.com/social-card.jpg" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://ffdb.forever-frameworks.com/#website",
+            "name": "FFDB",
+            "url": "https://ffdb.forever-frameworks.com/",
+            "publisher": { "@id": "https://ffdb.forever-frameworks.com/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://ffdb.forever-frameworks.com/#organization",
+            "name": "Forever Frameworks LLC",
+            "url": "https://ffdb.forever-frameworks.com/"
+          },
+          {
+            "@type": "SoftwareSourceCode",
+            "name": "FFDB",
+            "description": "A self-hostable Rust data platform with one hardened SQLite database per project.",
+            "codeRepository": "https://github.com/Forever-Frameworks-LLC/ffdb",
+            "license": "https://www.apache.org/licenses/LICENSE-2.0",
+            "programmingLanguage": ["Rust", "TypeScript"],
+            "runtimePlatform": ["Docker Compose", "Linux systemd"]
+          }
+        ]
+      }
+    </script>
+    <title>FFDB — the self-hosted backend for SQLite</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

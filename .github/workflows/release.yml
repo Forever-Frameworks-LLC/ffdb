@@ -1,0 +1,340 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tag and workspace versions
+        id: version
+        shell: bash
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          case "$version" in
+            ''|*[!0-9A-Za-z.-]*) echo "invalid release tag: $GITHUB_REF_NAME" >&2; exit 1 ;;
+          esac
+          node scripts/check-release-version.mjs "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Validate release distribution
+        run: make release-check
+
+  images:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      runtime_image: ${{ steps.names.outputs.runtime_image }}
+      runtime_digest: ${{ steps.runtime.outputs.digest }}
+      gateway_image: ${{ steps.names.outputs.gateway_image }}
+      gateway_digest: ${{ steps.gateway.outputs.digest }}
+      postgres_image: ${{ steps.infrastructure.outputs.postgres_image }}
+      minio_image: ${{ steps.infrastructure.outputs.minio_image }}
+      mailpit_image: ${{ steps.infrastructure.outputs.mailpit_image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve single-host infrastructure image digests
+        id: infrastructure
+        shell: bash
+        run: |
+          resolve() {
+            source_image=$1
+            inspection=$(docker buildx imagetools inspect "$source_image")
+            for platform in linux/amd64 linux/arm64; do
+              printf '%s\n' "$inspection" | grep -Eq "Platform:[[:space:]]+$platform([[:space:]]|$)" || {
+                echo "$source_image does not publish $platform" >&2
+                exit 1
+              }
+            done
+            digest=$(printf '%s\n' "$inspection" | awk '$1 == "Digest:" {print $2; exit}')
+            case "$digest" in
+              sha256:[0-9a-f][0-9a-f]*) ;;
+              *) echo "could not resolve manifest digest for $source_image" >&2; exit 1 ;;
+            esac
+            printf '%s@%s\n' "$source_image" "$digest"
+          }
+          echo "postgres_image=$(resolve postgres:17.5-alpine)" >> "$GITHUB_OUTPUT"
+          echo "minio_image=$(resolve minio/minio:RELEASE.2025-04-22T22-12-26Z)" >> "$GITHUB_OUTPUT"
+          echo "mailpit_image=$(resolve axllent/mailpit:v1.27.8)" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set lowercase image names
+        id: names
+        shell: bash
+        run: |
+          owner=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "runtime_image=ghcr.io/$owner/ffdb-runtime" >> "$GITHUB_OUTPUT"
+          echo "gateway_image=ghcr.io/$owner/ffdb-gateway" >> "$GITHUB_OUTPUT"
+      - name: Build and publish runtime image
+        id: runtime
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.rust
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ steps.names.outputs.runtime_image }}:${{ needs.validate.outputs.version }}
+            ${{ steps.names.outputs.runtime_image }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.validate.outputs.version }}
+      - name: Build and publish web gateway image
+        id: gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.portal
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ steps.names.outputs.gateway_image }}:${{ needs.validate.outputs.version }}
+            ${{ steps.names.outputs.gateway_image }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.validate.outputs.version }}
+      - uses: sigstore/cosign-installer@v3
+      - name: Keyless-sign immutable image manifests
+        env:
+          RUNTIME_IMAGE: ${{ steps.names.outputs.runtime_image }}
+          RUNTIME_DIGEST: ${{ steps.runtime.outputs.digest }}
+          GATEWAY_IMAGE: ${{ steps.names.outputs.gateway_image }}
+          GATEWAY_DIGEST: ${{ steps.gateway.outputs.digest }}
+        run: |
+          cosign sign --yes "$RUNTIME_IMAGE@$RUNTIME_DIGEST"
+          cosign sign --yes "$GATEWAY_IMAGE@$GATEWAY_DIGEST"
+          docker buildx imagetools inspect "$RUNTIME_IMAGE@$RUNTIME_DIGEST"
+          docker buildx imagetools inspect "$GATEWAY_IMAGE@$GATEWAY_DIGEST"
+
+  native:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.96.1
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Build native binaries and static applications
+        run: |
+          cargo build --locked --release \
+            -p ffdb-api -p ffdb-database-worker -p ffdb-sync-worker
+          pnpm install --frozen-lockfile
+          pnpm --filter @ffdb/client build
+          pnpm --filter @ffdb/landing build:gateway
+          pnpm --filter @ffdb/docs build:gateway
+          pnpm --filter @ffdb/portal build:gateway
+          install -d dist/native-input/web/docs dist/native-input/web/app dist/native
+          cp -R apps/landing/dist/. dist/native-input/web/
+          cp -R apps/docs/dist/. dist/native-input/web/docs/
+          cp -R apps/portal/dist/. dist/native-input/web/app/
+          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD) \
+            scripts/build-native-bundle.sh \
+              "${{ needs.validate.outputs.version }}" "${{ matrix.arch }}" \
+              target/release dist/native-input/web dist/native
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffdb-native-${{ matrix.arch }}
+          path: dist/native/*.tar.gz
+          if-no-files-found: error
+
+  sdk:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Test and pack the public SDK and CLI packages
+        run: |
+          pnpm --filter @ffdb/client --filter @ffdb/sync-client \
+            --filter @ffdb/react --filter @ffdb/react-native \
+            --filter @ffdb/email-components --filter @ffdb/cli test
+          scripts/build-sdk-packages.sh "${{ needs.validate.outputs.version }}" dist/sdk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffdb-sdk-${{ needs.validate.outputs.version }}
+          path: dist/sdk
+          if-no-files-found: error
+
+  bundle:
+    needs: [validate, images, native, sdk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ffdb-native-*
+          path: dist/native
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffdb-sdk-${{ needs.validate.outputs.version }}
+          path: dist/sdk
+      - uses: sigstore/cosign-installer@v3
+      - name: Build checksum-pinned release assets
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          RUNTIME_IMAGE: ${{ needs.images.outputs.runtime_image }}
+          RUNTIME_DIGEST: ${{ needs.images.outputs.runtime_digest }}
+          GATEWAY_IMAGE: ${{ needs.images.outputs.gateway_image }}
+          GATEWAY_DIGEST: ${{ needs.images.outputs.gateway_digest }}
+          FFDB_POSTGRES_IMAGE: ${{ needs.images.outputs.postgres_image }}
+          FFDB_MINIO_IMAGE: ${{ needs.images.outputs.minio_image }}
+          FFDB_MAILPIT_IMAGE: ${{ needs.images.outputs.mailpit_image }}
+          FFDB_GITHUB_REPOSITORY: ${{ github.repository }}
+          FFDB_GITHUB_RELEASES_URL: ${{ github.server_url }}/${{ github.repository }}/releases
+        run: |
+          install -d dist/extra
+          cp dist/native/* dist/extra/
+          cp dist/sdk/* dist/extra/
+          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD) \
+          FFDB_EXTRA_ASSETS_DIR=dist/extra \
+            scripts/build-release-bundle.sh "$VERSION" \
+              "$RUNTIME_IMAGE@$RUNTIME_DIGEST" \
+              "$GATEWAY_IMAGE@$GATEWAY_DIGEST" dist/release
+          cosign sign-blob --yes \
+            --bundle dist/release/SHA256SUMS.sigstore.json \
+            dist/release/SHA256SUMS
+          ruby -c dist/release/ffdb-host.rb
+      - name: Assemble optional mirror payload
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+        run: |
+          install -d "dist/site/releases/v$VERSION" dist/site/releases
+          cp dist/release/install.sh dist/site/install.sh
+          cp dist/release/uninstall.sh dist/site/uninstall.sh
+          if [ "$PRERELEASE" = false ]; then
+            cp dist/release/stable.txt dist/site/releases/stable.txt
+          fi
+          cp -R dist/release/. "dist/site/releases/v$VERSION/"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffdb-distribution-site-${{ needs.validate.outputs.version }}
+          path: dist/site
+          if-no-files-found: error
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ needs.validate.outputs.prerelease }}
+          files: dist/release/*
+
+  verify-github-release:
+    needs: [validate, bundle]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: sigstore/cosign-installer@v3
+      - name: Verify published GitHub release and pinned images
+        env:
+          FFDB_VERSION: ${{ needs.validate.outputs.version }}
+          FFDB_GITHUB_REPOSITORY: ${{ github.repository }}
+          FFDB_GITHUB_RELEASES_URL: ${{ github.server_url }}/${{ github.repository }}/releases
+          FFDB_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/check-public-distribution.sh "$FFDB_GITHUB_RELEASES_URL"
+
+  publish-npm:
+    needs: [validate, verify-github-release, sdk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffdb-sdk-${{ needs.validate.outputs.version }}
+          path: dist/sdk
+      - name: Publish version-matched packages with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+        shell: bash
+        run: |
+          test -n "$NODE_AUTH_TOKEN" || {
+            echo "NPM_TOKEN must be configured before tagging a release" >&2
+            exit 1
+          }
+          node scripts/check-sdk-package-contract.mjs "$VERSION" dist/sdk
+          node scripts/check-npm-registry-identity.mjs "$VERSION"
+          npm whoami >/dev/null
+          tag=latest
+          if [ "$PRERELEASE" = true ]; then tag=next; fi
+          for package in client sync-client react react-native email-components cli; do
+            npm publish "dist/sdk/ffdb-$package-$VERSION.tgz" \
+              --access public --provenance --tag "$tag"
+          done

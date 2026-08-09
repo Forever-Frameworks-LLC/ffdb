@@ -1,0 +1,28 @@
+- main [ref=f2e3]:
+  - generic [ref=f2e4]:
+    - link "FFDB home" [ref=f2e5] [cursor=pointer]:
+      - /url: /
+      - text: FFDB
+    - region [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - heading "Welcome back" [level=1] [ref=f2e8]
+        - paragraph [ref=f2e9]: Sign in to manage your self-hosted FFDB projects
+      - generic [ref=f2e10]:
+        - generic [ref=f2e11]:
+          - generic [ref=f2e12]: Email
+          - textbox "Email" [ref=f2e17]:
+            - /placeholder: you@example.com
+        - generic [ref=f2e18]:
+          - generic [ref=f2e19]: Password
+          - generic [ref=f2e20]:
+            - textbox "Password Show password" [ref=f2e25]:
+              - /placeholder: ••••••••••••
+            - button "Show password" [ref=f2e26] [cursor=pointer]
+        - button "Sign in" [ref=f2e30] [cursor=pointer]
+        - link "Open API setup reference" [ref=f2e31] [cursor=pointer]:
+          - /url: /openapi.json
+      - paragraph [ref=f2e32]: First installation? Use the one-time bootstrap token to create the owner, then sign in here.
+    - generic [ref=f2e33]:
+      - generic [ref=f2e35]: Control plane
+      - code [ref=f2e36]: http://127.0.0.1:5173
+    - paragraph [ref=f2e37]: © 2026 Forever Frameworks LLC. All rights reserved.

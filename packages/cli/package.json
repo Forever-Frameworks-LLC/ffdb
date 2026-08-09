@@ -1,0 +1,48 @@
+{
+  "name": "@ffdb/cli",
+  "version": "0.3.0",
+  "description": "CLI for FFDB administration, migrations, project setup, and TypeScript generation",
+  "keywords": ["ffdb", "sqlite", "database", "typescript", "cli"],
+  "homepage": "https://ffdb.forever-frameworks.com/docs/cli",
+  "license": "Apache-2.0",
+  "author": "Forever Frameworks <admin@forever-frameworks.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Forever-Frameworks-LLC/ffdb.git",
+    "directory": "packages/cli"
+  },
+  "bugs": { "url": "https://github.com/Forever-Frameworks-LLC/ffdb/issues" },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": { "ffdb": "./dist/main.js" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "templates", "README.md", "!dist/**/*.test.*"],
+  "engines": { "node": ">=24" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm check && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@ffdb/client": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

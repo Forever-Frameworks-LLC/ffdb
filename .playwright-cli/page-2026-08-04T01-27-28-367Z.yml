@@ -1,0 +1,190 @@
+- generic [ref=f1e3]:
+  - link "Skip to documentation" [ref=f1e4] [cursor=pointer]:
+    - /url: "#documentation"
+  - complementary "Documentation navigation" [ref=f1e5]:
+    - link "FFDB home" [ref=f1e7] [cursor=pointer]:
+      - /url: /
+      - strong [ref=f1e22]: FFDB
+    - navigation [ref=f1e23]:
+      - list [ref=f1e24]:
+        - listitem [ref=f1e25]:
+          - button "Start here" [expanded] [ref=f1e26] [cursor=pointer]:
+            - generic [ref=f1e28]: ›
+          - list [ref=f1e29]:
+            - listitem [ref=f1e30]:
+              - link "Introduction" [ref=f1e31] [cursor=pointer]:
+                - /url: /
+              - link "What, why, and when" [ref=f1e32] [cursor=pointer]:
+                - /url: "#what-why-and-when"
+              - link "Prerequisites and required values" [ref=f1e33] [cursor=pointer]:
+                - /url: "#prerequisites-and-required-values"
+              - link "What FFDB is" [ref=f1e34] [cursor=pointer]:
+                - /url: "#what-ffdb-is"
+              - link "Choose a path" [ref=f1e35] [cursor=pointer]:
+                - /url: "#choose-a-path"
+              - link "Step by step" [ref=f1e36] [cursor=pointer]:
+                - /url: "#step-by-step"
+              - link "Expected result" [ref=f1e37] [cursor=pointer]:
+                - /url: "#expected-result"
+              - link "Failure modes and recovery" [ref=f1e38] [cursor=pointer]:
+                - /url: "#failure-modes-and-recovery"
+              - link "Next steps" [ref=f1e39] [cursor=pointer]:
+                - /url: "#next-steps"
+            - listitem [ref=f1e40]:
+              - link "Quickstart" [ref=f1e41] [cursor=pointer]:
+                - /url: /quickstart
+        - listitem [ref=f1e42]:
+          - button "Install" [ref=f1e43] [cursor=pointer]:
+            - generic [ref=f1e45]: ›
+        - listitem [ref=f1e46]:
+          - button "Database" [ref=f1e47] [cursor=pointer]:
+            - generic [ref=f1e49]: ›
+        - listitem [ref=f1e50]:
+          - button "Auth and storage" [ref=f1e51] [cursor=pointer]:
+            - generic [ref=f1e53]: ›
+        - listitem [ref=f1e54]:
+          - button "Sync and offline" [ref=f1e55] [cursor=pointer]:
+            - generic [ref=f1e57]: ›
+        - listitem [ref=f1e58]:
+          - button "SDKs and tools" [ref=f1e59] [cursor=pointer]:
+            - generic [ref=f1e61]: ›
+        - listitem [ref=f1e62]:
+          - button "Billing and payments" [ref=f1e63] [cursor=pointer]:
+            - generic [ref=f1e65]: ›
+        - listitem [ref=f1e66]:
+          - button "Operations" [ref=f1e67] [cursor=pointer]:
+            - generic [ref=f1e69]: ›
+        - listitem [ref=f1e70]:
+          - button "Reference" [ref=f1e71] [cursor=pointer]:
+            - generic [ref=f1e73]: ›
+    - generic [ref=f1e74]:
+      - generic [ref=f1e75]: Self-hosted · Apache-2.0
+      - link "API reference" [ref=f1e76] [cursor=pointer]:
+        - /url: /reference/http-api
+  - banner [ref=f1e77]:
+    - button "Search documentation" [ref=f1e78] [cursor=pointer]:
+      - generic [ref=f1e82]: Search documentation…
+      - generic [ref=f1e83]:
+        - generic [ref=f1e84]: ⌘
+        - text: K
+    - generic [ref=f1e85]:
+      - link "FFDB" [ref=f1e86] [cursor=pointer]:
+        - /url: /
+      - link "Install" [ref=f1e87] [cursor=pointer]:
+        - /url: /docs/install/docker
+      - button "Use dark theme" [ref=f1e88] [cursor=pointer]
+      - link "Open portal" [ref=f1e91] [cursor=pointer]:
+        - /url: /app/
+  - main [ref=f1e92]:
+    - article [ref=f1e93]:
+      - generic [ref=f1e94]:
+        - generic [ref=f1e95]:
+          - generic [ref=f1e96]: Start here
+          - generic [ref=f1e97]: /
+          - generic [ref=f1e98]: Overview
+        - heading "FFDB documentation" [level=1] [ref=f1e99]
+        - paragraph [ref=f1e100]: Build against one hardened SQLite database per project, with a self-hosted PostgreSQL control plane and isolated Rust workers.
+      - navigation "Start with FFDB" [ref=f1e101]:
+        - link "Quickstart Install a release and make the first authenticated query." [ref=f1e102] [cursor=pointer]:
+          - /url: /quickstart
+          - generic [ref=f1e103]:
+            - strong [ref=f1e104]: Quickstart
+            - generic [ref=f1e105]: Install a release and make the first authenticated query.
+          - generic [ref=f1e106]: →
+        - link "Docker Compose Copy the complete stack and finish setup in the portal." [ref=f1e107] [cursor=pointer]:
+          - /url: /install/docker
+          - generic [ref=f1e108]:
+            - strong [ref=f1e109]: Docker Compose
+            - generic [ref=f1e110]: Copy the complete stack and finish setup in the portal.
+          - generic [ref=f1e111]: →
+        - link "TypeScript client Connect a browser, React Native, or Node application." [ref=f1e112] [cursor=pointer]:
+          - /url: /client
+          - generic [ref=f1e113]:
+            - strong [ref=f1e114]: TypeScript client
+            - generic [ref=f1e115]: Connect a browser, React Native, or Node application.
+          - generic [ref=f1e116]: →
+      - generic [ref=f1e117]:
+        - heading [level=2] [ref=f1e118]:
+          - link "What, why, and when" [ref=f1e119] [cursor=pointer]:
+            - /url: "#what-why-and-when"
+            - text: What, why, and when#
+        - paragraph [ref=f1e120]: This documentation maps the released FFDB server, SDK packages, security boundaries, and operator workflows.
+        - paragraph [ref=f1e121]: Starting here prevents a deployment choice, credential type, or local-replica design from being mistaken for a supported product guarantee.
+        - paragraph [ref=f1e122]: Use it before installing FFDB or when deciding which guide owns the next task.
+      - generic [ref=f1e123]:
+        - heading [level=2] [ref=f1e124]:
+          - link "Prerequisites and required values" [ref=f1e125] [cursor=pointer]:
+            - /url: "#prerequisites-and-required-values"
+            - text: Prerequisites and required values#
+        - list [ref=f1e126]:
+          - listitem [ref=f1e127]: Prerequisite — A workload that needs self-hosted auth, scoped SQL, storage, or offline sync.
+          - listitem [ref=f1e128]: Prerequisite — An operator who can own PostgreSQL, S3-compatible storage, email, TLS, and backups.
+          - listitem [ref=f1e129]: "Required value — The intended installation shape: packaged Docker release or packaged native components."
+          - listitem [ref=f1e130]: "Required value — The application runtime: browser, React, React Native, Node, or direct HTTP."
+      - generic [ref=f1e131]:
+        - heading [level=2] [ref=f1e132]:
+          - link "What FFDB is" [ref=f1e133] [cursor=pointer]:
+            - /url: "#what-ffdb-is"
+            - text: What FFDB is#
+        - paragraph [ref=f1e134]: FFDB is a self-hostable data platform. PostgreSQL stores organizations, projects, credentials, jobs, and other control-plane state. Application rows live in a dedicated SQLite database for each project and are only reached through constrained workers.
+        - paragraph [ref=f1e135]: The public surface includes authentication, parameterized SQL, PostgreSQL-style row-level policies, logical offline sync, RLS-protected S3-compatible storage, a TypeScript SDK, a CLI, and a management portal.
+      - generic [ref=f1e136]:
+        - heading [level=2] [ref=f1e137]:
+          - link "Choose a path" [ref=f1e138] [cursor=pointer]:
+            - /url: "#choose-a-path"
+            - text: Choose a path#
+        - list [ref=f1e139]:
+          - listitem [ref=f1e140]: Install a verified release bundle, then use the portal and packaged CLI to create a project.
+          - listitem [ref=f1e141]: Install the version-matched @ffdb/client SDK package in an existing browser or Node application.
+          - listitem [ref=f1e142]: Add the @ffdb/react, @ffdb/react-native, or @ffdb/sync-client SDK package when the runtime needs that integration.
+          - listitem [ref=f1e143]: Read the production security and backup guides before exposing a deployment to untrusted traffic.
+        - complementary [ref=f1e144]:
+          - text: i
+          - strong [ref=f1e145]: Use matched releases
+          - paragraph [ref=f1e146]: Applications never receive a raw SQLite connection or file. Install the signed server release and pin @ffdb/client, @ffdb/cli, and integration tarballs to the same version so the API and package contracts stay aligned.
+      - generic [ref=f1e147]:
+        - heading [level=2] [ref=f1e148]:
+          - link "Step by step" [ref=f1e149] [cursor=pointer]:
+            - /url: "#step-by-step"
+            - text: Step by step#
+        - list [ref=f1e150]:
+          - listitem [ref=f1e151]: 1. Choose the packaged installation route and bring the service to ready.
+          - listitem [ref=f1e152]: 2. Create an organization and project, then separate platform credentials from end-user sessions.
+          - listitem [ref=f1e153]: 3. Add the matching SDK packages and issue one parameterized, RLS-scoped query.
+          - listitem [ref=f1e154]: 4. Finish with backup, observability, and production-security checks.
+      - generic [ref=f1e155]:
+        - heading [level=2] [ref=f1e156]:
+          - link "Expected result" [ref=f1e157] [cursor=pointer]:
+            - /url: "#expected-result"
+            - text: Expected result#
+        - paragraph [ref=f1e158]: You can name the supported installation, request path, credential boundary, and next task from the public release contract.
+      - generic [ref=f1e159]:
+        - heading [level=2] [ref=f1e160]:
+          - link "Failure modes and recovery" [ref=f1e161] [cursor=pointer]:
+            - /url: "#failure-modes-and-recovery"
+            - text: Failure modes and recovery#
+        - list [ref=f1e162]:
+          - listitem [ref=f1e163]: Server and package versions differ — select one announced release version and pin every component to it.
+          - listitem [ref=f1e164]: "Billing behavior is unclear — check the instance mode in Global admin: private/team retain analytics without charges, while BYO/Connect enable the operator-owned Free, PAYG, and Pro contract."
+      - generic [ref=f1e165]:
+        - heading [level=2] [ref=f1e166]:
+          - link "Next steps" [ref=f1e167] [cursor=pointer]:
+            - /url: "#next-steps"
+            - text: Next steps#
+        - list [ref=f1e168]:
+          - listitem [ref=f1e169]: Follow Quickstart for the shortest packaged path.
+          - listitem [ref=f1e170]: Compare installation shapes in Deployment overview.
+      - navigation "Previous and next pages" [ref=f1e171]:
+        - link "Next Quickstart →" [ref=f1e173] [cursor=pointer]:
+          - /url: /quickstart
+          - generic [ref=f1e174]: Next
+          - strong [ref=f1e175]: Quickstart →
+  - contentinfo [ref=f1e176]:
+    - generic [ref=f1e177]: © 2026 Forever Frameworks LLC. · FFDB is Apache-2.0 software.
+    - navigation "Legal links" [ref=f1e178]:
+      - link "Terms" [ref=f1e179] [cursor=pointer]:
+        - /url: /terms/
+      - link "Privacy" [ref=f1e180] [cursor=pointer]:
+        - /url: /privacy/
+      - link "Security & disclaimer" [ref=f1e181] [cursor=pointer]:
+        - /url: /security/

@@ -1,0 +1,14 @@
+DROP INDEX commerce_fulfillment_events_order_idx;
+DROP INDEX commerce_entitlements_subscription_active_idx;
+DROP INDEX commerce_subscriptions_project_created_idx;
+DROP INDEX commerce_refunds_payment_status_idx;
+DROP INDEX commerce_payments_order_status_idx;
+DROP INDEX commerce_payments_project_created_idx;
+DROP INDEX commerce_order_lines_order_idx;
+DROP INDEX commerce_prices_project_created_idx;
+DROP INDEX commerce_products_project_created_idx;
+DROP INDEX auth_sessions_user_created_idx;
+DROP INDEX backups_project_created_idx;
+DROP INDEX audit_events_organization_sequence_idx;
+DROP INDEX audit_events_project_sequence_idx;
+DROP INDEX organization_memberships_user_idx;

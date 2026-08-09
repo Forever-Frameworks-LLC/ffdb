@@ -1,0 +1,10 @@
+packages:
+  - "apps/portal"
+  - "apps/landing"
+  - "apps/docs"
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true

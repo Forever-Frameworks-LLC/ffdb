@@ -1,0 +1,406 @@
+- generic [ref=f33e3]:
+  - link "Skip to documentation" [ref=f33e4] [cursor=pointer]:
+    - /url: "#documentation"
+  - banner [ref=f33e96]:
+    - generic [ref=f33e420]:
+      - button "Close navigation" [expanded] [active] [ref=f33e441] [cursor=pointer]
+      - link "FFDB home" [ref=f33e425] [cursor=pointer]:
+        - /url: /
+        - strong [ref=f33e427]: FFDB
+    - button "Search documentation" [ref=f33e97] [cursor=pointer]
+    - button "Use dark theme" [ref=f33e107] [cursor=pointer]
+  - complementary "Documentation navigation" [ref=f33e443]:
+    - navigation [ref=f33e444]:
+      - list [ref=f33e445]:
+        - listitem [ref=f33e446]:
+          - button "Start here" [expanded] [ref=f33e447] [cursor=pointer]:
+            - generic [ref=f33e449]: ›
+          - list [ref=f33e450]:
+            - listitem [ref=f33e451]:
+              - link "Introduction" [ref=f33e452] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=f33e453]:
+              - link "Quickstart" [ref=f33e454] [cursor=pointer]:
+                - /url: /quickstart
+        - listitem [ref=f33e455]:
+          - button "Install" [expanded] [ref=f33e456] [cursor=pointer]:
+            - generic [ref=f33e458]: ›
+          - list [ref=f33e459]:
+            - listitem [ref=f33e460]:
+              - link "Docker Compose" [ref=f33e461] [cursor=pointer]:
+                - /url: /install/docker
+              - link "What, why, and when" [ref=f33e462] [cursor=pointer]:
+                - /url: "#what-why-and-when"
+              - link "Prerequisites and required values" [ref=f33e463] [cursor=pointer]:
+                - /url: "#prerequisites-and-required-values"
+              - link "Before you start" [ref=f33e464] [cursor=pointer]:
+                - /url: "#before-you-start"
+              - link "1. Copy compose.yaml" [ref=f33e465] [cursor=pointer]:
+                - /url: "#1-copy-compose-yaml"
+              - link "2. Create .env and replace every placeholder" [ref=f33e466] [cursor=pointer]:
+                - /url: "#2-create-env-and-replace-every-placeholder"
+              - link "3. Start and verify the stack" [ref=f33e467] [cursor=pointer]:
+                - /url: "#3-start-and-verify-the-stack"
+              - link "4. Create the first owner and choose the instance type" [ref=f33e468] [cursor=pointer]:
+                - /url: "#4-create-the-first-owner-and-choose-the-instance-type"
+              - link "Optional signed lifecycle controller" [ref=f33e469] [cursor=pointer]:
+                - /url: "#optional-signed-lifecycle-controller"
+              - link "Understand the single-host boundary" [ref=f33e470] [cursor=pointer]:
+                - /url: "#understand-the-single-host-boundary"
+              - link "Retrieve the generated bootstrap token safely" [ref=f33e471] [cursor=pointer]:
+                - /url: "#retrieve-the-generated-bootstrap-token-safely"
+              - link "Operate an external-provider production release" [ref=f33e472] [cursor=pointer]:
+                - /url: "#operate-an-external-provider-production-release"
+              - link "Understand the service boundary" [ref=f33e473] [cursor=pointer]:
+                - /url: "#understand-the-service-boundary"
+              - link "Operate and troubleshoot" [ref=f33e474] [cursor=pointer]:
+                - /url: "#operate-and-troubleshoot"
+              - link "Upgrade, roll back, and retain data" [ref=f33e475] [cursor=pointer]:
+                - /url: "#upgrade-roll-back-and-retain-data"
+              - link "Step by step" [ref=f33e476] [cursor=pointer]:
+                - /url: "#step-by-step"
+              - link "Expected result" [ref=f33e477] [cursor=pointer]:
+                - /url: "#expected-result"
+              - link "Failure modes and recovery" [ref=f33e478] [cursor=pointer]:
+                - /url: "#failure-modes-and-recovery"
+              - link "Next steps" [ref=f33e479] [cursor=pointer]:
+                - /url: "#next-steps"
+            - listitem [ref=f33e480]:
+              - link "systemd" [ref=f33e481] [cursor=pointer]:
+                - /url: /install/systemd
+            - listitem [ref=f33e482]:
+              - link "Deployment overview" [ref=f33e483] [cursor=pointer]:
+                - /url: /self-hosting
+            - listitem [ref=f33e484]:
+              - link "Configuration" [ref=f33e485] [cursor=pointer]:
+                - /url: /configuration
+        - listitem [ref=f33e486]:
+          - button "Database" [ref=f33e487] [cursor=pointer]:
+            - generic [ref=f33e489]: ›
+        - listitem [ref=f33e490]:
+          - button "Auth and storage" [ref=f33e491] [cursor=pointer]:
+            - generic [ref=f33e493]: ›
+        - listitem [ref=f33e494]:
+          - button "Sync and offline" [ref=f33e495] [cursor=pointer]:
+            - generic [ref=f33e497]: ›
+        - listitem [ref=f33e498]:
+          - button "SDKs and tools" [ref=f33e499] [cursor=pointer]:
+            - generic [ref=f33e501]: ›
+        - listitem [ref=f33e502]:
+          - button "Billing and payments" [ref=f33e503] [cursor=pointer]:
+            - generic [ref=f33e505]: ›
+        - listitem [ref=f33e506]:
+          - button "Operations" [ref=f33e507] [cursor=pointer]:
+            - generic [ref=f33e509]: ›
+        - listitem [ref=f33e510]:
+          - button "Reference" [ref=f33e511] [cursor=pointer]:
+            - generic [ref=f33e513]: ›
+    - generic [ref=f33e514]:
+      - generic [ref=f33e515]: Self-hosted · Apache-2.0
+      - link "API reference" [ref=f33e516] [cursor=pointer]:
+        - /url: /reference/http-api
+  - main [ref=f33e111]:
+    - article [ref=f33e112]:
+      - generic [ref=f33e113]:
+        - generic [ref=f33e114]:
+          - generic [ref=f33e115]: Install
+          - generic [ref=f33e116]: /
+          - generic [ref=f33e117]: Install with Docker Compose
+        - heading "Install with Docker Compose" [level=1] [ref=f33e118]
+        - paragraph [ref=f33e119]: Copy a complete Docker Compose stack, start FFDB, and finish first-run setup in the portal.
+      - generic [ref=f33e120]:
+        - heading [level=2] [ref=f33e121]:
+          - link "What, why, and when" [ref=f33e122] [cursor=pointer]:
+            - /url: "#what-why-and-when"
+            - text: What, why, and when#
+        - paragraph [ref=f33e123]: This guide starts a complete FFDB single-host evaluation directly from a copyable Docker Compose file and a protected environment file.
+        - paragraph [ref=f33e124]: It gives Docker users the actual service definition, required values, health checks, volumes, and lifecycle commands instead of making a local source tree or installer script the only visible path.
+        - paragraph [ref=f33e125]: Use the direct Compose path for local evaluation or a trusted private network. Use the signed external-provider release profile before admitting internet traffic or production data.
+      - generic [ref=f33e126]:
+        - heading [level=2] [ref=f33e127]:
+          - link "Prerequisites and required values" [ref=f33e128] [cursor=pointer]:
+            - /url: "#prerequisites-and-required-values"
+            - text: Prerequisites and required values#
+        - list [ref=f33e129]:
+          - listitem [ref=f33e130]: Prerequisite — Docker Engine 27 or newer with Compose v2, OpenSSL, sufficient host resources, and the documented loopback ports.
+          - listitem [ref=f33e131]: "Prerequisite — For later production: operator-managed PostgreSQL, S3-compatible storage, email delivery, DNS, TLS, and off-host backups."
+          - listitem [ref=f33e132]: Required value — Independent PostgreSQL, MinIO, encryption, backup, HMAC, and bootstrap secrets plus a unique node UUID.
+          - listitem [ref=f33e133]: Required value — The exact local public origin, database URL, object-storage origins, and release-matched FFDB image version.
+      - generic [ref=f33e134]:
+        - heading [level=2] [ref=f33e135]:
+          - link "Before you start" [ref=f33e136] [cursor=pointer]:
+            - /url: "#before-you-start"
+            - text: Before you start#
+        - paragraph [ref=f33e137]: This page is the direct Docker path. Copy compose.yaml and .env into an empty directory, generate the required infrastructure secrets, and run docker compose up. You do not clone the FFDB repository, install Rust or Node.js, or execute a source build.
+        - paragraph [ref=f33e138]: The example is a complete single-host installation for local evaluation and private networks. It includes PostgreSQL, MinIO, Mailpit, the FFDB API and workers, and the compiled web gateway. The first browser user still completes owner and instance onboarding; no Stripe account or billing mode is selected in advance.
+        - list [ref=f33e139]:
+          - listitem [ref=f33e140]: Docker Engine 27 or newer with Docker Compose v2.
+          - listitem [ref=f33e141]: At least 4 CPU cores, 8 GB of memory, and 20 GB of free disk for a useful evaluation.
+          - listitem [ref=f33e142]: OpenSSL for generating independent secrets and a browser on the same trusted machine.
+          - listitem [ref=f33e143]: Loopback ports 5173, 9000, 9001, 8025, and 1025 available.
+        - complementary [ref=f33e144]:
+          - text: i
+          - strong [ref=f33e145]: Why Compose instead of one docker run command
+          - paragraph [ref=f33e146]: FFDB has independent database, object-storage, mail, API, maintenance-worker, and gateway processes with ordered health checks and seven durable volumes. Docker Compose expresses that complete topology. A single docker run command would omit required services or hide their lifecycle inside one unsafe container.
+      - generic [ref=f33e147]:
+        - heading [level=2] [ref=f33e148]:
+          - link "1. Copy compose.yaml" [ref=f33e149] [cursor=pointer]:
+            - /url: "#1-copy-compose-yaml"
+            - text: 1. Copy compose.yaml#
+        - paragraph [ref=f33e150]: Create an empty directory named ffdb, save this complete file as compose.yaml, and keep its seven named volumes. Both FFDB images are pinned to the server release version; use the same version for every FFDB image during an upgrade.
+        - figure "compose.yaml Copy compose.yaml code" [ref=f33e428]:
+          - generic [ref=f33e152]:
+            - generic [ref=f33e153]: compose.yaml
+            - button "Copy compose.yaml code" [ref=f33e155] [cursor=pointer]:
+              - generic [ref=f33e159]: Copy
+            - status [ref=f33e160]
+          - generic "compose.yaml, yaml code" [ref=f33e161]:
+            - code [ref=f33e162]: "name: ffdb services: postgres: image: postgres:17.5-alpine environment: - POSTGRES_DB - POSTGRES_USER - POSTGRES_PASSWORD healthcheck: test: [\"CMD-SHELL\", \"pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB\"] interval: 3s timeout: 3s retries: 30 volumes: - postgres-data:/var/lib/postgresql/data restart: unless-stopped minio: image: minio/minio:RELEASE.2025-04-22T22-12-26Z command: server /data --console-address \":9001\" environment: - MINIO_ROOT_USER - MINIO_ROOT_PASSWORD - MINIO_API_CORS_ALLOW_ORIGIN healthcheck: test: [\"CMD\", \"mc\", \"ready\", \"local\"] interval: 3s timeout: 3s retries: 30 ports: - \"127.0.0.1:9000:9000\" - \"127.0.0.1:9001:9001\" volumes: - minio-data:/data restart: unless-stopped minio-bootstrap: image: minio/mc:RELEASE.2025-04-16T18-13-26Z depends_on: minio: condition: service_healthy environment: - MINIO_ROOT_USER - MINIO_ROOT_PASSWORD entrypoint: [\"/bin/sh\", \"-ec\"] command: - >- mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" && mc mb --ignore-existing local/ffdb && mc anonymous set none local/ffdb restart: \"no\" mailpit: image: axllent/mailpit:v1.27.8 environment: MP_DATABASE: /data/mailpit.db healthcheck: test: [\"CMD\", \"/mailpit\", \"readyz\"] interval: 3s timeout: 3s retries: 30 ports: - \"127.0.0.1:1025:1025\" - \"127.0.0.1:8025:8025\" volumes: - mailpit-data:/data restart: unless-stopped volume-init: image: alpine:3.22.1 user: \"0:0\" command: - /bin/sh - -ec - chown -R 10001:10001 /var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics /var/lib/ffdb/sync read_only: true volumes: - project-data:/var/lib/ffdb/projects - backup-data:/var/lib/ffdb/backups - metrics-data:/var/lib/ffdb/metrics - sync-data:/var/lib/ffdb/sync restart: \"no\" api: image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.0 environment: - FFDB_ENVIRONMENT - FFDB_HTTP_BIND - FFDB_PUBLIC_BASE_URL - FFDB_CORS_ALLOWED_ORIGINS - FFDB_DATABASE_URL - FFDB_NODE_ID - FFDB_NODE_NAME - FFDB_DATABASE_ROOT - FFDB_BACKUP_ROOT - FFDB_METRICS_ROOT - FFDB_DATABASE_WORKER - FFDB_MASTER_KEY - FFDB_BACKUP_MASTER_KEY - FFDB_CURSOR_HMAC_KEY - FFDB_BOOTSTRAP_TOKEN - FFDB_S3_ENDPOINT - FFDB_S3_PUBLIC_ENDPOINT - FFDB_S3_REGION - FFDB_S3_BUCKET - FFDB_S3_ACCESS_KEY_ID - FFDB_S3_SECRET_ACCESS_KEY - FFDB_EMAIL_TRANSPORT - FFDB_SMTP_HOST - FFDB_SMTP_PORT - FFDB_EMAIL_FROM - RUST_LOG depends_on: postgres: condition: service_healthy minio-bootstrap: condition: service_completed_successfully mailpit: condition: service_healthy volume-init: condition: service_completed_successfully healthcheck: test: [\"CMD\", \"curl\", \"--fail\", \"--silent\", \"http://127.0.0.1:8080/readyz\"] interval: 5s timeout: 3s retries: 30 start_period: 5s expose: [\"8080\"] read_only: true tmpfs: - /tmp:rw,noexec,nosuid,nodev,size=64m volumes: - project-data:/var/lib/ffdb/projects - backup-data:/var/lib/ffdb/backups - metrics-data:/var/lib/ffdb/metrics cap_drop: [\"ALL\"] security_opt: [\"no-new-privileges:true\"] restart: unless-stopped sync-worker: image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.0 command: [\"/usr/local/bin/ffdb-sync-worker\"] environment: - FFDB_SYNC_STATE_DIR - FFDB_SYNC_MAINTENANCE_INTERVAL_SECONDS - FFDB_SYNC_STALE_TEMPORARY_SECONDS - RUST_LOG depends_on: api: condition: service_healthy volume-init: condition: service_completed_successfully read_only: true tmpfs: - /tmp:rw,noexec,nosuid,nodev,size=16m volumes: - sync-data:/var/lib/ffdb/sync cap_drop: [\"ALL\"] security_opt: [\"no-new-privileges:true\"] restart: unless-stopped gateway: image: ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.0 environment: - FFDB_S3_PUBLIC_ORIGIN depends_on: api: condition: service_healthy ports: - \"127.0.0.1:5173:8080\" read_only: true tmpfs: - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777 cap_drop: [\"ALL\"] security_opt: [\"no-new-privileges:true\"] restart: unless-stopped volumes: postgres-data: minio-data: mailpit-data: project-data: backup-data: metrics-data: sync-data:"
+      - generic [ref=f33e163]:
+        - heading [level=2] [ref=f33e164]:
+          - link "2. Create .env and replace every placeholder" [ref=f33e165] [cursor=pointer]:
+            - /url: "#2-create-env-and-replace-every-placeholder"
+            - text: 2. Create .env and replace every placeholder#
+        - paragraph [ref=f33e166]: Save the template as .env beside compose.yaml, set its mode to 0600, and replace every replace-with value. PostgreSQL, MinIO, the database encryption key, backup key, cursor HMAC key, and bootstrap token must all be independent.
+        - paragraph [ref=f33e167]: Use openssl rand -hex 24 for the PostgreSQL and MinIO passwords, openssl rand -base64 32 for each encryption key, and openssl rand -hex 32 for the HMAC key and bootstrap token. Copy the PostgreSQL password into FFDB_DATABASE_URL and the MinIO password into FFDB_S3_SECRET_ACCESS_KEY. Generate a unique UUID for FFDB_NODE_ID.
+        - figure ".env Copy .env code" [ref=f33e429]:
+          - generic [ref=f33e169]:
+            - generic [ref=f33e170]: .env
+            - button "Copy .env code" [ref=f33e172] [cursor=pointer]:
+              - generic [ref=f33e176]: Copy
+            - status [ref=f33e177]
+          - generic ".env, env code" [ref=f33e178]:
+            - code [ref=f33e179]: POSTGRES_DB=ffdb POSTGRES_USER=ffdb POSTGRES_PASSWORD=replace-with-openssl-rand-hex-24 MINIO_ROOT_USER=ffdb-local MINIO_ROOT_PASSWORD=replace-with-another-openssl-rand-hex-24 MINIO_API_CORS_ALLOW_ORIGIN=http://127.0.0.1:5173,http://localhost:5173 FFDB_ENVIRONMENT=development FFDB_HTTP_BIND=0.0.0.0:8080 FFDB_PUBLIC_BASE_URL=http://127.0.0.1:5173 FFDB_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173 FFDB_DATABASE_URL=postgres://ffdb:replace-with-the-postgres-password@postgres:5432/ffdb FFDB_NODE_ID=019fc39c-ddbd-7d12-9849-e4ee35310132 FFDB_NODE_NAME=ffdb-single-host-01 FFDB_DATABASE_ROOT=/var/lib/ffdb/projects FFDB_BACKUP_ROOT=/var/lib/ffdb/backups FFDB_METRICS_ROOT=/var/lib/ffdb/metrics FFDB_DATABASE_WORKER=/usr/local/bin/ffdb-database-worker FFDB_MASTER_KEY=replace-with-openssl-rand-base64-32 FFDB_BACKUP_MASTER_KEY=replace-with-an-independent-base64-key FFDB_CURSOR_HMAC_KEY=replace-with-openssl-rand-hex-32 FFDB_BOOTSTRAP_TOKEN=replace-with-an-independent-openssl-rand-hex-32 FFDB_S3_ENDPOINT=http://minio:9000 FFDB_S3_PUBLIC_ENDPOINT=http://127.0.0.1:9000 FFDB_S3_PUBLIC_ORIGIN=http://127.0.0.1:9000 FFDB_S3_REGION=us-east-1 FFDB_S3_BUCKET=ffdb FFDB_S3_ACCESS_KEY_ID=ffdb-local FFDB_S3_SECRET_ACCESS_KEY=replace-with-the-minio-password FFDB_EMAIL_TRANSPORT=smtp FFDB_SMTP_HOST=mailpit FFDB_SMTP_PORT=1025 FFDB_EMAIL_FROM=FFDB <noreply@localhost.test> FFDB_SYNC_STATE_DIR=/var/lib/ffdb/sync FFDB_SYNC_MAINTENANCE_INTERVAL_SECONDS=60 FFDB_SYNC_STALE_TEMPORARY_SECONDS=3600 RUST_LOG=ffdb=info,tower_http=info
+        - figure "Generate each value independently Copy Generate each value independently code" [ref=f33e430]:
+          - generic [ref=f33e181]:
+            - generic [ref=f33e182]: Generate each value independently
+            - button "Copy Generate each value independently code" [ref=f33e184] [cursor=pointer]:
+              - generic [ref=f33e188]: Copy
+            - status [ref=f33e189]
+          - generic "Generate each value independently, sh code" [ref=f33e190]:
+            - code [ref=f33e191]: "umask 077 openssl rand -hex 24 # PostgreSQL password openssl rand -hex 24 # MinIO password openssl rand -base64 32 # FFDB_MASTER_KEY openssl rand -base64 32 # FFDB_BACKUP_MASTER_KEY openssl rand -hex 32 # FFDB_CURSOR_HMAC_KEY openssl rand -hex 32 # FFDB_BOOTSTRAP_TOKEN uuidgen | tr '[:upper:]' '[:lower:]' # FFDB_NODE_ID chmod 600 .env"
+        - complementary [ref=f33e192]:
+          - text: i
+          - strong [ref=f33e193]: Do not reuse or commit .env
+          - paragraph [ref=f33e194]: The bootstrap token creates the first owner; the master keys protect stored credentials and backups. Keep .env outside version control, restrict it to the host operator, and back up the encryption keys separately from the data volumes.
+      - generic [ref=f33e195]:
+        - heading [level=2] [ref=f33e196]:
+          - link "3. Start and verify the stack" [ref=f33e197] [cursor=pointer]:
+            - /url: "#3-start-and-verify-the-stack"
+            - text: 3. Start and verify the stack#
+        - paragraph [ref=f33e198]: Compose pulls the released images, starts dependencies in order, and waits for their health checks. The public entry point is the gateway on 127.0.0.1:5173. It serves compiled assets and proxies API traffic to private Axum port 8080; it is not a Vite development server.
+        - figure "Terminal Copy Terminal code" [ref=f33e431]:
+          - generic [ref=f33e200]:
+            - generic [ref=f33e201]: Terminal
+            - button "Copy Terminal code" [ref=f33e203] [cursor=pointer]:
+              - generic [ref=f33e207]: Copy
+            - status [ref=f33e208]
+          - generic "Terminal, sh code" [ref=f33e209]:
+            - code [ref=f33e210]: docker compose config --quiet docker compose pull docker compose up --detach --wait docker compose ps curl --fail http://127.0.0.1:5173/healthz curl --fail http://127.0.0.1:5173/readyz curl --fail http://127.0.0.1:5173/openapi.json >/dev/null
+        - complementary [ref=f33e211]:
+          - text: i
+          - strong [ref=f33e212]: What is listening
+          - paragraph [ref=f33e213]: Open http://127.0.0.1:5173/ for the product site, /docs/ for these docs, and /app/ for the portal. MinIO's local console is on 9001 and captured evaluation email is on 8025. PostgreSQL and Axum remain internal to the Compose network.
+      - generic [ref=f33e214]:
+        - heading [level=2] [ref=f33e215]:
+          - link "4. Create the first owner and choose the instance type" [ref=f33e216] [cursor=pointer]:
+            - /url: "#4-create-the-first-owner-and-choose-the-instance-type"
+            - text: 4. Create the first owner and choose the instance type#
+        - paragraph [ref=f33e217]: Open http://127.0.0.1:5173/app/. Paste FFDB_BOOTSTRAP_TOKEN from the protected .env file, create the first owner, and choose private, team, platform billing with your Stripe keys, or Stripe Connect. The wizard collects provider values when the selected mode needs them; no Stripe variables are required in compose.yaml.
+        - paragraph [ref=f33e218]: Onboarding must finish before the owner can create organizations or projects. After it completes, create the first organization and project directly in the portal and verify that the project appears in the project switcher.
+        - complementary [ref=f33e219]:
+          - text: i
+          - strong [ref=f33e220]: Use the trusted local origin
+          - paragraph [ref=f33e221]: Paste the bootstrap token only into the portal served by this installation. Do not put it in application code, a browser bundle, screenshots, shell history, or support logs.
+      - generic [ref=f33e222]:
+        - heading [level=2] [ref=f33e223]:
+          - link "Optional signed lifecycle controller" [ref=f33e224] [cursor=pointer]:
+            - /url: "#optional-signed-lifecycle-controller"
+            - text: Optional signed lifecycle controller#
+        - paragraph [ref=f33e225]: The direct Compose path above is complete. Operators who also want signature verification, immutable digest resolution, installed release directories, backup/update/rollback commands, and root-owned generated configuration can use the release controller instead. It manages the same Docker topology; it is not required for the copyable Compose path.
+        - figure "Latest stable GitHub Release Copy Latest stable GitHub Release code" [ref=f33e432]:
+          - generic [ref=f33e227]:
+            - generic [ref=f33e228]: Latest stable GitHub Release
+            - button "Copy Latest stable GitHub Release code" [ref=f33e230] [cursor=pointer]:
+              - generic [ref=f33e234]: Copy
+            - status [ref=f33e235]
+          - generic "Latest stable GitHub Release, sh code" [ref=f33e236]:
+            - code [ref=f33e237]: "curl -fsSLo ffdb-install.sh \\ https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh less ffdb-install.sh sudo sh ffdb-install.sh --profile single-host --start --require-signature sudo ffdb-host status # Port 5173 is the packaged nginx gateway, not a Vite server. curl --fail http://127.0.0.1:5173/readyz"
+        - figure "Reproducible exact tag Copy Reproducible exact tag code" [ref=f33e433]:
+          - generic [ref=f33e239]:
+            - generic [ref=f33e240]: Reproducible exact tag
+            - button "Copy Reproducible exact tag code" [ref=f33e242] [cursor=pointer]:
+              - generic [ref=f33e246]: Copy
+            - status [ref=f33e247]
+          - generic "Reproducible exact tag, sh code" [ref=f33e248]:
+            - code [ref=f33e249]: "VERSION=0.3.0 RELEASE_BASE=\"https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION\" curl -fsSLo ffdb-install.sh \"$RELEASE_BASE/install.sh\" less ffdb-install.sh sudo sh ffdb-install.sh --profile single-host --start --require-signature \\ --version \"$VERSION\" --release-base \"$RELEASE_BASE\" sudo ffdb-host status # Port 5173 is the packaged nginx gateway, not a Vite server. curl --fail http://127.0.0.1:5173/readyz"
+        - figure "Verified mirror or air-gapped bundle Copy Verified mirror or air-gapped bundle code" [ref=f33e434]:
+          - generic [ref=f33e251]:
+            - generic [ref=f33e252]: Verified mirror or air-gapped bundle
+            - button "Copy Verified mirror or air-gapped bundle code" [ref=f33e254] [cursor=pointer]:
+              - generic [ref=f33e258]: Copy
+            - status [ref=f33e259]
+          - generic "Verified mirror or air-gapped bundle, sh code" [ref=f33e260]:
+            - code [ref=f33e261]: sudo env \ FFDB_VERSION=0.3.0 \ FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.0 \ sh ./install.sh --profile single-host --start --require-signature sudo ffdb-host status
+        - complementary [ref=f33e262]:
+          - text: i
+          - strong [ref=f33e263]: Release discovery is separate from installation
+          - paragraph [ref=f33e264]: The examples pin the supported 0.3.0 release while the latest URL tracks the stable channel. The installer verifies the signed checksum list, bundle, controller, and pinned images. Mirrors must preserve the release filenames and Sigstore bundle unchanged.
+      - generic [ref=f33e265]:
+        - heading [level=2] [ref=f33e266]:
+          - link "Understand the single-host boundary" [ref=f33e267] [cursor=pointer]:
+            - /url: "#understand-the-single-host-boundary"
+            - text: Understand the single-host boundary#
+        - paragraph [ref=f33e268]: The selected release pins PostgreSQL, MinIO, Mailpit, the FFDB runtime, and the gateway by immutable image digest. The installer generates independent strong PostgreSQL, MinIO, encryption, HMAC, bootstrap, and node credentials, writes them to /etc/ffdb/single-host.env at mode 0600, preserves existing secrets on reinstall or upgrade, and never prints them.
+        - list [ref=f33e269]:
+          - listitem [ref=f33e270]: The compiled nginx gateway listens at http://127.0.0.1:5173; this is not a Vite development server.
+          - listitem [ref=f33e271]: The gateway serves the landing site at /, docs at /docs/, and the portal at /app/, then proxies /v1, /healthz, /readyz, /metrics, and /openapi.json to the private Axum service at api:8080.
+          - listitem [ref=f33e272]: The packaged Docker profiles expose Axum port 8080 only to the Compose network, never directly to the host.
+          - listitem [ref=f33e273]: MinIO API and console listen at loopback ports 9000 and 9001.
+          - listitem [ref=f33e274]: Mailpit SMTP and captured-mail UI listen at loopback ports 1025 and 8025.
+          - listitem [ref=f33e275]: PostgreSQL has no host port; all exposed host ports are loopback-only.
+          - listitem [ref=f33e276]: The seven named volumes preserve PostgreSQL, object data, captured mail, project SQLite files, encrypted backups, organization usage/billing ledgers, and sync state across normal stop, upgrade, rollback, and uninstall.
+      - generic [ref=f33e277]:
+        - heading [level=2] [ref=f33e278]:
+          - link "Retrieve the generated bootstrap token safely" [ref=f33e279] [cursor=pointer]:
+            - /url: "#retrieve-the-generated-bootstrap-token-safely"
+            - text: Retrieve the generated bootstrap token safely#
+        - paragraph [ref=f33e280]: The bootstrap token remains only in the root-readable single-host environment. Extract it to a root-owned file for secret-manager ingestion without writing the value to the terminal; ffdb-host status and logs do not reveal it.
+        - figure "Terminal Copy Terminal code" [ref=f33e435]:
+          - generic [ref=f33e282]:
+            - generic [ref=f33e283]: Terminal
+            - button "Copy Terminal code" [ref=f33e285] [cursor=pointer]:
+              - generic [ref=f33e289]: Copy
+            - status [ref=f33e290]
+          - generic "Terminal, sh code" [ref=f33e291]:
+            - code [ref=f33e292]: sudo sh -c 'umask 077; sed -n "s/^FFDB_BOOTSTRAP_TOKEN=//p" \ /etc/ffdb/single-host.env > /root/ffdb-bootstrap-token'
+      - generic [ref=f33e293]:
+        - heading [level=2] [ref=f33e294]:
+          - link "Operate an external-provider production release" [ref=f33e295] [cursor=pointer]:
+            - /url: "#operate-an-external-provider-production-release"
+            - text: Operate an external-provider production release#
+        - paragraph [ref=f33e296]: For internet production, configure the external-provider profile with independently backed-up PostgreSQL, private HTTPS S3-compatible storage, real email delivery, and a TLS gateway. Signed release metadata pins the multi-architecture runtime and gateway images by immutable digest, and ffdb-host invokes the matching Compose model.
+        - figure "Terminal Copy Terminal code" [ref=f33e436]:
+          - generic [ref=f33e298]:
+            - generic [ref=f33e299]: Terminal
+            - button "Copy Terminal code" [ref=f33e301] [cursor=pointer]:
+              - generic [ref=f33e305]: Copy
+            - status [ref=f33e306]
+          - generic "Terminal, sh code" [ref=f33e307]:
+            - code [ref=f33e308]: "# For a directly downloaded and verified bundle: sudo ffdb-host install \\ --version 0.3.0 \\ --bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.0.tar.gz # The public/local installer already performs the install step: sudo ffdb-host start sudo ffdb-host status sudo ffdb-host logs api"
+      - generic [ref=f33e309]:
+        - heading [level=2] [ref=f33e310]:
+          - link "Understand the service boundary" [ref=f33e311] [cursor=pointer]:
+            - /url: "#understand-the-service-boundary"
+            - text: Understand the service boundary#
+        - list [ref=f33e312]:
+          - listitem [ref=f33e313]: volume-init gives fixed UID/GID 10001 ownership of named project-data, backup-data, metrics-data, and sync-data volumes.
+          - listitem [ref=f33e314]: api supervises bounded ffdb-database-worker children and writes only project, backup, and organization-metrics volumes.
+          - listitem [ref=f33e315]: sync-worker maintains durable sync checkpoint artifacts and writes only sync-data.
+          - listitem [ref=f33e316]: "gateway is the only FFDB application ingress, bound to 127.0.0.1:${FFDB_GATEWAY_PORT:-5173}; it is compiled nginx serving static production assets and proxying API routes to Axum's internal port 8080, not Vite."
+          - listitem [ref=f33e317]: All long-running containers are non-root, capability-free, resource-bounded, and use read-only root filesystems.
+        - complementary [ref=f33e318]:
+          - text: i
+          - strong [ref=f33e319]: Terminate TLS in front
+          - paragraph [ref=f33e320]: "Forward the complete public origin to the loopback gateway, preserve Host and the client address, and set X-Forwarded-Proto: https. The integrated gateway serves /, /docs/, /app/, and the API routes."
+      - generic [ref=f33e321]:
+        - heading [level=2] [ref=f33e322]:
+          - link "Operate and troubleshoot" [ref=f33e323] [cursor=pointer]:
+            - /url: "#operate-and-troubleshoot"
+            - text: Operate and troubleshoot#
+        - paragraph [ref=f33e324]: For the direct path, start with docker compose ps and the bounded service logs above. A failed PostgreSQL login usually means POSTGRES_PASSWORD and the password inside FFDB_DATABASE_URL differ. A failed MinIO bootstrap usually means MINIO_ROOT_PASSWORD and FFDB_S3_SECRET_ACCESS_KEY differ. An instance.setup_required response means the owner must finish the portal wizard before creating organizations or projects. For production, also inspect response security headers, directly reload a nested /docs/ route, and verify an authorized browser upload against the configured S3 CORS and gateway CSP.
+        - figure "Direct Compose status, logs, and lifecycle Copy Direct Compose status, logs, and lifecycle code" [ref=f33e437]:
+          - generic [ref=f33e326]:
+            - generic [ref=f33e327]: Direct Compose status, logs, and lifecycle
+            - button "Copy Direct Compose status, logs, and lifecycle code" [ref=f33e329] [cursor=pointer]:
+              - generic [ref=f33e333]: Copy
+            - status [ref=f33e334]
+          - generic "Direct Compose status, logs, and lifecycle, sh code" [ref=f33e335]:
+            - code [ref=f33e336]: "docker compose ps docker compose logs --tail=200 api docker compose logs --tail=200 sync-worker docker compose logs --tail=200 gateway docker compose stop docker compose start # Update only after reading release notes and taking a backup. docker compose pull docker compose up --detach --wait"
+        - figure "Public TLS checks Copy Public TLS checks code" [ref=f33e438]:
+          - generic [ref=f33e338]:
+            - generic [ref=f33e339]: Public TLS checks
+            - button "Copy Public TLS checks code" [ref=f33e341] [cursor=pointer]:
+              - generic [ref=f33e345]: Copy
+            - status [ref=f33e346]
+          - generic "Public TLS checks, sh code" [ref=f33e347]:
+            - code [ref=f33e348]: curl --fail --show-error https://ffdb.example.com/healthz curl --fail --show-error https://ffdb.example.com/readyz curl --fail --show-error https://ffdb.example.com/openapi.json >/dev/null
+        - figure "Service state and logs Copy Service state and logs code" [ref=f33e439]:
+          - generic [ref=f33e350]:
+            - generic [ref=f33e351]: Service state and logs
+            - button "Copy Service state and logs code" [ref=f33e353] [cursor=pointer]:
+              - generic [ref=f33e357]: Copy
+            - status [ref=f33e358]
+          - generic "Service state and logs, sh code" [ref=f33e359]:
+            - code [ref=f33e360]: sudo ffdb-host status sudo ffdb-host logs api sudo ffdb-host logs sync-worker sudo ffdb-host logs gateway
+      - generic [ref=f33e361]:
+        - heading [level=2] [ref=f33e362]:
+          - link "Upgrade, roll back, and retain data" [ref=f33e363] [cursor=pointer]:
+            - /url: "#upgrade-roll-back-and-retain-data"
+            - text: Upgrade, roll back, and retain data#
+        - paragraph [ref=f33e364]: ffdb-host update-check compares the active release with the latest stable GitHub Release without changing the host. Read the intervening release notes, complete the topology-appropriate coordinated backup, then run update. No arguments selects latest stable; --version pins an exact target for scheduled production rollouts. The controller installs beside the current release and preserves configuration and named volumes.
+        - figure "Check and update Copy Check and update code" [ref=f33e440]:
+          - generic [ref=f33e366]:
+            - generic [ref=f33e367]: Check and update
+            - button "Copy Check and update code" [ref=f33e369] [cursor=pointer]:
+              - generic [ref=f33e373]: Copy
+            - status [ref=f33e374]
+          - generic "Check and update, sh code" [ref=f33e375]:
+            - code [ref=f33e376]: "sudo ffdb-host version sudo ffdb-host update-check # Packaged single-host backup. External providers need their coordinated backup. sudo ffdb-host backup create /secure/ffdb-before-update.tar.gz sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update sudo ffdb-host status # Reproducible alternative after reviewing the exact tag: sudo ffdb-host update-check --version 0.3.1 sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.1 # If acceptance fails: sudo ffdb-host rollback 0.3.0 --acknowledge-migration-risk # Normal shutdown preserves durable state: sudo ffdb-host stop"
+        - complementary [ref=f33e377]:
+          - text: i
+          - strong [ref=f33e378]: Volumes are the data
+          - paragraph [ref=f33e379]: For the direct path, docker compose down preserves named volumes, while docker compose down --volumes deletes the installation's durable state. For the managed path, ffdb-host uninstall is a separate explicit action. Neither command is an update or rollback workflow; take and restore-test a coordinated backup first.
+      - generic [ref=f33e380]:
+        - heading [level=2] [ref=f33e381]:
+          - link "Step by step" [ref=f33e382] [cursor=pointer]:
+            - /url: "#step-by-step"
+            - text: Step by step#
+        - list [ref=f33e383]:
+          - listitem [ref=f33e384]: 1. Save the complete compose.yaml and .env examples in an empty directory.
+          - listitem [ref=f33e385]: 2. Generate every secret independently, copy matching provider passwords into their FFDB values, and restrict .env to the operator.
+          - listitem [ref=f33e386]: 3. Run docker compose config, pull, and docker compose up --detach --wait.
+          - listitem [ref=f33e387]: 4. Verify health, readiness, OpenAPI, and service status through the compiled loopback gateway.
+          - listitem [ref=f33e388]: 5. Open /app/, create the first owner, choose the instance type, finish onboarding, and create the first organization and project.
+      - generic [ref=f33e389]:
+        - heading [level=2] [ref=f33e390]:
+          - link "Expected result" [ref=f33e391] [cursor=pointer]:
+            - /url: "#expected-result"
+            - text: Expected result#
+        - paragraph [ref=f33e392]: The complete seven-volume stack reports ready on loopback, the first owner can finish instance setup, and no source repository or developer toolchain is involved.
+      - generic [ref=f33e393]:
+        - heading [level=2] [ref=f33e394]:
+          - link "Failure modes and recovery" [ref=f33e395] [cursor=pointer]:
+            - /url: "#failure-modes-and-recovery"
+            - text: Failure modes and recovery#
+        - list [ref=f33e396]:
+          - listitem [ref=f33e397]: Compose rejects a missing value — replace the named placeholder rather than removing the check.
+          - listitem [ref=f33e398]: A container is unhealthy — inspect docker compose ps and bounded logs, then correct the specific dependency or matching credential.
+          - listitem [ref=f33e399]: Organization creation returns instance.setup_required — finish the owner setup wizard.
+          - listitem [ref=f33e400]: The single-host stack is being exposed to the internet — stop and move to the external-provider production profile.
+      - generic [ref=f33e401]:
+        - heading [level=2] [ref=f33e402]:
+          - link "Next steps" [ref=f33e403] [cursor=pointer]:
+            - /url: "#next-steps"
+            - text: Next steps#
+        - list [ref=f33e404]:
+          - listitem [ref=f33e405]: Complete the Quickstart application query.
+          - listitem [ref=f33e406]: Move production dependencies off host and schedule coordinated encrypted backups and alerts.
+      - navigation "Previous and next pages" [ref=f33e407]:
+        - link "Previous ← Quickstart" [ref=f33e408] [cursor=pointer]:
+          - /url: /quickstart
+          - generic [ref=f33e409]: Previous
+          - strong [ref=f33e410]: ← Quickstart
+        - link "Next Install with systemd →" [ref=f33e411] [cursor=pointer]:
+          - /url: /install/systemd
+          - generic [ref=f33e412]: Next
+          - strong [ref=f33e413]: Install with systemd →
+  - contentinfo [ref=f33e414]:
+    - generic [ref=f33e415]: © 2026 Forever Frameworks LLC. · FFDB is Apache-2.0 software.
+    - navigation "Legal links" [ref=f33e416]:
+      - link "Terms" [ref=f33e417] [cursor=pointer]:
+        - /url: /terms/
+      - link "Privacy" [ref=f33e418] [cursor=pointer]:
+        - /url: /privacy/
+      - link "Security & disclaimer" [ref=f33e419] [cursor=pointer]:
+        - /url: /security/

@@ -1,0 +1,14 @@
+import { BrowserSessionStore, FFDBClient } from "@ffdb/client";
+
+const baseUrl = import.meta.env.VITE_FFDB_API_URL;
+const projectId = import.meta.env.VITE_FFDB_PROJECT_ID;
+
+if (!baseUrl || !projectId) {
+  throw new Error("VITE_FFDB_API_URL and VITE_FFDB_PROJECT_ID are required");
+}
+
+export const ffdb = new FFDBClient({
+  baseUrl,
+  projectId,
+  sessionStore: new BrowserSessionStore(globalThis.sessionStorage, "app.ffdb"),
+});

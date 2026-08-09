@@ -1,0 +1,54 @@
+{
+  "name": "@ffdb/react",
+  "version": "0.3.0",
+  "description": "React providers and hooks for the FFDB client and offline-sync state",
+  "keywords": ["ffdb", "react", "database", "offline-first", "sync"],
+  "homepage": "https://ffdb.forever-frameworks.com/docs/react",
+  "license": "Apache-2.0",
+  "author": "Forever Frameworks <admin@forever-frameworks.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Forever-Frameworks-LLC/ffdb.git",
+    "directory": "packages/react"
+  },
+  "bugs": { "url": "https://github.com/Forever-Frameworks-LLC/ffdb/issues" },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "!dist/**/*.test.*"],
+  "engines": { "node": ">=24" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm check && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@ffdb/client": "workspace:*",
+    "@ffdb/sync-client": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.9",
+    "react": "^19.1.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
