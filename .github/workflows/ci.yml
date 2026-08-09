@@ -13,6 +13,83 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      typescript: ${{ steps.filter.outputs.typescript }}
+      compose: ${{ steps.filter.outputs.compose }}
+      supply_chain: ${{ steps.filter.outputs.supply_chain }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Select the required CI suites
+        id: filter
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_sha="${PR_BASE_SHA:-${PUSH_BASE_SHA:-}}"
+          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]]; then
+            base_sha="$(git rev-parse "${GITHUB_SHA}^")"
+          fi
+
+          rust=false
+          typescript=false
+          compose=false
+
+          while IFS= read -r path; do
+            recognized=false
+
+            case "$path" in
+              .github/workflows/*)
+                rust=true
+                typescript=true
+                compose=true
+                recognized=true
+                ;;
+              Cargo.toml|Cargo.lock|deny.toml|rust-toolchain.toml|apps/*/Cargo.toml|apps/*/src/*|crates/*|fuzz/*)
+                rust=true
+                recognized=true
+                ;;
+              package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig*.json|apps/portal/*|apps/docs/*|apps/landing/*|packages/*)
+                typescript=true
+                recognized=true
+                ;;
+              Makefile|compose*.yaml|compose*.yml|docker-compose*.yaml|docker-compose*.yml|Dockerfile*|infra/*|scripts/*|config/*|release/*|install*)
+                compose=true
+                recognized=true
+                ;;
+              .github/dependabot.yml|.gitleaks.toml|.gitignore|LICENSE*|README*|SECURITY.md|docs/*)
+                recognized=true
+                ;;
+            esac
+
+            # New source/config paths must receive the full matrix until this
+            # classifier explicitly assigns them to a narrower suite.
+            if [[ "$recognized" == false ]]; then
+              rust=true
+              typescript=true
+              compose=true
+            fi
+          done < <(git diff --name-only "$base_sha" "$GITHUB_SHA")
+
+          {
+            echo "rust=$rust"
+            echo "typescript=$typescript"
+            echo "compose=$compose"
+            if [[ "$rust" == true || "$typescript" == true ]]; then
+              echo "supply_chain=true"
+            else
+              echo "supply_chain=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
   secret-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -45,6 +122,8 @@ jobs:
           --no-banner
 
   rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -61,6 +140,8 @@ jobs:
         run: cargo test -p ffdb-api --test load_smoke --locked
 
   rust-arm64:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
@@ -72,6 +153,8 @@ jobs:
       - run: cargo check --workspace --all-targets --locked
 
   fuzz:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -103,6 +186,8 @@ jobs:
           -max_total_time=30 -max_len=2048 -timeout=5
 
   typescript:
+    needs: changes
+    if: needs.changes.outputs.typescript == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -121,6 +206,8 @@ jobs:
       - run: pnpm build
 
   supply-chain:
+    needs: changes
+    if: needs.changes.outputs.supply_chain == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -138,6 +225,8 @@ jobs:
       - run: pnpm audit --audit-level high
 
   compose:
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

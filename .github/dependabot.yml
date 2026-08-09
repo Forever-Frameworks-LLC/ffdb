@@ -11,6 +11,17 @@ updates:
       rust-minor:
         applies-to: version-updates
         update-types: [minor, patch]
+      rust-crypto-major:
+        applies-to: version-updates
+        patterns: [hmac, hkdf, sha2]
+        update-types: [major]
+    # password-hash 0.6 uses a new trait/API generation. The current stable
+    # argon2 release still implements password-hash 0.5, so upgrading only the
+    # direct dependency creates two incompatible trait versions. Revisit this
+    # when argon2 publishes a compatible stable release.
+    ignore:
+      - dependency-name: password-hash
+        versions: ["0.6.x"]
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -22,6 +33,10 @@ updates:
       npm-minor:
         applies-to: version-updates
         update-types: [minor, patch]
+      npm-test-major:
+        applies-to: version-updates
+        patterns: [jsdom, "@testing-library/jest-dom"]
+        update-types: [major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
