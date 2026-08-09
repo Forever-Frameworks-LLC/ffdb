@@ -9,7 +9,7 @@ publish = false
 argon2 = { version = "0.5", features = ["std"] }
 async-trait = "0.1"
 base64 = "0.22"
-ed25519-dalek = { version = "2.2", features = ["rand_core"] }
+ed25519-dalek = { version = "3.0", features = ["rand_core"] }
 ffdb-protocol = { path = "../protocol" }
 hmac = "0.13"
 password-hash = { version = "0.5", features = ["rand_core"] }
