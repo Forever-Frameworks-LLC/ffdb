@@ -7,7 +7,7 @@ publish = false
 description = "Isolated FFDB SQLite worker process"
 
 [dependencies]
-aes-gcm = "0.10.3"
+aes-gcm = "0.11.0"
 async-trait = "0.1.89"
 base64 = "0.22.1"
 ffdb-migration-engine = { path = "../../crates/migration-engine" }

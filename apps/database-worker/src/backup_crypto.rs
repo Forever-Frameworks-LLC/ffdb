@@ -93,10 +93,12 @@ impl BackupCrypto {
             let next = read_chunk(&mut input)?;
             let final_chunk = next.is_empty();
             let nonce = chunk_nonce(nonce_prefix, counter);
+            let cipher_nonce = Nonce::try_from(nonce.as_slice())
+                .map_err(|_| BackupCryptoError::InvalidCiphertext)?;
             let chunk_aad = chunk_associated_data(&aad, counter, final_chunk);
             let encrypted = cipher
                 .encrypt(
-                    Nonce::from_slice(&nonce),
+                    &cipher_nonce,
                     Payload {
                         msg: &current,
                         aad: &chunk_aad,
@@ -182,10 +184,12 @@ impl BackupCrypto {
                 .read_exact(&mut encrypted)
                 .map_err(|_| BackupCryptoError::InvalidCiphertext)?;
             let nonce = chunk_nonce(nonce_prefix, counter);
+            let cipher_nonce = Nonce::try_from(nonce.as_slice())
+                .map_err(|_| BackupCryptoError::InvalidCiphertext)?;
             let chunk_aad = chunk_associated_data(&aad, counter, final_chunk);
             let decrypted = cipher
                 .decrypt(
-                    Nonce::from_slice(&nonce),
+                    &cipher_nonce,
                     Payload {
                         msg: &encrypted,
                         aad: &chunk_aad,
