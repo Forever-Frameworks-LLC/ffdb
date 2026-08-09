@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 async-trait.workspace = true
+hex.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 ring = "0.17.14"

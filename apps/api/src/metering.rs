@@ -731,5 +731,5 @@ fn object_storage_resource(project_id: ProjectId) -> String {
 
 fn storage_reservation_id(nonce: &str) -> String {
     let digest = Sha256::digest(nonce.as_bytes());
-    format!("storage:{digest:x}")
+    format!("storage:{}", hex::encode(digest))
 }

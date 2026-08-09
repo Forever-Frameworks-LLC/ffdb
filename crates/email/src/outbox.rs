@@ -139,7 +139,7 @@ impl TemplateArtifactInput {
             template_id: kind_name(self.kind).to_owned(),
             kind: self.kind,
             version: self.version,
-            source_sha256: format!("{:x}", Sha256::digest(self.source.as_bytes())),
+            source_sha256: hex::encode(Sha256::digest(self.source.as_bytes())),
             subject_template: self.subject_template.clone(),
             html_template: self.html_template.clone(),
             text_template: self.text_template.clone(),

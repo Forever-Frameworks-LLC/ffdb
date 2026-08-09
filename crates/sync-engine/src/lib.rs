@@ -327,7 +327,7 @@ impl std::fmt::Debug for CursorCodec {
 impl CursorCodec {
     fn encode(&self, claims: &CursorClaims) -> Result<OpaqueCursor, SyncError> {
         let payload = serde_json::to_vec(claims).map_err(|_| SyncError::InvalidCursor)?;
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| SyncError::InvalidConfiguration)?;
         mac.update(&payload);
         Ok(OpaqueCursor(format!(
@@ -360,7 +360,7 @@ impl CursorCodec {
         if signature.len() != 32 {
             return Err(SyncError::InvalidCursor);
         }
-        let mut mac = HmacSha256::new_from_slice(self.secret.as_slice())
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(self.secret.as_slice())
             .map_err(|_| SyncError::InvalidConfiguration)?;
         mac.update(&payload);
         mac.verify_slice(&signature)

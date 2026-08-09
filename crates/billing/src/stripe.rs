@@ -529,9 +529,9 @@ impl PlatformBillingProvider for StripeBillingProvider {
             let Some(signature) = decode_hex_32(signature) else {
                 return false;
             };
-            let Ok(mut mac) =
-                HmacSha256::new_from_slice(self.config.webhook_secret.expose_secret().as_bytes())
-            else {
+            let Ok(mut mac) = <HmacSha256 as hmac::KeyInit>::new_from_slice(
+                self.config.webhook_secret.expose_secret().as_bytes(),
+            ) else {
                 return false;
             };
             mac.update(timestamp.to_string().as_bytes());
@@ -970,7 +970,7 @@ mod tests {
     }
 
     fn signature(payload: &[u8], timestamp: i64) -> Result<String, BillingError> {
-        let mut mac = HmacSha256::new_from_slice(b"whsec_12345678901234567890")
+        let mut mac = <HmacSha256 as hmac::KeyInit>::new_from_slice(b"whsec_12345678901234567890")
             .map_err(|_| BillingError::InvalidConfiguration)?;
         mac.update(timestamp.to_string().as_bytes());
         mac.update(b".");

@@ -122,7 +122,7 @@ impl BackupCrypto {
                 .ok_or(BackupCryptoError::InvalidCiphertext)?;
         }
         output.sync_all().map_err(|_| BackupCryptoError::Io)?;
-        Ok((size, format!("{:x}", hasher.finalize())))
+        Ok((size, hex::encode(hasher.finalize())))
     }
 
     pub(crate) fn decrypt_file(

@@ -27,6 +27,7 @@ ffdb-protocol = { path = "../../crates/protocol" }
 ffdb-rate-limits = { path = "../../crates/rate-limits" }
 ffdb-sql-parser = { path = "../../crates/sql-parser" }
 fs2.workspace = true
+hex.workspace = true
 http.workspace = true
 ipnet.workspace = true
 reqwest.workspace = true

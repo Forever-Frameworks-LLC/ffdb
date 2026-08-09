@@ -6,10 +6,10 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
-hmac = "0.12"
+hmac = "0.13"
 parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
+sha2 = "0.11"
 sqlx.workspace = true
 thiserror = "2"
 

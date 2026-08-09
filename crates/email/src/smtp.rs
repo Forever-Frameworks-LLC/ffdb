@@ -123,7 +123,7 @@ impl EmailTransport for SmtpTransport {
         self.deliver(message).await?;
         Ok(ProviderMessageId(format!(
             "smtp-{}",
-            &format!("{:x}", Sha256::digest(message.idempotency_key.as_bytes()))[..24]
+            &hex::encode(Sha256::digest(message.idempotency_key.as_bytes()))[..24]
         )))
     }
 }
@@ -217,7 +217,7 @@ fn mime_message(message: &RenderedEmail) -> Result<String, EmailError> {
     }
     let boundary = format!(
         "ffdb-{}",
-        &format!("{:x}", Sha256::digest(message.idempotency_key.as_bytes()))[..32]
+        &hex::encode(Sha256::digest(message.idempotency_key.as_bytes()))[..32]
     );
     let body = format!(
         "From: {}\r\nTo: {}\r\nSubject: {}\r\nMIME-Version: 1.0\r\n\
