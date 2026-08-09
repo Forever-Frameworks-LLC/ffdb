@@ -12,7 +12,7 @@ base64 = "0.22"
 ed25519-dalek = { version = "2.2", features = ["rand_core"] }
 ffdb-protocol = { path = "../protocol" }
 hmac = "0.12"
-password-hash = { version = "0.5", features = ["rand_core"] }
+password-hash = { version = "0.6", features = ["rand_core"] }
 rand = "0.8"
 ring = "0.17.14"
 serde = { version = "1", features = ["derive"] }
