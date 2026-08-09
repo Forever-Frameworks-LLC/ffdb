@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use ffdb_protocol::AuthContext;
 use hmac::{Hmac, Mac};
-use rand::RngCore as _;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
@@ -438,7 +437,7 @@ where
         now_ms: i64,
     ) -> Result<AuthorizationToken, StorageError> {
         let mut nonce_bytes = [0_u8; 24];
-        rand::rng().fill_bytes(&mut nonce_bytes);
+        getrandom::fill(&mut nonce_bytes).map_err(|_| StorageError::Internal)?;
         self.authorize_with_nonce(request, now_ms, URL_SAFE_NO_PAD.encode(nonce_bytes))
             .await
     }

@@ -3,8 +3,8 @@ use std::fmt;
 use argon2::{Algorithm, Argon2, Params, Version};
 use password_hash::{
     PasswordHash as ParsedPasswordHash, PasswordHasher as _, PasswordVerifier as _, SaltString,
+    rand_core::OsRng,
 };
-use rand::rngs::OsRng;
 use thiserror::Error;
 use zeroize::{Zeroize, Zeroizing};
 

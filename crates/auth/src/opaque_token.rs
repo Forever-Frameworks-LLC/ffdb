@@ -2,7 +2,6 @@ use std::fmt;
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
-use rand::{RngCore, rngs::OsRng};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 use thiserror::Error;
@@ -88,6 +87,8 @@ pub enum TokenError {
     Malformed,
     #[error("credential digest is invalid")]
     InvalidDigest,
+    #[error("token entropy is unavailable")]
+    EntropyUnavailable,
 }
 
 impl OpaqueTokenCodec {
@@ -109,8 +110,8 @@ impl OpaqueTokenCodec {
     pub fn issue(&self) -> Result<(SecretToken, TokenParts), TokenError> {
         let mut prefix_bytes = [0_u8; 12];
         let mut secret_bytes = [0_u8; 32];
-        OsRng.fill_bytes(&mut prefix_bytes);
-        OsRng.fill_bytes(&mut secret_bytes);
+        getrandom::fill(&mut prefix_bytes).map_err(|_| TokenError::EntropyUnavailable)?;
+        getrandom::fill(&mut secret_bytes).map_err(|_| TokenError::EntropyUnavailable)?;
         let prefix = URL_SAFE_NO_PAD.encode(prefix_bytes);
         let secret = URL_SAFE_NO_PAD.encode(secret_bytes);
         secret_bytes.zeroize();
