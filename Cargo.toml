@@ -26,7 +26,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 http = "1.3"
 hex = "0.4.3"
 ipnet = "2.12"
-rand = "0.9"
+rand = "0.10"
 regex = "1.11"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Keep libsqlite3-sys aligned with SQLx 0.8's optional SQLite support. FFDB uses
