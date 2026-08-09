@@ -41,6 +41,10 @@ updates:
         applies-to: version-updates
         patterns: [jsdom, "@testing-library/jest-dom"]
         update-types: [major]
+      npm-vite-major:
+        applies-to: version-updates
+        patterns: [vite, vitest, "@vitejs/plugin-react"]
+        update-types: [major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
