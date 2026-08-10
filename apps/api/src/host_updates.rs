@@ -26,7 +26,7 @@ use tokio::io::{AsyncRead, AsyncReadExt as _};
 use tokio::process::Command;
 use uuid::Uuid;
 
-use super::instance::{InstanceService, InstanceServiceError};
+use super::instance::InstanceServiceError;
 use super::management::{
     authenticated, enforce_platform_user_rate, require_management_audit, terminal_management_audit,
 };
