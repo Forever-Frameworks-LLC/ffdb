@@ -168,6 +168,14 @@ grep -F -q 'file: infra/docker/Dockerfile.rust.release' \
   "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q 'file: infra/docker/Dockerfile.portal.release' \
   "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q "printf 'FFDB_POSTGRES_IMAGE=%s\\n'" \
+  "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q '} >> "$GITHUB_ENV"' "$ROOT_DIR/.github/workflows/release.yml"
+if grep -F -q 'needs.images.outputs.postgres_image' \
+  "$ROOT_DIR/.github/workflows/release.yml"; then
+  printf '%s\n' "infrastructure image references must not cross a job-output boundary" >&2
+  exit 1
+fi
 grep -F -q 'Create or resume draft GitHub release' "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q 'gh release create "$GITHUB_REF_NAME"' "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q -- '--verify-tag' "$ROOT_DIR/.github/workflows/release.yml"
