@@ -4,10 +4,10 @@ Version-matched React Email defaults for FFDB verification, password reset,
 email-change, invitation, and magic-link messages.
 
 ```bash
-pnpm add ./ffdb-email-components-0.3.6.tgz @react-email/components react
+pnpm add ./ffdb-email-components-0.3.7.tgz @react-email/components react
 ```
 
-`ffdb-email-components-0.3.6.tgz` is the checksum-verified archive from the
+`ffdb-email-components-0.3.7.tgz` is the checksum-verified archive from the
 matching FFDB GitHub Release. The archive retains the
 `@ffdb/email-components` package name, so imports remain scoped.
 
