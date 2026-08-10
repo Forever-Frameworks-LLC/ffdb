@@ -10,6 +10,19 @@ afterEach(() => {
 });
 
 describe("polished Auth and Sync routes", () => {
+  it("can open directly on application URL policy", async () => {
+    const client = testClient(async (request) => {
+      if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12, allowed_web_origins: [], allowed_auth_redirects: [] });
+      if (request.url.endsWith("/auth/users")) return Response.json([]);
+      return new Response(null, { status: 204 });
+    });
+
+    render(<AuthRoute client={client} initialTab="policy" />);
+
+    expect(await screen.findByRole("tab", { name: "Policy" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByText("Application URLs")).toBeInTheDocument();
+  });
+
   it("gates sync calls behind a purposeful signed-out state", async () => {
     const calls: Request[] = [];
     const client = testClient(async (request) => { calls.push(request); return Response.json({}); });

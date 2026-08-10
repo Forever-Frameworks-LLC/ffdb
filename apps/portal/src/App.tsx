@@ -40,7 +40,7 @@ import { InstancePanel, InstanceSetupWizard } from "./Instance.js";
 import { CommercePanel } from "./Commerce.js";
 import { BrandMark } from "./ui.js";
 import { ManagedTable } from "./polish/ManagedTable.js";
-import { AuthRoute, SyncRoute } from "./polish/AuthSync.js";
+import { AuthRoute, SyncRoute, type AuthRouteTab } from "./polish/AuthSync.js";
 import {
   ActivityPanel as PolishedActivityPanel,
   DatabasePanel as PolishedDatabasePanel,
@@ -79,6 +79,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
     [configuration, suppliedClient],
   );
   const [selected, setSelected] = useState<PortalRoute>(() => routeFromLocation(globalThis.location?.pathname ?? "") ?? (initialConfiguration.projectId === "" ? "Projects" : "Overview"));
+  const [authInitialTab, setAuthInitialTab] = useState<AuthRouteTab>("users");
   const [sqlDraft, setSqlDraft] = useState("SELECT sqlite_version() AS version");
   const [createOpen, setCreateOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -206,7 +207,8 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
     return () => globalThis.removeEventListener("popstate", restoreRoute);
   }, []);
 
-  const open = (route: PortalRoute) => {
+  const open = (route: PortalRoute, authTab: AuthRouteTab = "users") => {
+    if (route === "Auth") setAuthInitialTab(authTab);
     setSelected(route);
     setCreateOpen(false);
     setMobileNavigationOpen(false);
@@ -291,6 +293,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
           {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Updates", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && (projectCredentialPending || configuration.developerKey === undefined) ? <ProjectCredentialLoading /> : (
             <RoutePanel
               route={selected}
+              authInitialTab={authInitialTab}
               client={client}
               configuration={configuration}
               sqlDraft={sqlDraft}
@@ -512,11 +515,12 @@ function DeveloperAccessScreen({ apiUrl, client, onSignedIn }: {
 
 function RoutePanel(props: {
   readonly route: PortalRoute;
+  readonly authInitialTab: AuthRouteTab;
   readonly client: FFDBClient;
   readonly configuration: PortalConfiguration;
   readonly sqlDraft: string;
   onSqlDraft(value: string): void;
-  onOpen(value: PortalRoute): void;
+  onOpen(value: PortalRoute, authTab?: AuthRouteTab): void;
   onNotice(value: string): void;
   onConfiguration(value: PortalConfiguration): void;
   onSetupRequired(): void;
@@ -526,14 +530,14 @@ function RoutePanel(props: {
 }) {
   switch (props.route) {
     case "Overview": return <ProductionOverviewPanel client={props.client} configuration={props.configuration} onNavigate={props.onOpen} />;
-    case "Connect": return <ConnectPanel configuration={props.configuration} onNotice={props.onNotice} onOpenAuth={() => props.onOpen("Auth")} />;
+    case "Connect": return <ConnectPanel configuration={props.configuration} onNotice={props.onNotice} onOpenAuth={() => props.onOpen("Auth", "policy")} />;
     case "Projects": return <ProductionWorkspacePanel view="projects" client={props.client} configuration={props.configuration} onConfiguration={props.onConfiguration} onNotice={props.onNotice} onNavigate={props.onOpen} onSetupRequired={props.onSetupRequired} />;
     case "Members": return <ProductionWorkspacePanel view="members" client={props.client} configuration={props.configuration} onConfiguration={props.onConfiguration} onNotice={props.onNotice} onNavigate={props.onOpen} onSetupRequired={props.onSetupRequired} />;
     case "SQL Editor": return <SqlEditorPanel client={props.client} sql={props.sqlDraft} onSqlChange={props.onSqlDraft} />;
     case "Migrations": return <MigrationsPanel client={props.client} />;
     case "Database": return <PolishedDatabasePanel client={props.client} onOpenMigrations={() => props.onOpen("Migrations")} />;
     case "Policies": return <ProductionPoliciesPanel client={props.client} onEdit={(sql) => { props.onSqlDraft(sql); props.onOpen("SQL Editor"); }} />;
-    case "Auth": return <AuthRoute client={props.client} onNotice={props.onNotice} />;
+    case "Auth": return <AuthRoute client={props.client} initialTab={props.authInitialTab} onNotice={props.onNotice} />;
     case "Storage": return <ProductionStoragePanel client={props.client} onManageSession={() => props.onOpen("Auth")} />;
     case "Sync": return <SyncRoute client={props.client} onManageSession={() => props.onOpen("Auth")} onNotice={props.onNotice} />;
     case "Email": return <ProductionEmailPanel client={props.client} />;
