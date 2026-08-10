@@ -85,5 +85,7 @@ test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640
 test "$(stat -c '%a' /etc/ffdb/Caddyfile)" = 640
 ! grep -F -q 'example.com' /etc/ffdb/Caddyfile
+grep -F -q 'handle @metrics {' /etc/ffdb/Caddyfile
+grep -F -q 'respond 404' /etc/ffdb/Caddyfile
 grep -F -q 'enable --now ffdb-api.service ffdb-sync-worker.service' "$command_log"
 grep -F -q 'enable --now ffdb-gateway.service' "$command_log"

@@ -1,5 +1,19 @@
 import { BrowserDeveloperSessionStore, BrowserSessionStore, FFDBClient } from "@ffdb/client";
 
+const PORTAL_PROJECT_CREDENTIAL_TTL_MS = 12 * 60 * 60 * 1_000;
+const PORTAL_PROJECT_SCOPES = [
+  "database_query",
+  "database_migrate",
+  "database_schema",
+  "auth_manage",
+  "storage_manage",
+  "email_manage",
+  "commerce_manage",
+  "keys_rotate",
+  "backups_manage",
+  "logs_read",
+] as const;
+
 export interface PortalConfiguration {
   readonly apiUrl: string;
   readonly instanceName?: string | undefined;
@@ -53,6 +67,30 @@ export function createPortalClient(configuration: PortalConfiguration): FFDBClie
     sessionStore: new BrowserSessionStore(globalThis.sessionStorage, `${portalInstanceNamespace(configuration.apiUrl)}.${configuration.projectId || "platform"}`),
     developerSessionStore: new BrowserDeveloperSessionStore(globalThis.sessionStorage, `${portalInstanceNamespace(configuration.apiUrl)}.developer`),
   });
+}
+
+/** Exchange the signed-in platform session for a short-lived, project-scoped
+ * credential used only by this browser tab. Project API keys remain appropriate
+ * for applications and automation; the portal must not require users to copy a
+ * permanent secret onto every device. */
+export async function issuePortalProjectCredential(client: FFDBClient): Promise<string> {
+  let session = await client.developerSession();
+  if (session === null) throw new Error("Sign in again to open this project.");
+  let now = Date.now();
+  if (session.expires_at_ms <= now + 60_000) {
+    session = await client.refreshDeveloperSession();
+    now = Date.now();
+  }
+  const expiresAt = Math.min(session.expires_at_ms, now + PORTAL_PROJECT_CREDENTIAL_TTL_MS);
+  if (expiresAt <= now + 60_000) {
+    throw new Error("Your account session is about to expire. Sign in again to open this project.");
+  }
+  const credential = await client.createApiKey({
+    name: "portal-session",
+    scopes: PORTAL_PROJECT_SCOPES,
+    expires_at_ms: expiresAt,
+  });
+  return credential.secret;
 }
 
 export function persistPortalProject(projectId: string, developerKey?: string, organizationName?: string, organizationId?: string, projectName?: string, apiUrl?: string): void {

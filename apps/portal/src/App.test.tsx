@@ -74,6 +74,54 @@ describe("portal backend integration", () => {
     await expect(query?.json()).resolves.toMatchObject({ sql: "SELECT sqlite_version() AS version" });
   });
 
+  it("restores project access from the signed-in account when this browser has no project key", async () => {
+    const calls: Request[] = [];
+    const sessionStore = await signedInDeveloperStore("portal-project-session-restore-test");
+    const client = new FFDBClient({
+      baseUrl: configuration.apiUrl,
+      projectId: configuration.projectId,
+      developerSessionStore: sessionStore,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/v1/instance/setup/status")) return Response.json({ bootstrap_available: false, setup_required: false, platform_byo_available: true, platform_connect_available: true });
+        if (request.url.endsWith("/v1/instance")) return Response.json(administratorStatus("owner"));
+        if (request.url.endsWith("/v1/organizations")) return Response.json([{ id: "org-1", name: "Northstar Labs", slug: "northstar", role: "owner", created_at_ms: 1 }]);
+        if (request.url.endsWith("/v1/organizations/org-1/projects")) return Response.json([{ id: "project-1", organization_id: "org-1", name: "Atlas", slug: "atlas", region: "local", state: "active", schema_version: 1, created_at_ms: 1 }]);
+        if (request.url.endsWith("/api-keys") && request.method === "POST") return Response.json({
+          id: "portal-key-1",
+          name: "portal-session",
+          prefix: "ffdb_dev_portal",
+          secret: "ffdb_dev_portal.session-secret",
+          scopes: ["database_query", "database_schema"],
+          expires_at_ms: Date.now() + 60_000,
+          created_at_ms: Date.now(),
+        }, { status: 201 });
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [] });
+        if (request.url.endsWith("/policies")) return Response.json([]);
+        if (request.url.endsWith("/logs")) return Response.json([]);
+        if (request.url.endsWith("/backups")) return Response.json([]);
+        if (request.url.endsWith("/storage/buckets")) return Response.json([]);
+        return Response.json({ status: "ok", version: 1 });
+      },
+    });
+    const withoutProjectKey = { ...configuration, developerKey: undefined };
+
+    render(<App client={client} configuration={withoutProjectKey} />);
+
+    await screen.findByLabelText("Project status summary");
+    const issuance = calls.find((request) => request.url.endsWith("/api-keys") && request.method === "POST");
+    expect(issuance?.headers.get("authorization")).toBe("Bearer platform-session");
+    await expect(issuance?.json()).resolves.toMatchObject({
+      name: "portal-session",
+      expires_at_ms: expect.any(Number),
+    });
+    expect(calls.find((request) => request.url.endsWith("/schema"))?.headers.get("authorization"))
+      .toBe("Bearer ffdb_dev_portal.session-secret");
+    expect(globalThis.sessionStorage.getItem("ffdb.portal.instance.https%3A%2F%2Fffdb.example.test.project-key.project-1"))
+      .toBe("ffdb_dev_portal.session-secret");
+  });
+
   it("labels unavailable operational data instead of inventing health or activity", async () => {
     const client = new FFDBClient({
       baseUrl: configuration.apiUrl,
@@ -437,6 +485,6 @@ describe("portal backend integration", () => {
 
 async function signedInDeveloperStore(key: string): Promise<MemoryDeveloperSessionStore> {
   const store = new MemoryDeveloperSessionStore(key);
-  await store.set({ session_token: "platform-session", user_id: "developer-1", email: "developer@example.test", expires_at_ms: 99_999 });
+  await store.set({ session_token: "platform-session", user_id: "developer-1", email: "developer@example.test", expires_at_ms: Date.now() + 86_400_000 });
   return store;
 }

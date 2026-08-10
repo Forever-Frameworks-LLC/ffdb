@@ -23,6 +23,7 @@ import {
 } from "@ffdb/client";
 
 import {
+  issuePortalProjectCredential,
   persistPortalProject,
   portalProjectKey,
   type PortalConfiguration,
@@ -580,12 +581,7 @@ export function PolishedWorkspacePanel({
       let issuedKey = portalProjectKey(configuration.apiUrl, project.id);
       if (issuedKey === undefined && (organization.role === "owner" || organization.role === "admin")) {
         try {
-          const key = await client.createApiKey({
-            name: "portal-owner",
-            scopes: ["database_query", "database_migrate", "database_schema", "auth_manage", "storage_manage", "email_manage", "commerce_manage", "keys_rotate", "backups_manage", "logs_read"],
-            expires_at_ms: null,
-          });
-          issuedKey = key.secret;
+          issuedKey = await issuePortalProjectCredential(client);
         } catch {
           issuedKey = undefined;
         }

@@ -395,9 +395,9 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
           <div><dt>Instance</dt><dd>{configuration.instanceName ?? configuration.apiUrl}</dd><small>{configuration.apiUrl}</small></div>
           <div><dt>Organization</dt><dd>{configuration.organizationName}</dd><small>{roleLabel}</small></div>
           <div><dt>Project</dt><dd>{configuration.projectName}</dd><small>{configuration.projectId || "No project selected"}</small></div>
-          <div><dt>Browser project key</dt><dd>{configuration.developerKey === undefined ? "Not configured" : "Configured"}</dd><small>The secret is intentionally hidden</small></div>
+          <div><dt>Browser project session</dt><dd>{configuration.developerKey === undefined ? "Not active" : "Active"}</dd><small>The temporary secret is intentionally hidden</small></div>
         </dl>
-        <div className="aa-local-credential"><LockKeyhole size={16} /><p><strong>Browser-only credential</strong><span>Stored in sessionStorage under this instance and project. Clearing it does not revoke the server-side key.</span></p><button disabled={configuration.developerKey === undefined} type="button" onClick={clearLocalCredential}>Clear local key</button></div>
+        <div className="aa-local-credential"><LockKeyhole size={16} /><p><strong>Temporary portal credential</strong><span>Created from your signed-in account, scoped to this project, stored only in this tab, and limited to 12 hours or the remaining account-session lifetime.</span></p><button disabled={configuration.developerKey === undefined} type="button" onClick={clearLocalCredential}>End project session</button></div>
         {!canManage ? <div className="aa-permission-note"><ShieldCheck size={16} /><span><strong>{roleLabel}</strong>API key and signing-key changes require an organization owner or administrator.</span></div> : null}
         <div className="aa-section-divider" />
         <div className="aa-subsection-heading"><div><h3 id="api-keys-title">Project API keys</h3><p>Search the full key lifecycle without exposing secret material.</p></div><span>{keys.filter((key) => key.revoked_at_ms === null).length} active</span></div>
