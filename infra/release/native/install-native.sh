@@ -37,7 +37,14 @@ for required_command in pg_dump pg_restore sqlite3 curl tar jq cosign flock sha2
 done
 
 install -D -m 0644 "$bundle_dir/systemd/ffdb.sysusers.conf" /etc/sysusers.d/ffdb.conf
-systemd-sysusers /etc/sysusers.d/ffdb.conf
+# Native upgrades run inside a service whose writable paths deliberately do
+# not include the system account databases. The ffdb identity is created by
+# the initial host install, so avoid asking systemd-sysusers to lock or rewrite
+# those protected files when both records already exist.
+if ! getent passwd ffdb >/dev/null 2>&1 \
+  || ! getent group ffdb >/dev/null 2>&1; then
+  systemd-sysusers /etc/sysusers.d/ffdb.conf
+fi
 install -D -m 0644 "$bundle_dir/systemd/ffdb.tmpfiles.conf" /etc/tmpfiles.d/ffdb.conf
 # The state root is a trust boundary: services own their dedicated children,
 # while root owns the parent and updater paths. Normalize upgrades from older
@@ -110,6 +117,19 @@ for unit in ffdb-api.service ffdb-sync-worker.service ffdb-gateway.service \
   ln -s "$current_link/systemd/$unit" "$unit_tmp"
   mv -Tf "$unit_tmp" "/etc/systemd/system/$unit"
 done
+
+# Remove only the exact FFDB compatibility override used to repair updater
+# releases whose RestrictSUIDSGID filter blocked GNU tar's openat2 calls. The
+# fixed release unit no longer needs the override; unrelated administrator
+# drop-ins remain untouched.
+updater_compat_dropin=/etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+if [ -f "$updater_compat_dropin" ] \
+  && [ "$(wc -l < "$updater_compat_dropin" | tr -d ' ')" = 2 ] \
+  && [ "$(sed -n '1p' "$updater_compat_dropin")" = '[Service]' ] \
+  && [ "$(sed -n '2p' "$updater_compat_dropin")" = 'RestrictSUIDSGID=false' ]; then
+  rm -f "$updater_compat_dropin"
+  rmdir /etc/systemd/system/ffdb-update-agent.service.d 2>/dev/null || true
+fi
 
 for binary in ffdb-api ffdb-database-worker ffdb-sync-worker; do
   link_tmp=/usr/local/bin/.$binary.$$

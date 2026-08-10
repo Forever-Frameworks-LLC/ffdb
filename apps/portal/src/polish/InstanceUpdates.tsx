@@ -83,7 +83,7 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
         if (!current) return;
         setJob(next);
         setReconnecting(false);
-        setError(next.state === "failed" ? next.message || "The host operation failed." : null);
+        setError(null);
         if (isActiveJob(next)) {
           timer = globalThis.setTimeout(() => void poll(), 1_500);
           return;
@@ -253,9 +253,15 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
 
 function JobProgress({ job, reconnecting }: { readonly job: HostUpdateJob; readonly reconnecting: boolean }) {
   const terminal = !isActiveJob(job);
+  const failure = job.state === "failed" ? jobFailurePresentation(job) : null;
   return <section className={`update-job update-job--${job.state}`} aria-live="polite" aria-label="Host update progress">
     <span className="update-job-icon">{job.state === "succeeded" ? <Icon name="check" size={18} /> : job.state === "failed" ? "!" : <span className="access-spinner" />}</span>
-    <div><span>{operationLabel(job.operation)} · {phaseLabel(job.phase)}</span><strong>{reconnecting ? "Reconnecting to FFDB…" : job.message || jobSummary(job)}</strong><p>{reconnecting ? "The gateway can remain available while the API restarts. This page will resume automatically." : terminal ? `Finished ${formatTimestamp(job.updated_at_ms)}.` : "You can leave this page; the root-owned updater continues independently."}</p></div>
+    <div>
+      <span>{operationLabel(job.operation)} · {phaseLabel(job.phase)}</span>
+      <strong>{reconnecting ? "Reconnecting to FFDB…" : failure?.title ?? (job.message || jobSummary(job))}</strong>
+      <p>{reconnecting ? "The gateway can remain available while the API restarts. This page will resume automatically." : failure?.guidance ?? (terminal ? `Finished ${formatTimestamp(job.updated_at_ms)}.` : "You can leave this page; the root-owned updater continues independently.")}</p>
+      {failure === null ? null : <details className="update-job-details"><summary>Technical details</summary><dl><div><dt>Message</dt><dd>{failure.detail}</dd></div><div><dt>Error code</dt><dd><code>{failure.code}</code></dd></div>{job.backup_path === null ? null : <div><dt>Backup</dt><dd><code>{job.backup_path}</code></dd></div>}<div><dt>Finished</dt><dd>{formatTimestamp(job.updated_at_ms)}</dd></div></dl></details>}
+    </div>
     <span className="update-job-state">{reconnecting ? "Reconnecting" : capitalize(job.state)}</span>
   </section>;
 }
@@ -335,6 +341,81 @@ function updateErrorMessage(cause: unknown): string {
     return cause.message;
   }
   return cause instanceof Error ? cause.message : "The host update request could not be completed.";
+}
+
+interface JobFailurePresentation {
+  readonly title: string;
+  readonly guidance: string;
+  readonly detail: string;
+  readonly code: string;
+}
+
+function jobFailurePresentation(job: HostUpdateJob): JobFailurePresentation {
+  const normalized = normalizeUpdaterFailure(job.message, job.error_code);
+  const extractionFailure = normalized.code === "updater_sandbox_incompatible"
+    || /verified release extraction failed|verified release could not be extracted/iu.test(normalized.message);
+  if (extractionFailure) {
+    return {
+      title: "The updater sandbox blocked release extraction",
+      guidance: "FFDB kept the installed release active and preserved the pre-update backup. Apply the updater compatibility repair before retrying.",
+      detail: normalized.message,
+      code: normalized.code,
+    };
+  }
+  if (normalized.code === "extraction_failed") {
+    return {
+      title: "The verified release could not be unpacked",
+      guidance: "The installed release remains active. Review the host storage and updater details before retrying.",
+      detail: normalized.message,
+      code: normalized.code,
+    };
+  }
+  if (normalized.code === "signature_verification_failed") {
+    return {
+      title: "Release verification failed",
+      guidance: "Nothing was installed. Check the release channel and signature details before trying again.",
+      detail: normalized.message,
+      code: normalized.code,
+    };
+  }
+  if (normalized.code === "backup_failed") {
+    return {
+      title: "The safety backup could not be created",
+      guidance: "FFDB stopped before changing the installed release. Resolve the backup issue, then retry.",
+      detail: normalized.message,
+      code: normalized.code,
+    };
+  }
+  if (normalized.code === "health_check_failed") {
+    return {
+      title: "The new release did not pass health checks",
+      guidance: "FFDB reactivated the previous release. Review the health-check details before retrying.",
+      detail: normalized.message,
+      code: normalized.code,
+    };
+  }
+  return {
+    title: normalized.message || "The host operation failed",
+    guidance: job.retryable ? "The installed release remains available. Review the details, then try again." : "The installed release remains available. Review the technical details before retrying.",
+    detail: normalized.message || "No additional diagnostic message was provided.",
+    code: normalized.code,
+  };
+}
+
+function normalizeUpdaterFailure(message: string, fallbackCode: string | null): { readonly message: string; readonly code: string } {
+  const fallback = { message: message.trim(), code: fallbackCode ?? "internal" };
+  if (!message.trim().startsWith("{")) return fallback;
+  try {
+    const parsed = JSON.parse(message) as unknown;
+    if (parsed === null || typeof parsed !== "object") return fallback;
+    const candidate = parsed as { readonly message?: unknown; readonly code?: unknown };
+    return {
+      message: typeof candidate.message === "string" && candidate.message.trim().length > 0 ? candidate.message.trim() : fallback.message,
+      code: typeof candidate.code === "string" && candidate.code.trim().length > 0 ? candidate.code.trim() : fallback.code,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 function settingsEqual(left: HostUpdateSettings, right: HostUpdateSettings): boolean {

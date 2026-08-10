@@ -40,7 +40,9 @@ printf '%s\n' "$*" >> "${FFDB_TEST_COMMAND_LOG:?}"
 EOF
 cat > "$fake_bin/systemd-sysusers" <<'EOF'
 #!/bin/sh
-exit 0
+set -eu
+printf '%s\n' "systemd-sysusers $*" >> "${FFDB_TEST_COMMAND_LOG:?}"
+exit 99
 EOF
 cat > "$fake_bin/systemd-tmpfiles" <<'EOF'
 #!/bin/sh
@@ -85,6 +87,13 @@ PATH="$fake_bin:$PATH" \
   "$bundle/install-native.sh" --env-file "$test_root/ffdb.env"
 
 test ! -f /opt/ffdb/releases/0.3.0/.signature-verified
+! grep -F -q 'systemd-sysusers ' "$command_log"
+
+install -d -m 0755 /etc/systemd/system/ffdb-update-agent.service.d
+printf '%s\n' '[Service]' 'RestrictSUIDSGID=false' \
+  > /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+printf '%s\n' '[Service]' 'LogLevelMax=notice' \
+  > /etc/systemd/system/ffdb-update-agent.service.d/administrator.conf
 
 FFDB_TEST_COMMAND_LOG=$command_log \
 PATH="$fake_bin:$PATH" \
@@ -102,6 +111,9 @@ grep -F -q '/releases/tag/v0.3.0' /opt/ffdb/releases/0.3.0/.release-url
 test -f /etc/systemd/system/ffdb-gateway.service
 test -f /etc/systemd/system/ffdb-update-agent.path
 test -f /etc/systemd/system/ffdb-update-check.timer
+test ! -e /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+test -f /etc/systemd/system/ffdb-update-agent.service.d/administrator.conf
+! grep -Eq '^d /var/www/ffdb([ /]|$)' /etc/tmpfiles.d/ffdb.conf
 test -f /etc/ffdb/Caddyfile
 test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640

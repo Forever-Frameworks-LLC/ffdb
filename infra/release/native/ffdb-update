@@ -23,6 +23,7 @@ CADDY_CONFIG=/etc/ffdb/Caddyfile
 SYSTEMCTL=systemctl
 CURL=curl
 COSIGN=cosign
+ERROR_ENVELOPE_FILE=
 
 # Tests may relocate state and provide deterministic command fakes. These
 # overrides are ignored by installed systemd units and cannot alter production
@@ -55,8 +56,13 @@ fail() {
   retryable=$2
   shift 2
   if command -v jq >/dev/null 2>&1; then
-    jq -cn --arg code "$code" --arg message "$*" --argjson retryable "$retryable" \
-      '{code:$code,message:$message,retryable:$retryable}' >&2
+    if [ -n "$ERROR_ENVELOPE_FILE" ]; then
+      jq -cn --arg code "$code" --arg message "$*" --argjson retryable "$retryable" \
+        '{code:$code,message:$message,retryable:$retryable}' > "$ERROR_ENVELOPE_FILE"
+    else
+      jq -cn --arg code "$code" --arg message "$*" --argjson retryable "$retryable" \
+        '{code:$code,message:$message,retryable:$retryable}' >&2
+    fi
   else
     printf '%s\n' "ffdb-update: error: $*" >&2
   fi
@@ -585,6 +591,12 @@ run_check() {
   fi
 }
 
+archive_modes_safe() {
+  awk '
+    substr($1,4,1) ~ /[sS]/ || substr($1,7,1) ~ /[sS]/ {bad=1}
+    END {exit bad}'
+}
+
 safe_archive() {
   archive=$1
   prefix=$2
@@ -593,6 +605,8 @@ safe_archive() {
     END {exit bad}' || die "native archive contains an unsafe path"
   tar -tvzf "$archive" | awk 'substr($1,1,1)!="-" && substr($1,1,1)!="d" {bad=1} END {exit bad}' \
     || die "native archive contains a link or special file"
+  tar -tvzf "$archive" | archive_modes_safe \
+    || die "native archive contains a SUID or SGID mode"
 }
 
 restart_and_wait() {
@@ -683,7 +697,8 @@ run_install() {
   extraction=$CACHE_ROOT/.extract-$id
   rm -rf "$extraction"; install -d -m 0700 "$extraction"
   safe_archive "$verified/$asset" "ffdb-native-$version"
-  tar -xzf "$verified/$asset" -C "$extraction" || die "verified release extraction failed"
+  tar --no-same-owner --no-same-permissions -xzf "$verified/$asset" -C "$extraction" \
+    || fail extraction_failed false "The verified release could not be extracted"
   bundle=$extraction/ffdb-native-$version
   [ -x "$bundle/install-native.sh" ] || die "verified archive is missing installer"
   job_patch "$id" running installing "Installing the verified release side by side" "" false "$previous" "$version" "$previous" "$backup"
@@ -735,6 +750,38 @@ run_configure() {
   job_patch "$id" succeeded complete "Updater settings saved" "" false "$(installed_version || true)"
 }
 
+record_job_failure() {
+  id=$1
+  error_file=$2
+  diagnostic_file=$3
+  message=$(jq -r '.message // empty' "$error_file" 2>/dev/null || true)
+  code=$(jq -r '.code // empty' "$error_file" 2>/dev/null || true)
+  retryable=$(jq -r '.retryable // false' "$error_file" 2>/dev/null || printf false)
+  [ -n "$message" ] || message=$(tail -n 1 "$diagnostic_file" | sed 's/^ffdb-update: error: //')
+  [ -n "$message" ] || message="Update operation failed"
+  [ -n "$code" ] || code=internal
+  if grep -F -q 'Function not implemented' "$diagnostic_file" 2>/dev/null; then
+    message="The updater sandbox blocked verified release extraction on this host"
+    code=updater_sandbox_incompatible
+    retryable=false
+  elif [ "$code" = invalid_request ] || [ "$code" = internal ]; then
+    case "$message" in
+      *signature*|*SHA-256*) code=signature_verification_failed ;;
+      *backup*) code=backup_failed ;;
+      *extract*) code=extraction_failed ;;
+      *incompatible*|*compatibility*) code=incompatible_rollback ;;
+      *readiness*) code=health_check_failed; retryable=true ;;
+      *download*|*curl*|*network*) code=install_failed; retryable=true ;;
+      *invalid*) code=invalid_request ;;
+    esac
+  fi
+  say "job $id failed: $message ($code)"
+  if [ -s "$diagnostic_file" ]; then
+    sed -n '1,20{s/^/ffdb-update: detail: /;p;}' "$diagnostic_file" >&2
+  fi
+  job_patch "$id" failed failed "$message" "$code" "$retryable" "$(installed_version || true)"
+}
+
 process_one() {
   request=$1
   id=$(basename "$request" .json)
@@ -762,8 +809,11 @@ process_one() {
   chown --no-dereference root:ffdb "$job_file"; chmod 0640 "$job_file"
   active_tmp=$UPDATER_ROOT/.active-job.$$
   printf '%s\n' "$id" > "$active_tmp"; chown root:ffdb "$active_tmp" 2>/dev/null || true; chmod 0640 "$active_tmp"; mv "$active_tmp" "$UPDATER_ROOT/active-job"
-  error_file=$UPDATER_ROOT/error-$id
+  error_file=$UPDATER_ROOT/error-$id.json
+  diagnostic_file=$UPDATER_ROOT/diagnostic-$id.log
+  rm -f "$error_file" "$diagnostic_file"
   if (
+    ERROR_ENVELOPE_FILE=$error_file
     case "$operation" in
       check) [ -z "$requested" ] && run_check "$id" ;;
       install) valid_version "$requested" && run_install "$id" "$requested" ;;
@@ -771,25 +821,12 @@ process_one() {
       configure) [ -n "$requested" ] && run_configure "$id" "$requested" ;;
       *) false ;;
     esac
-  ) 2>"$error_file"; then
+  ) 2>"$diagnostic_file"; then
     :
   else
-    message=$(jq -r '.message // empty' "$error_file" 2>/dev/null || true)
-    [ -n "$message" ] || message=$(tail -n 1 "$error_file" | sed 's/^ffdb-update: error: //')
-    [ -n "$message" ] || message="Update operation failed"
-    code=internal
-    retryable=false
-    case "$message" in
-      *signature*|*SHA-256*) code=signature_verification_failed ;;
-      *backup*) code=backup_failed ;;
-      *incompatible*|*compatibility*) code=incompatible_rollback ;;
-      *readiness*) code=health_check_failed; retryable=true ;;
-      *download*|*curl*|*network*) code=install_failed; retryable=true ;;
-      *invalid*) code=invalid_request ;;
-    esac
-    job_patch "$id" failed failed "$message" "$code" "$retryable" "$(installed_version || true)"
+    record_job_failure "$id" "$error_file" "$diagnostic_file"
   fi
-  rm -f "$processing" "$error_file" "$UPDATER_ROOT/active-job"
+  rm -f "$processing" "$error_file" "$diagnostic_file" "$UPDATER_ROOT/active-job"
 }
 
 process_requests() {

@@ -91,6 +91,15 @@
 .update-job--succeeded .update-job-icon { color: var(--theme-primary); }
 .update-job > div > span { color: var(--theme-muted-foreground); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .update-job-state { flex: 0 0 auto; padding: 4px 8px; color: var(--theme-muted-foreground); background: var(--theme-muted); border: 1px solid var(--theme-border); border-radius: 999px; font-size: 9px; font-weight: 700; }
+.update-job-details { margin-top: 9px; color: var(--theme-muted-foreground); font-size: 10px; }
+.update-job-details summary { width: fit-content; color: var(--foreground); font-weight: 650; cursor: pointer; }
+.update-job-details dl { max-width: 760px; margin: 9px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--theme-border); border-radius: 7px; overflow: hidden; }
+.update-job-details dl > div { min-width: 0; padding: 8px 10px; }
+.update-job-details dl > div:nth-child(even) { border-left: 1px solid var(--theme-border); }
+.update-job-details dl > div:nth-child(n + 3) { border-top: 1px solid var(--theme-border); }
+.update-job-details dt { color: var(--theme-muted-foreground); font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; }
+.update-job-details dd { margin: 3px 0 0; overflow-wrap: anywhere; color: var(--foreground); line-height: 1.4; }
+.update-job-details code { font-size: 9px; }
 
 .updates-release-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--card); border: 1px solid var(--theme-border); border-radius: 10px; overflow: hidden; }
 .update-release-card { min-width: 0; min-height: 150px; padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-content: start; column-gap: 11px; }
@@ -197,6 +206,9 @@
   .update-release-card + .update-release-card,
   .update-release-card:nth-child(3) { grid-column: auto; border-top: 1px solid var(--theme-border); border-left: 0; }
   .update-window-fields { grid-template-columns: minmax(0, 1fr); }
+  .update-job-details dl { grid-template-columns: minmax(0, 1fr); }
+  .update-job-details dl > div:nth-child(even) { border-left: 0; }
+  .update-job-details dl > div + div { border-top: 1px solid var(--theme-border); }
   .update-window-fields .update-field + .update-field { border-left: 0; }
   .updates-settings-actions { align-items: stretch; flex-direction: column; }
   .updates-settings-actions button { width: 100%; }

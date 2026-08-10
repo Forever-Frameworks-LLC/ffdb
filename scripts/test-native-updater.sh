@@ -12,6 +12,10 @@ grep -F -q 'Environment=HOME=/var/cache/ffdb-updater' "$agent_unit"
 grep -F -q 'ProtectHome=true' "$agent_unit"
 grep -F -q 'ReadWritePaths=' "$agent_unit"
 grep -F -q '/var/cache/ffdb-updater' "$agent_unit"
+! grep -F -q 'RestrictSUIDSGID=true' "$agent_unit"
+grep -F -q 'GNU tar uses openat2' "$agent_unit"
+grep -F -q -- 'tar --no-same-owner --no-same-permissions -xzf' \
+  "$ROOT_DIR/infra/release/native/ffdb-update"
 
 release=$test_root/opt/ffdb/releases/0.3.2
 jobs=$test_root/var/lib/ffdb/updater/jobs
@@ -100,6 +104,50 @@ FFDB_UPDATER_TEST_ROOT=$test_root
 FFDB_UPDATER_LIBRARY_MODE=1
 export FFDB_UPDATER_TEST_MODE FFDB_UPDATER_TEST_ROOT FFDB_UPDATER_LIBRARY_MODE
 . "$ROOT_DIR/infra/release/native/ffdb-update"
+
+# The updater replaces RestrictSUIDSGID's security intent by rejecting
+# privileged archive modes before GNU tar runs. This allows tar's openat2-based
+# extraction while preventing a signed bundle from creating SUID/SGID entries.
+archive_source=$test_root/archive-source/ffdb-native-0.3.3
+install -d "$archive_source"
+printf '%s\n' 0.3.3 > "$archive_source/VERSION"
+valid_archive=$test_root/valid-native.tar.gz
+tar -czf "$valid_archive" -C "$test_root/archive-source" ffdb-native-0.3.3
+safe_archive "$valid_archive" ffdb-native-0.3.3
+if printf '%s\n' 'drwxr-sr-x root/root 0 2026-08-10 12:00 ffdb-native-0.3.3/' \
+  | archive_modes_safe; then
+  printf '%s\n' "native updater accepted an SGID archive entry" >&2
+  exit 1
+fi
+printf '%s\n' '-rwxr-xr-x root/root 8 2026-08-10 12:00 ffdb-native-0.3.3/install-native.sh' \
+  | archive_modes_safe
+
+# Command stderr and the structured failure envelope stay separate. The job
+# receives a stable code and human message while the bounded command detail is
+# retained in the service log instead of becoming nested JSON.
+failure_envelope=$test_root/failure-envelope.json
+failure_diagnostic=$test_root/failure-diagnostic.log
+failure_log=$test_root/failure-service.log
+if (
+  ERROR_ENVELOPE_FILE=$failure_envelope
+  printf '%s\n' 'tar: release: Cannot open: Function not implemented' >&2
+  fail extraction_failed false "The verified release could not be extracted"
+) 2> "$failure_diagnostic"; then
+  printf '%s\n' "native updater failure fixture unexpectedly succeeded" >&2
+  exit 1
+fi
+record_job_failure "$check_id" "$failure_envelope" "$failure_diagnostic" \
+  2> "$failure_log"
+jq . "$jobs/$check_id.json" > "$test_root/normalized-failure-job.json"
+jq -e '
+  .state == "failed"
+  and .message == "The updater sandbox blocked verified release extraction on this host"
+  and .error_code == "updater_sandbox_incompatible"
+  and .retryable == false
+' "$test_root/normalized-failure-job.json" >/dev/null
+! grep -F -q '{"code"' "$test_root/normalized-failure-job.json"
+grep -F -q 'tar: release: Cannot open: Function not implemented' "$failure_log"
+
 readiness_attempt=0
 restart_and_wait() {
   readiness_attempt=$((readiness_attempt + 1))
