@@ -396,13 +396,7 @@ fn map_auth_credential_error(error: ffdb_auth::CredentialVerificationError) -> C
 }
 
 pub fn router(state: ApiState) -> Router {
-    let instance_origins = Arc::new(
-        state
-            .cors_allowed_origins
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>(),
-    );
+    let instance_origins = Arc::new(state.cors_allowed_origins.to_vec());
     let project_auth = state.project_auth.clone();
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::async_predicate(
