@@ -225,26 +225,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          resolve() {
-            source_image=$1
-            inspection=$(docker buildx imagetools inspect "$source_image")
-            for platform in linux/amd64 linux/arm64; do
-              printf '%s\n' "$inspection" | grep -Eq "Platform:[[:space:]]+$platform([[:space:]]|$)" || {
-                echo "$source_image does not publish $platform" >&2
-                exit 1
-              }
-            done
-            digest=$(printf '%s\n' "$inspection" | awk '$1 == "Digest:" {print $2; exit}')
-            case "$digest" in
-              sha256:[0-9a-f][0-9a-f]*) ;;
-              *) echo "could not resolve manifest digest for $source_image" >&2; exit 1 ;;
-            esac
-            printf '%s@%s\n' "$source_image" "$digest"
-          }
+          postgres_image=$(scripts/resolve-release-image.sh postgres:17.5-alpine)
+          minio_image=$(scripts/resolve-release-image.sh minio/minio:RELEASE.2025-04-22T22-12-26Z)
+          mailpit_image=$(scripts/resolve-release-image.sh axllent/mailpit:v1.27.8)
           {
-            printf 'FFDB_POSTGRES_IMAGE=%s\n' "$(resolve postgres:17.5-alpine)"
-            printf 'FFDB_MINIO_IMAGE=%s\n' "$(resolve minio/minio:RELEASE.2025-04-22T22-12-26Z)"
-            printf 'FFDB_MAILPIT_IMAGE=%s\n' "$(resolve axllent/mailpit:v1.27.8)"
+            printf 'FFDB_POSTGRES_IMAGE=%s\n' "$postgres_image"
+            printf 'FFDB_MINIO_IMAGE=%s\n' "$minio_image"
+            printf 'FFDB_MAILPIT_IMAGE=%s\n' "$mailpit_image"
           } >> "$GITHUB_ENV"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Build checksum-pinned release assets

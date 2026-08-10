@@ -170,6 +170,8 @@ grep -F -q 'file: infra/docker/Dockerfile.portal.release' \
   "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q "printf 'FFDB_POSTGRES_IMAGE=%s\\n'" \
   "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'postgres_image=$(scripts/resolve-release-image.sh postgres:17.5-alpine)' \
+  "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q '} >> "$GITHUB_ENV"' "$ROOT_DIR/.github/workflows/release.yml"
 if grep -F -q 'needs.images.outputs.postgres_image' \
   "$ROOT_DIR/.github/workflows/release.yml"; then

@@ -145,6 +145,7 @@ release-check:
 		scripts/build-sdk-packages.sh scripts/check-public-distribution.sh \
 		scripts/bootstrap-npm-packages.sh \
 		scripts/build-native-bundle.sh scripts/prepare-release-image-inputs.sh \
+		scripts/resolve-release-image.sh scripts/test-release-image-resolution.sh \
 		scripts/test-release-distribution.sh \
 		scripts/test-host-backup.sh scripts/test-host-backup-compose.sh \
 		scripts/test-native-install-linux.sh \
@@ -154,6 +155,7 @@ release-check:
 	done
 	scripts/test-host-backup.sh
 	scripts/test-host-backup-compose.sh
+	scripts/test-release-image-resolution.sh
 	scripts/test-release-distribution.sh
 
 release-bundle:
