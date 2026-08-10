@@ -1,6 +1,9 @@
 .ow-root,
-.ow-workspace {
+.ow-workspace,
+.ow-card,
+.ow-modal-backdrop {
   --ow-card: var(--card, var(--surface, #fff));
+  --ow-dialog: var(--popover, var(--card, var(--surface, #fff)));
   --ow-foreground: var(--card-foreground, var(--text, #101828));
   --ow-muted: var(--theme-muted-foreground, var(--muted, #667085));
   --ow-border: var(--theme-border, var(--rule, #d6dce5));
@@ -220,8 +223,8 @@
 .ow-button:hover { background: var(--ow-subtle); border-color: color-mix(in oklab, var(--ow-primary) 45%, var(--ow-border)); }
 .ow-button:active { transform: translateY(1px); }
 .ow-button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.ow-button-primary { color: var(--ow-primary-foreground); background: var(--ow-primary); border-color: transparent; }
-.ow-button-primary:hover { color: var(--ow-primary-foreground); background: color-mix(in oklab, var(--ow-primary) 90%, black); border-color: transparent; }
+.ow-button-primary { color: var(--ow-primary-foreground); background: var(--ow-primary); border-color: color-mix(in oklab, var(--ow-primary) 72%, var(--ow-foreground)); }
+.ow-button-primary:hover { color: var(--ow-primary-foreground); background: color-mix(in oklab, var(--ow-primary) 90%, black); border-color: color-mix(in oklab, var(--ow-primary) 64%, var(--ow-foreground)); }
 .ow-button-quiet { padding-inline: 7px; color: var(--ow-primary); border-color: transparent; }
 .ow-button-quiet:hover { background: color-mix(in oklab, var(--ow-primary) 9%, transparent); border-color: transparent; }
 .ow-button-danger { color: var(--ow-danger); border-color: color-mix(in oklab, var(--ow-danger) 33%, var(--ow-border)); }
@@ -328,7 +331,7 @@
 .ow-inline-error button { color: inherit; background: transparent; border: 0; cursor: pointer; font-size: 10px; font-weight: 650; }
 
 .ow-modal-backdrop { position: fixed; z-index: 250; inset: 0; padding: 18px; display: grid; place-items: center; background: rgb(0 0 0 / 55%); backdrop-filter: blur(3px); }
-.ow-modal { width: min(100%, 520px); max-height: min(780px, calc(100vh - 36px)); overflow-y: auto; color: var(--ow-foreground); background: var(--ow-card); border: 1px solid var(--ow-border); border-radius: 14px; box-shadow: 0 24px 80px rgb(0 0 0 / 35%); }
+.ow-modal { width: min(100%, 520px); max-height: min(780px, calc(100vh - 36px)); overflow-y: auto; isolation: isolate; color: var(--ow-foreground); background: var(--ow-dialog); border: 1px solid var(--ow-border); border-radius: 14px; box-shadow: 0 24px 80px rgb(0 0 0 / 35%); }
 .ow-modal-heading { min-height: 78px; padding: 17px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--ow-border); }
 .ow-modal-heading > div { min-width: 0; }
 .ow-modal-heading h2 { margin: 3px 0 0; color: var(--ow-foreground); font-size: 17px; font-weight: 610; letter-spacing: -.02em; }
@@ -341,7 +344,7 @@
 .ow-detail-list dt { color: var(--ow-muted); font-size: 10px; }
 .ow-detail-list dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--ow-foreground); font-size: 11px; }
 .ow-detail-list code { font-size: 9px; }
-.ow-modal-actions { min-height: 64px; padding: 13px 18px; display: flex; align-items: center; justify-content: flex-end; gap: 9px; background: var(--ow-subtle); border-top: 1px solid var(--ow-border); }
+.ow-modal-actions { min-height: 64px; padding: 13px 18px; display: flex; align-items: center; justify-content: flex-end; gap: 9px; background: color-mix(in oklab, var(--theme-muted, #e9ecef) 38%, var(--ow-dialog)); border-top: 1px solid var(--ow-border); }
 .ow-form-fields { padding: 18px; display: grid; gap: 15px; }
 .ow-entity-form > .ow-inline-error { margin: 0 18px 18px; }
 .ow-field { display: grid; gap: 6px; color: var(--ow-foreground); font-size: 10px; font-weight: 600; }

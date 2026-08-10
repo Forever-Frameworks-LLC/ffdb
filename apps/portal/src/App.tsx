@@ -25,6 +25,7 @@ import {
 
 import {
   createPortalClient,
+  issuePortalProjectCredential,
   persistPortalInstance,
   persistPortalProject,
   portalProjectKey,
@@ -83,6 +84,9 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
   const [instanceSetup, setInstanceSetup] = useState<Awaited<ReturnType<FFDBClient["instanceSetupStatus"]>> | null | undefined>(undefined);
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null | undefined>(undefined);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [projectCredentialError, setProjectCredentialError] = useState<string | null>(null);
+  const [projectCredentialPending, setProjectCredentialPending] = useState(false);
+  const [projectCredentialRevision, setProjectCredentialRevision] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -122,6 +126,60 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
     );
     return () => { current = false; };
   }, [client, developerAccess, instanceSetup?.setup_required]);
+
+  useEffect(() => {
+    if (
+      developerAccess === null
+      || developerAccess === undefined
+      || instanceSetup?.setup_required === true
+      || configuration.projectId === ""
+      || configuration.developerKey !== undefined
+    ) {
+      setProjectCredentialPending(false);
+      setProjectCredentialError(null);
+      return;
+    }
+    let current = true;
+    const projectId = configuration.projectId;
+    setProjectCredentialPending(true);
+    setProjectCredentialError(null);
+    client.setProjectId(projectId);
+    void issuePortalProjectCredential(client).then(
+      (credential) => {
+        if (!current) return;
+        client.setDeveloperKey(credential);
+        persistPortalProject(
+          projectId,
+          credential,
+          configuration.organizationName,
+          configuration.organizationId,
+          configuration.projectName,
+          configuration.apiUrl,
+        );
+        setConfiguration((value) => value.projectId === projectId
+          ? { ...value, developerKey: credential }
+          : value);
+        setProjectCredentialPending(false);
+      },
+      (cause) => {
+        if (!current) return;
+        setProjectCredentialPending(false);
+        setProjectCredentialError(errorMessage(cause));
+      },
+    );
+    return () => { current = false; };
+  }, [
+    client,
+    configuration.apiUrl,
+    configuration.developerKey,
+    configuration.organizationId,
+    configuration.organizationName,
+    configuration.projectId,
+    configuration.projectName,
+    developerAccess,
+    instanceSetup?.setup_required,
+    projectCredentialRevision,
+  ]);
 
   useEffect(() => {
     const restoreRoute = () => {
@@ -214,7 +272,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
           onNotice={setNotice}
         />
         <main className={selected === "SQL Editor" || selected === "Database" || selected === "Observability" || selected === "Migrations" ? "main-content main-content--workbench" : "main-content"}>
-          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : (
+          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && (projectCredentialPending || configuration.developerKey === undefined) ? <ProjectCredentialLoading /> : (
             <RoutePanel
               route={selected}
               client={client}
@@ -251,6 +309,14 @@ function PortalAccessLoading() {
       </div>
     </main>
   );
+}
+
+function ProjectCredentialLoading() {
+  return <ResourceState resource={{ status: "loading" }} title="Opening secure project session" />;
+}
+
+function ProjectCredentialUnavailable({ detail, onRetry }: { readonly detail: string; onRetry(): void }) {
+  return <section className="management-panel setup-panel" role="alert"><Icon name="shield" size={28} /><h2>Project access could not be established</h2><p>{detail}</p><button type="button" onClick={onRetry}><Icon name="sync" size={15} />Try again</button></section>;
 }
 
 function FirstRunOwnerScreen({ apiUrl, client, onBootstrapped }: {
@@ -491,6 +557,22 @@ function isInstanceAdministrationRoute(route: PortalRoute): boolean {
   return route === "Instance" || route === "Instance Billing" || route === "Instance Users";
 }
 
+function requiresProjectCredential(route: PortalRoute): boolean {
+  return ([
+    "Overview",
+    "SQL Editor",
+    "Migrations",
+    "Database",
+    "Policies",
+    "Auth",
+    "Storage",
+    "Sync",
+    "Email",
+    "Activity",
+    "Backups",
+  ] as readonly PortalRoute[]).includes(route);
+}
+
 function isInstanceAdministrator(status: InstanceStatus | null | undefined): status is InstanceStatus {
   return status?.current_user_role === "owner" || status?.current_user_role === "admin";
 }
@@ -629,7 +711,7 @@ function ScopeSelectors({ client, configuration, instanceStatus, onConfiguration
     client.setDeveloperKey(developerKey ?? null);
     persistPortalProject(project.id, undefined, organization?.name, organization?.id, project.name, configuration.apiUrl);
     onConfiguration({ ...configuration, organizationId: organization?.id, organizationName: organization?.name ?? configuration.organizationName, projectId: project.id, projectName: project.name, developerKey });
-    onNotice(developerKey === undefined ? `${project.name} is active; issue a scoped key in Settings` : `${project.name} is now the active project`);
+    onNotice(developerKey === undefined ? `${project.name} is active; opening a secure project session` : `${project.name} is now the active project`);
     if (mobile) closeMobileScope();
   };
 
@@ -1399,8 +1481,7 @@ function WorkspacePanel({ view, client, configuration, onConfiguration, onNotice
     let issuedKey = portalProjectKey(configuration.apiUrl, project.id);
     if (issuedKey === undefined) {
       try {
-        const key = await client.createApiKey({ name: "portal-owner", scopes: ["database_query", "database_migrate", "database_schema", "auth_manage", "storage_manage", "email_manage", "commerce_manage", "keys_rotate", "backups_manage", "logs_read"], expires_at_ms: null });
-        issuedKey = key.secret;
+        issuedKey = await issuePortalProjectCredential(client);
       } catch {
         issuedKey = undefined;
       }
@@ -1408,7 +1489,7 @@ function WorkspacePanel({ view, client, configuration, onConfiguration, onNotice
     client.setDeveloperKey(issuedKey ?? null);
     persistPortalProject(project.id, issuedKey, organizationNameValue, organizationId, project.name, configuration.apiUrl);
     onConfiguration({ ...configuration, organizationId, organizationName: organizationNameValue, projectId: project.id, projectName: project.name, developerKey: issuedKey });
-    onNotice(issuedKey === undefined ? `${project.name} is active; issue a project API key from Settings for data operations` : `${project.name} is ready with a scoped portal key`);
+    onNotice(issuedKey === undefined ? `${project.name} is active; opening a secure project session` : `${project.name} is ready with a temporary portal credential`);
   };
 
   const createProject = async (event: FormEvent) => {

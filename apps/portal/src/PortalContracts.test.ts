@@ -161,6 +161,14 @@ describe("portal route/action coverage matrix", () => {
     expect(overviewCss).toContain(".ow-project-workspace .ow-action-button:nth-child(odd):last-child { grid-column: 1 / -1; border-right: 0; }");
   });
 
+  it("keeps standalone workspace creation dialogs opaque with visible actions", () => {
+    expect(overviewCss).toContain(".ow-modal-backdrop {\n  --ow-card:");
+    expect(overviewCss).toContain("--ow-dialog: var(--popover, var(--card, var(--surface, #fff)));");
+    expect(overviewCss).toContain("background: var(--ow-dialog);");
+    expect(overviewCss).toContain("background: color-mix(in oklab, var(--theme-muted, #e9ecef) 38%, var(--ow-dialog));");
+    expect(overviewCss).toContain("border-color: color-mix(in oklab, var(--ow-primary) 72%, var(--ow-foreground));");
+  });
+
   it("keeps every semantic table full-width and confines wide schemas to their own scroll region", () => {
     const tableSources = [appSource, overviewSource, databaseSource, observabilitySource, authSource, managedTableSource, polishedTableSource];
     expect(tableSources.reduce((total, source) => total + (source.match(/<table\b/gu)?.length ?? 0), 0)).toBe(14);

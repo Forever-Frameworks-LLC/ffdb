@@ -16,7 +16,9 @@
 	}
 
 	@metrics path /metrics /metrics/*
-	respond @metrics 404
+	handle @metrics {
+		respond 404
+	}
 
 	@api path /v1 /v1/* /healthz /readyz /openapi.json
 	handle @api {

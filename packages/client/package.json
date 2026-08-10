@@ -1,6 +1,6 @@
 {
   "name": "@ffdb/client",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Universal TypeScript client for the self-hosted FFDB Rust API",
   "keywords": ["ffdb", "sqlite", "database", "offline-first", "typescript"],
   "homepage": "https://ffdb.forever-frameworks.com/docs/client",

@@ -1,6 +1,6 @@
 {
   "name": "@ffdb/react-native",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "FFDB secure-session and native SQLite adapter contracts for React Native",
   "keywords": ["ffdb", "react-native", "sqlite", "offline-first", "sync"],
   "homepage": "https://ffdb.forever-frameworks.com/docs/react-native",
