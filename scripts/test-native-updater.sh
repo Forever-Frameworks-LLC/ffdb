@@ -4,6 +4,15 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/ffdb-native-updater.XXXXXX")
 trap 'rm -rf "$test_root"' EXIT HUP INT TERM
+
+# Cosign must be able to initialize its trusted-root cache without exposing the
+# root user's home directory to the privileged updater service.
+agent_unit=$ROOT_DIR/infra/systemd/ffdb-update-agent.service
+grep -F -q 'Environment=HOME=/var/cache/ffdb-updater' "$agent_unit"
+grep -F -q 'ProtectHome=true' "$agent_unit"
+grep -F -q 'ReadWritePaths=' "$agent_unit"
+grep -F -q '/var/cache/ffdb-updater' "$agent_unit"
+
 release=$test_root/opt/ffdb/releases/0.3.2
 jobs=$test_root/var/lib/ffdb/updater/jobs
 requests=$test_root/var/lib/ffdb/update-requests
