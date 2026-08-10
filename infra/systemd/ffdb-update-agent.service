@@ -7,6 +7,10 @@ Wants=network-online.target
 Type=oneshot
 User=root
 Group=root
+# Cosign's bundle verifier initializes its Sigstore trusted-root cache below
+# $HOME. Keep /root hidden by ProtectHome and give only this updater service a
+# dedicated writable cache home inside its existing ReadWritePaths boundary.
+Environment=HOME=/var/cache/ffdb-updater
 ExecStart=/usr/local/bin/ffdb-update process
 PrivateTmp=true
 ProtectHome=true

@@ -1,6 +1,6 @@
 [package]
 name = "ffdb-database-worker"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2024"
 license = "Apache-2.0"
 publish = false
@@ -15,7 +15,7 @@ ffdb-object-storage = { path = "../../crates/object-storage" }
 ffdb-protocol = { path = "../../crates/protocol" }
 ffdb-sql-parser = { path = "../../crates/sql-parser" }
 ffdb-sqlite-runtime = { path = "../../crates/sqlite-runtime" }
-getrandom = "0.3.4"
+getrandom = "0.3.5"
 hex.workspace = true
 hmac = "0.13.0"
 hkdf = "0.13.0"
