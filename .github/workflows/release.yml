@@ -39,7 +39,7 @@ jobs:
         run: make release-check
 
   images:
-    needs: validate
+    needs: [validate, native]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -56,6 +56,15 @@ jobs:
       mailpit_image: ${{ steps.infrastructure.outputs.mailpit_image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: ffdb-native-*
+          path: dist/native
+          merge-multiple: true
+      - name: Prepare architecture-native image inputs
+        run: |
+          scripts/prepare-release-image-inputs.sh \
+            "${{ needs.validate.outputs.version }}" dist/native dist/image-input
       - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - name: Resolve single-host infrastructure image digests
@@ -98,8 +107,10 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
-          file: infra/docker/Dockerfile.rust
+          file: infra/docker/Dockerfile.rust.release
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ needs.validate.outputs.version }}
           push: true
           provenance: mode=max
           sbom: true
@@ -115,7 +126,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
-          file: infra/docker/Dockerfile.portal
+          file: infra/docker/Dockerfile.portal.release
           platforms: linux/amd64,linux/arm64
           push: true
           provenance: mode=max

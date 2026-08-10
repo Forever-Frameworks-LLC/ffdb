@@ -10,3 +10,7 @@ fuzz/target
 **/dist
 **/node_modules
 **/*.tsbuildinfo
+!dist
+dist/*
+!dist/image-input
+!dist/image-input/**
