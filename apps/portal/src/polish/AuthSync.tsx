@@ -37,9 +37,12 @@ import "./auth-sync.css";
 
 export interface AuthRouteProps {
   readonly client: FFDBClient;
+  readonly initialTab?: AuthRouteTab;
   readonly onNotice?: (message: string) => void;
   readonly onSessionChange?: (session: AuthTokenPair | null) => void;
 }
+
+export type AuthRouteTab = "users" | "policy";
 
 export interface SyncRouteProps {
   readonly client: FFDBClient;
@@ -60,12 +63,12 @@ type SyncResult =
 
 const USERS_PER_PAGE = 10;
 
-export function AuthRoute({ client, onNotice, onSessionChange }: AuthRouteProps) {
+export function AuthRoute({ client, initialTab = "users", onNotice, onSessionChange }: AuthRouteProps) {
   const [session, setSession] = useState<Loadable<AuthTokenPair | null>>({ status: "loading" });
   const [settings, setSettings] = useState<Loadable<AuthSettings>>({ status: "loading" });
   const [users, setUsers] = useState<Loadable<readonly AuthUser[]>>({ status: "loading" });
   const [usersRevision, setUsersRevision] = useState(0);
-  const [activeTab, setActiveTab] = useState<"users" | "policy">("users");
+  const [activeTab, setActiveTab] = useState<AuthRouteTab>(initialTab);
   const [sessionDialogEmail, setSessionDialogEmail] = useState<string | null>(null);
 
   useEffect(() => {

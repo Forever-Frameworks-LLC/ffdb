@@ -74,8 +74,6 @@
 .connect-steps li > span { color: var(--theme-primary); font: 650 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .connect-steps strong { font-size: 11px; }
 .connect-steps p { margin: 3px 0 0; color: var(--theme-muted-foreground); font-size: 10px; line-height: 1.5; }
-.connect-inline-code { max-width: 330px; margin-top: 8px; padding: 5px 5px 5px 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--background); }
-.connect-inline-code code { min-width: 0; overflow: hidden; color: var(--foreground); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .connect-footer-note { min-width: 0; padding: 13px 15px; display: flex; align-items: center; gap: 9px; color: var(--theme-muted-foreground); border: 1px solid var(--theme-border); border-radius: 9px; background: color-mix(in oklab, var(--theme-primary) 5%, var(--connect-card)); font-size: 10px; line-height: 1.5; }
 .connect-footer-note > svg:first-child { color: var(--theme-primary); flex: 0 0 auto; }
 .connect-footer-note > svg:last-child { margin-left: auto; flex: 0 0 auto; }

@@ -19,8 +19,7 @@ import {
 import type { PortalConfiguration } from "../config.js";
 import "./connect.css";
 
-const FFDB_VERSION = "0.3.8";
-const LOCAL_EXAMPLE_ORIGIN = "http://127.0.0.1:5180";
+const FFDB_VERSION = "0.3.9";
 
 type RuntimeId = "react" | "expo" | "node";
 
@@ -48,12 +47,60 @@ interface RuntimeGuide {
   readonly trusted: boolean;
 }
 
+interface ReadinessStep {
+  readonly title: string;
+  readonly detail: string;
+}
+
+interface ReadinessGuide {
+  readonly title: string;
+  readonly detail: string;
+  readonly actionLabel?: string;
+  readonly steps: readonly ReadinessStep[];
+}
+
+const runtimeReadinessGuides: Readonly<Record<RuntimeId, ReadinessGuide>> = {
+  react: {
+    title: "Before your first React web request",
+    detail: "Use the addresses your app actually runs on. FFDB does not infer a framework, domain, or local development port.",
+    actionLabel: "Configure web and auth URLs",
+    steps: [
+      { title: "Install the exact SDK release", detail: "Keep the client, React, and sync packages on the same version as this FFDB deployment." },
+      { title: "Copy this project’s public values", detail: "Use the API origin and project ID above. Never add the portal’s project credential to browser code." },
+      { title: "Register each real browser origin", detail: "Add the exact scheme, host, and port shown by every development, preview, and production browser. Web origins never include a path." },
+      { title: "Separate auth and storage URLs", detail: "Register exact verification and password-reset return pages as auth redirects. Signed storage requests may also require the provider’s own CORS allowlist." },
+    ],
+  },
+  expo: {
+    title: "Before your first Expo / native request",
+    detail: "Native apps, Expo Web, and authentication returns use different URL rules. Configure only the surfaces your app actually ships.",
+    actionLabel: "Configure auth and web URLs",
+    steps: [
+      { title: "Install the exact native SDK release", detail: "Keep the client, React, React Native, and sync packages aligned with this FFDB deployment." },
+      { title: "Copy public Expo configuration", detail: "The API origin and project ID are safe in EXPO_PUBLIC_* variables. Developer keys are not." },
+      { title: "Treat native and web networking separately", detail: "iOS and Android API calls do not use browser CORS. Expo Web needs the exact HTTP(S) origin displayed by its browser." },
+      { title: "Choose an auth return strategy", detail: "Native auth currently returns through an allowed HTTPS universal/app link. Custom URI schemes such as my-app:// are not accepted yet." },
+    ],
+  },
+  node: {
+    title: "Before your first Node request",
+    detail: "A trusted Node process connects directly to FFDB. It does not need a browser origin or authentication redirect allowlist.",
+    steps: [
+      { title: "Install the exact SDK release", detail: "Keep the client and sync packages on the same version as this FFDB deployment." },
+      { title: "Store project values server-side", detail: "Load the API origin, project ID, and a least-privilege developer key from a secret manager or ignored environment file." },
+      { title: "No browser URL allowlist required", detail: "Node is not subject to browser CORS. Configure application URLs only for a separate browser or native client that your server supports." },
+      { title: "Use the trusted path for setup", detail: "Apply migrations, create buckets, and run administrative jobs with scoped credentials before end users connect." },
+    ],
+  },
+};
+
 export function ConnectPanel({ configuration, onNotice, onOpenAuth }: ConnectPanelProps) {
   const [runtime, setRuntime] = useState<RuntimeId>("react");
   const [copied, setCopied] = useState<string | null>(null);
   const apiUrl = configuration.apiUrl.replace(/\/$/u, "");
   const guides = runtimeGuides(apiUrl, configuration.projectId);
   const activeGuide = guides.find((guide) => guide.id === runtime) ?? guides[0]!;
+  const readiness = runtimeReadinessGuides[runtime];
 
   const copy = async (id: string, label: string, value: string) => {
     try {
@@ -131,18 +178,15 @@ export function ConnectPanel({ configuration, onNotice, onOpenAuth }: ConnectPan
         </div>
       </section>
 
-      <section className="connect-readiness" aria-labelledby="local-readiness-title">
+      <section className="connect-readiness" aria-labelledby="runtime-readiness-title">
         <div className="connect-readiness__intro">
-          <span className="connect-section-label">Localhost checklist</span>
-          <h2 id="local-readiness-title">From empty folder to first request</h2>
-          <p>The API and object provider have separate browser-origin requirements. This checklist keeps both visible.</p>
-          <button type="button" onClick={onOpenAuth}><KeyRound size={15} /> Open application URLs <ArrowRight size={14} /></button>
+          <span className="connect-section-label">Runtime checklist</span>
+          <h2 id="runtime-readiness-title">{readiness.title}</h2>
+          <p>{readiness.detail}</p>
+          {readiness.actionLabel === undefined ? null : <button type="button" onClick={onOpenAuth}><KeyRound size={15} /> {readiness.actionLabel} <ArrowRight size={14} /></button>}
         </div>
         <ol className="connect-steps">
-          <li><span>01</span><div><strong>Install the exact SDK release</strong><p>Keep client, React, sync, and native packages on the same version as this FFDB deployment.</p></div></li>
-          <li><span>02</span><div><strong>Copy this project’s public values</strong><p>Use the API origin and project ID above. Do not add the portal’s project credential to app code.</p></div></li>
-          <li><span>03</span><div><strong>Allow the browser origin</strong><p>Add it under Auth → Policy → Application URLs. It takes effect immediately; signed uploads and downloads still need the storage provider’s CORS allowlist.</p><div className="connect-inline-code"><code>{LOCAL_EXAMPLE_ORIGIN}</code><CopyControl copied={copied === "localhost-origin"} label="localhost origin" onClick={() => void copy("localhost-origin", "Localhost origin", LOCAL_EXAMPLE_ORIGIN)} /></div></div></li>
-          <li><span>04</span><div><strong>Use a trusted setup path for schema</strong><p>Apply migrations and create buckets from Node or the CLI with a scoped project key, then let end users authenticate normally.</p></div></li>
+          {readiness.steps.map((step, index) => <li key={step.title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{step.title}</strong><p>{step.detail}</p></div></li>)}
         </ol>
       </section>
 
