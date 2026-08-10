@@ -29,6 +29,7 @@ release_one=$test_root/release-0.1.0
 release_two=$test_root/release-0.2.0
 native_inputs=$test_root/native-inputs
 native_output=$test_root/native-output
+image_input=$test_root/image-input
 extra_output=$test_root/extra-output
 install -d "$release_one" "$release_two" "$test_root/fake-bin" \
   "$native_inputs/bin" "$native_inputs/web/docs" "$native_inputs/web/app" \
@@ -44,6 +45,16 @@ SOURCE_DATE_EPOCH=1 "$ROOT_DIR/scripts/build-native-bundle.sh" 0.1.0 amd64 \
   "$native_inputs/bin" "$native_inputs/web" "$native_output"
 SOURCE_DATE_EPOCH=1 "$ROOT_DIR/scripts/build-native-bundle.sh" 0.1.0 arm64 \
   "$native_inputs/bin" "$native_inputs/web" "$native_output"
+"$ROOT_DIR/scripts/prepare-release-image-inputs.sh" 0.1.0 \
+  "$native_output" "$image_input"
+for arch in amd64 arm64; do
+  for binary in ffdb-api ffdb-database-worker ffdb-sync-worker; do
+    test -x "$image_input/runtime/$arch/$binary"
+  done
+done
+for page in index.html docs/index.html app/index.html; do
+  test -f "$image_input/web/$page"
+done
 cp "$native_output"/* "$extra_output/"
 for package in client sync-client react react-native email-components cli; do
   package_root=$test_root/package-$package
@@ -149,6 +160,14 @@ for compose_file in compose.yaml compose.production.yaml \
 done
 grep -F -q '/var/lib/ffdb/metrics' "$ROOT_DIR/infra/docker/Dockerfile.rust"
 grep -E -q 'apt-get install .*sqlite3' "$ROOT_DIR/infra/docker/Dockerfile.rust"
+grep -F -q 'dist/image-input/runtime/${TARGETARCH}/ffdb-api' \
+  "$ROOT_DIR/infra/docker/Dockerfile.rust.release"
+grep -F -q 'dist/image-input/web' "$ROOT_DIR/infra/docker/Dockerfile.portal.release"
+grep -F -q 'needs: [validate, native]' "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'file: infra/docker/Dockerfile.rust.release' \
+  "$ROOT_DIR/.github/workflows/release.yml"
+grep -F -q 'file: infra/docker/Dockerfile.portal.release' \
+  "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q 'Create or resume draft GitHub release' "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q 'gh release create "$GITHUB_REF_NAME"' "$ROOT_DIR/.github/workflows/release.yml"
 grep -F -q -- '--verify-tag' "$ROOT_DIR/.github/workflows/release.yml"

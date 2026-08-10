@@ -144,7 +144,8 @@ release-check:
 		infra/release/native/uninstall-native.sh scripts/build-release-bundle.sh \
 		scripts/build-sdk-packages.sh scripts/check-public-distribution.sh \
 		scripts/bootstrap-npm-packages.sh \
-		scripts/build-native-bundle.sh scripts/test-release-distribution.sh \
+		scripts/build-native-bundle.sh scripts/prepare-release-image-inputs.sh \
+		scripts/test-release-distribution.sh \
 		scripts/test-host-backup.sh scripts/test-host-backup-compose.sh \
 		scripts/test-native-install-linux.sh \
 		scripts/test-native-install-container.sh \
