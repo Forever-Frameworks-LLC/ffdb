@@ -3,6 +3,10 @@ set -eu
 
 test_root=$(mktemp -d /tmp/ffdb-native-install.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT HUP INT TERM
+# Match ffdb-update-agent.service so this test catches files whose modes are
+# accidentally derived from the invoking process rather than assigned by the
+# installer.
+umask 077
 bundle=$test_root/bundle
 fake_bin=$test_root/fake-bin
 command_log=$test_root/commands.log
@@ -88,6 +92,9 @@ PATH="$fake_bin:$PATH" \
 
 test ! -f /opt/ffdb/releases/0.3.0/.signature-verified
 ! grep -F -q 'systemd-sysusers ' "$command_log"
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/bin/ffdb-api)" = 755
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/bin/ffdb-update)" = 755
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/web/index.html)" = 644
 
 install -d -m 0755 /etc/systemd/system/ffdb-update-agent.service.d
 printf '%s\n' '[Service]' 'RestrictSUIDSGID=false' \
@@ -111,13 +118,17 @@ grep -F -q '/releases/tag/v0.3.0' /opt/ffdb/releases/0.3.0/.release-url
 test -f /etc/systemd/system/ffdb-gateway.service
 test -f /etc/systemd/system/ffdb-update-agent.path
 test -f /etc/systemd/system/ffdb-update-check.timer
-test ! -e /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+test -f /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
 test -f /etc/systemd/system/ffdb-update-agent.service.d/administrator.conf
 ! grep -Eq '^d /var/www/ffdb([ /]|$)' /etc/tmpfiles.d/ffdb.conf
 test -f /etc/ffdb/Caddyfile
 test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640
 test "$(stat -c '%a' /etc/ffdb/Caddyfile)" = 640
+test "$(stat -c '%a' /var/lib/ffdb/installed-version)" = 644
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/.signature-verified)" = 644
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/.signature-identity)" = 644
+test "$(stat -c '%a' /opt/ffdb/releases/0.3.0/.release-url)" = 644
 test "$(stat -c '%U:%G:%a' /var/lib/ffdb)" = root:ffdb:750
 test "$(stat -c '%U:%G:%a' /var/lib/ffdb/projects)" = ffdb:ffdb:700
 ! grep -F -q 'example.com' /etc/ffdb/Caddyfile

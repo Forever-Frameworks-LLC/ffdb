@@ -20,6 +20,7 @@ AVAILABLE_FILE=$UPDATER_ROOT/available-release.json
 LOCK_FILE=/run/lock/ffdb-update.lock
 ENV_CONFIG=/etc/ffdb/ffdb.env
 CADDY_CONFIG=/etc/ffdb/Caddyfile
+UPDATER_COMPAT_DROPIN=/etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
 SYSTEMCTL=systemctl
 CURL=curl
 COSIGN=cosign
@@ -44,6 +45,7 @@ if [ "${FFDB_UPDATER_TEST_MODE:-0}" = 1 ]; then
   LOCK_FILE=$test_root/run/lock/ffdb-update.lock
   ENV_CONFIG=$test_root/etc/ffdb/ffdb.env
   CADDY_CONFIG=$test_root/etc/ffdb/Caddyfile
+  UPDATER_COMPAT_DROPIN=$test_root/etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
   SYSTEMCTL=${FFDB_UPDATER_SYSTEMCTL:-systemctl}
   CURL=${FFDB_UPDATER_CURL:-curl}
   COSIGN=${FFDB_UPDATER_COSIGN:-cosign}
@@ -662,6 +664,18 @@ activate_with_health_or_restore() {
   return 1
 }
 
+remove_extraction_compat_dropin() {
+  dropin=$UPDATER_COMPAT_DROPIN
+  [ -f "$dropin" ] || return 0
+  [ "$(wc -l < "$dropin" | tr -d ' ')" = 2 ] \
+    && [ "$(sed -n '1p' "$dropin")" = '[Service]' ] \
+    && [ "$(sed -n '2p' "$dropin")" = 'RestrictSUIDSGID=false' ] \
+    || return 0
+  rm -f "$dropin"
+  rmdir "$(dirname "$dropin")" 2>/dev/null || true
+  "$SYSTEMCTL" daemon-reload
+}
+
 check_upgrade_compatibility() {
   current=$1
   manifest=$2
@@ -707,6 +721,9 @@ run_install() {
   if ! activate_with_health_or_restore "$release" "$RELEASES_ROOT/$previous"; then
     die "new release failed readiness checks; previous release was reactivated"
   fi
+  # Keep the compatibility override throughout installation and readiness.
+  # Removing it earlier strands an older updater if activation rolls back.
+  remove_extraction_compat_dropin
   rm -rf "$extraction"
   job_patch "$id" succeeded complete "Signed release installed and readiness verified" "" false "$version" "$version" "$previous" "$backup"
 }
