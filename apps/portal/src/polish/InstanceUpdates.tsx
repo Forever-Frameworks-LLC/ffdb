@@ -34,9 +34,45 @@ const defaultSettings: HostUpdateSettings = {
 
 const updatePollIntervalMs = 1_500;
 const updateReconnectLimitMs = 3 * 60_000;
+const updateRequestTimeoutMs = 2_500;
 
 function updateReconnectDelayMs(attempt: number): number {
   return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
+}
+
+async function withUpdateRequestTimeout<T>(request: () => Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      request(),
+      new Promise<T>((_resolve, reject) => {
+        timeout = globalThis.setTimeout(() => reject(new Error("FFDB update monitor request timed out")), updateRequestTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) globalThis.clearTimeout(timeout);
+  }
+}
+
+function statusConfirmsCompletedRelease(job: HostUpdateJob, status: HostUpdateStatus): boolean {
+  return (job.operation === "install" || job.operation === "rollback")
+    && job.requested_version !== null
+    && status.active_job === null
+    && status.installed_version === job.requested_version;
+}
+
+function completedReleaseJob(job: HostUpdateJob, status: HostUpdateStatus): HostUpdateJob {
+  return {
+    ...job,
+    state: "succeeded",
+    phase: "complete",
+    installed_version: status.installed_version,
+    available_version: status.available_version,
+    message: job.operation === "rollback"
+      ? "Rollback activated and readiness verified"
+      : "Signed release installed and readiness verified",
+    updated_at_ms: Date.now(),
+  };
 }
 
 export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }: {
@@ -89,9 +125,34 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
     const schedulePoll = (delay: number) => {
       timer = globalThis.setTimeout(() => void poll(), delay);
     };
+    const finishJob = (next: HostUpdateJob, refreshed: HostUpdateStatus) => {
+      setJob(next);
+      setReconnecting(false);
+      setError(null);
+      if (next.state === "succeeded") onNotice(completionNotice(next, refreshed));
+    };
     const poll = async () => {
       try {
-        const next = await client.hostUpdateJob(job.job_id, { retry: false });
+        const refreshed = await withUpdateRequestTimeout(loadStatus);
+        if (!current) return;
+        const reportedJob = refreshed.active_job?.job_id === job.job_id ? refreshed.active_job : null;
+        if (reportedJob !== null) {
+          if (isActiveJob(reportedJob)) {
+            setJob(reportedJob);
+            setReconnecting(false);
+            setError(null);
+            reconnectStartedAt = null;
+            reconnectAttempts = 0;
+          } else {
+            finishJob(reportedJob, refreshed);
+            return;
+          }
+        }
+        if (statusConfirmsCompletedRelease(job, refreshed)) {
+          finishJob(completedReleaseJob(job, refreshed), refreshed);
+          return;
+        }
+        const next = await withUpdateRequestTimeout(() => client.hostUpdateJob(job.job_id, { retry: false }));
         if (!current) return;
         if (isActiveJob(next)) {
           setJob(next);
@@ -103,12 +164,9 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
           return;
         }
         if (next.state === "succeeded") {
-          const refreshed = await loadStatus();
+          const completedStatus = await withUpdateRequestTimeout(loadStatus);
           if (!current) return;
-          setJob(next);
-          setReconnecting(false);
-          setError(null);
-          onNotice(completionNotice(next, refreshed));
+          finishJob(next, completedStatus);
           return;
         }
         setJob(next);
