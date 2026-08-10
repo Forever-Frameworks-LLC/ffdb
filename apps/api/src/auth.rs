@@ -16,8 +16,8 @@ use ffdb_auth::{
 };
 use ffdb_email::{EmailEnqueueRequest, EmailError, PgEmailService, ScalarValue, TemplateKind};
 use ffdb_protocol::{
-    AuthContext, AuthSettings, AuthTokenPair, AuthUser, DeveloperScope, ExecutionMode,
-    PROTOCOL_VERSION, PasswordChangeRequest, PasswordResetCompleteRequest,
+    AuthActionResult, AuthContext, AuthSettings, AuthTokenPair, AuthUser, DeveloperScope,
+    ExecutionMode, PROTOCOL_VERSION, PasswordChangeRequest, PasswordResetCompleteRequest,
     PasswordResetStartRequest, ProjectId, RefreshRequest, RegisterRequest, RegisterResponse,
     RequestId, SensitiveString, SessionId, SessionSummary, SetAuthUserDisabledRequest,
     SignInRequest, UserId, VerifyEmailRequest,
@@ -36,16 +36,20 @@ pub trait AuthEmailDispatcher: Send + Sync {
     async fn enqueue_verification(
         &self,
         project_id: ProjectId,
+        project_name: &str,
         recipient: &str,
         token: &OneTimeToken,
+        redirect_to: Option<&str>,
         now_ms: i64,
     ) -> Result<(), EmailError>;
 
     async fn enqueue_password_reset(
         &self,
         project_id: ProjectId,
+        project_name: &str,
         recipient: &str,
         token: &OneTimeToken,
+        redirect_to: Option<&str>,
         now_ms: i64,
     ) -> Result<(), EmailError>;
 }
@@ -80,24 +84,27 @@ impl OutboxAuthEmailDispatcher {
         }
     }
 
-    async fn enqueue(
-        &self,
-        project_id: ProjectId,
-        recipient: &str,
-        token: &OneTimeToken,
-        now_ms: i64,
-        kind: TemplateKind,
-    ) -> Result<(), EmailError> {
+    async fn enqueue(&self, request: AuthEmailEnqueue<'_>) -> Result<(), EmailError> {
+        let AuthEmailEnqueue {
+            project_id,
+            project_name,
+            recipient,
+            token,
+            redirect_to,
+            now_ms,
+            kind,
+        } = request;
         let action_url = action_url(
             &self.public_base_url,
             project_id,
             token.plaintext.expose(),
             kind,
+            redirect_to,
         );
         let variables = BTreeMap::from([
             (
                 "project_name".to_owned(),
-                ScalarValue::String(project_id.to_string()),
+                ScalarValue::String(project_name.to_owned()),
             ),
             ("action_url".to_owned(), ScalarValue::String(action_url)),
             (
@@ -121,39 +128,57 @@ impl OutboxAuthEmailDispatcher {
     }
 }
 
+struct AuthEmailEnqueue<'a> {
+    project_id: ProjectId,
+    project_name: &'a str,
+    recipient: &'a str,
+    token: &'a OneTimeToken,
+    redirect_to: Option<&'a str>,
+    now_ms: i64,
+    kind: TemplateKind,
+}
+
 #[async_trait]
 impl AuthEmailDispatcher for OutboxAuthEmailDispatcher {
     async fn enqueue_verification(
         &self,
         project_id: ProjectId,
+        project_name: &str,
         recipient: &str,
         token: &OneTimeToken,
+        redirect_to: Option<&str>,
         now_ms: i64,
     ) -> Result<(), EmailError> {
-        self.enqueue(
+        self.enqueue(AuthEmailEnqueue {
             project_id,
+            project_name,
             recipient,
             token,
+            redirect_to,
             now_ms,
-            TemplateKind::EmailVerification,
-        )
+            kind: TemplateKind::EmailVerification,
+        })
         .await
     }
 
     async fn enqueue_password_reset(
         &self,
         project_id: ProjectId,
+        project_name: &str,
         recipient: &str,
         token: &OneTimeToken,
+        redirect_to: Option<&str>,
         now_ms: i64,
     ) -> Result<(), EmailError> {
-        self.enqueue(
+        self.enqueue(AuthEmailEnqueue {
             project_id,
+            project_name,
             recipient,
             token,
+            redirect_to,
             now_ms,
-            TemplateKind::PasswordReset,
-        )
+            kind: TemplateKind::PasswordReset,
+        })
         .await
     }
 }
@@ -227,7 +252,8 @@ impl ProjectAuthState {
     ) -> Result<ProjectAuthSettings, ProjectAuthOperationError> {
         let row = sqlx::query(
             "SELECT registration_enabled,email_verification_required, \
-                    access_token_ttl_seconds,refresh_token_ttl_seconds,password_min_length \
+                    access_token_ttl_seconds,refresh_token_ttl_seconds,password_min_length, \
+                    allowed_web_origins,allowed_auth_redirects \
              FROM project_auth_settings WHERE project_id=$1",
         )
         .bind(project_id.0)
@@ -257,9 +283,24 @@ impl ProjectAuthState {
                 .map_err(|_| ProjectAuthOperationError::Unavailable)?,
             password_min_length: u16::try_from(password_min)
                 .map_err(|_| ProjectAuthOperationError::Unavailable)?,
+            allowed_web_origins: row
+                .try_get("allowed_web_origins")
+                .map_err(|_| ProjectAuthOperationError::Unavailable)?,
+            allowed_auth_redirects: row
+                .try_get("allowed_auth_redirects")
+                .map_err(|_| ProjectAuthOperationError::Unavailable)?,
         };
         settings.validate()?;
         Ok(settings)
+    }
+
+    pub(crate) async fn allows_web_origin(&self, project_id: ProjectId, origin: &str) -> bool {
+        self.settings(project_id).await.is_ok_and(|settings| {
+            settings
+                .allowed_web_origins
+                .iter()
+                .any(|value| value == origin)
+        })
     }
 
     fn account_service(&self, project_id: ProjectId) -> Result<AccountService, AccountError> {
@@ -307,7 +348,7 @@ impl ProjectAuthState {
         &self,
         user: AuthenticatedUser,
         now_ms: i64,
-        settings: ProjectAuthSettings,
+        settings: &ProjectAuthSettings,
     ) -> Result<AuthTokenPair, ProjectAuthOperationError> {
         let refresh = self
             .refresh_tokens
@@ -347,31 +388,37 @@ impl ProjectAuthState {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct ProjectAuthSettings {
     registration_enabled: bool,
     email_verification_required: bool,
     access_token_ttl_seconds: u32,
     refresh_token_ttl_seconds: u32,
     password_min_length: u16,
+    allowed_web_origins: Vec<String>,
+    allowed_auth_redirects: Vec<String>,
 }
 
 impl ProjectAuthSettings {
-    fn is_valid(self) -> bool {
+    fn is_valid(&self) -> bool {
         (60..=900).contains(&self.access_token_ttl_seconds)
             && (3_600..=7_776_000).contains(&self.refresh_token_ttl_seconds)
             && (8..=128).contains(&self.password_min_length)
+            && normalized_web_origins(&self.allowed_web_origins)
+                .is_ok_and(|values| values == self.allowed_web_origins)
+            && normalized_auth_redirects(&self.allowed_auth_redirects)
+                .is_ok_and(|values| values == self.allowed_auth_redirects)
     }
 
-    fn validate(self) -> Result<(), ProjectAuthOperationError> {
+    fn validate(&self) -> Result<(), ProjectAuthOperationError> {
         if !self.is_valid() {
             return Err(ProjectAuthOperationError::Unavailable);
         }
         Ok(())
     }
 
-    fn applying(self, update: &UpdateAuthSettingsRequest) -> Self {
-        Self {
+    fn applying(&self, update: &UpdateAuthSettingsRequest) -> Result<Self, ()> {
+        Ok(Self {
             registration_enabled: update
                 .registration_enabled
                 .unwrap_or(self.registration_enabled),
@@ -387,7 +434,15 @@ impl ProjectAuthSettings {
             password_min_length: update
                 .password_min_length
                 .unwrap_or(self.password_min_length),
-        }
+            allowed_web_origins: match &update.allowed_web_origins {
+                Some(values) => normalized_web_origins(values)?,
+                None => self.allowed_web_origins.clone(),
+            },
+            allowed_auth_redirects: match &update.allowed_auth_redirects {
+                Some(values) => normalized_auth_redirects(values)?,
+                None => self.allowed_auth_redirects.clone(),
+            },
+        })
     }
 }
 
@@ -399,6 +454,8 @@ impl From<ProjectAuthSettings> for AuthSettings {
             access_token_ttl_seconds: value.access_token_ttl_seconds,
             refresh_token_ttl_seconds: value.refresh_token_ttl_seconds,
             password_min_length: value.password_min_length,
+            allowed_web_origins: value.allowed_web_origins,
+            allowed_auth_redirects: value.allowed_auth_redirects,
         }
     }
 }
@@ -411,6 +468,8 @@ pub(crate) struct UpdateAuthSettingsRequest {
     access_token_ttl_seconds: Option<u32>,
     refresh_token_ttl_seconds: Option<u32>,
     password_min_length: Option<u16>,
+    allowed_web_origins: Option<Vec<String>>,
+    allowed_auth_redirects: Option<Vec<String>>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -440,6 +499,10 @@ pub(crate) async fn register(
     let (auth, project_id, settings) = match required(&state, &project, request_id).await {
         Ok(value) => value,
         Err(error) => return error.into_response(),
+    };
+    let redirect_to = match validated_auth_redirect(&settings, payload.redirect_to.as_deref()) {
+        Ok(value) => value,
+        Err(()) => return auth_redirect_error(request_id),
     };
     if let Err(response) = enforce_project_rate(&state, project_id, request_id).await {
         return response;
@@ -555,10 +618,13 @@ pub(crate) async fn register(
                         &state,
                         &auth,
                         project_id,
-                        &payload.email,
-                        &token,
-                        now,
-                        request_id,
+                        VerificationDelivery {
+                            recipient: &payload.email,
+                            token: &token,
+                            redirect_to: redirect_to.as_deref(),
+                            now_ms: now,
+                            request_id,
+                        },
                     )
                     .await;
                 }
@@ -634,26 +700,49 @@ pub(crate) async fn register(
         &state,
         &auth,
         project_id,
-        &user.normalized_email,
-        &token,
-        now,
-        request_id,
+        VerificationDelivery {
+            recipient: &user.normalized_email,
+            token: &token,
+            redirect_to: redirect_to.as_deref(),
+            now_ms: now,
+            request_id,
+        },
     )
     .await
+}
+
+struct VerificationDelivery<'a> {
+    recipient: &'a str,
+    token: &'a OneTimeToken,
+    redirect_to: Option<&'a str>,
+    now_ms: i64,
+    request_id: RequestId,
 }
 
 async fn deliver_verification(
     state: &ApiState,
     auth: &ProjectAuthState,
     project_id: ProjectId,
-    recipient: &str,
-    token: &OneTimeToken,
-    now_ms: i64,
-    request_id: RequestId,
+    delivery: VerificationDelivery<'_>,
 ) -> Response {
+    let VerificationDelivery {
+        recipient,
+        token,
+        redirect_to,
+        now_ms,
+        request_id,
+    } = delivery;
+    let project_name = project_display_name(state, project_id).await;
     match auth
         .email
-        .enqueue_verification(project_id, recipient, token, now_ms)
+        .enqueue_verification(
+            project_id,
+            &project_name,
+            recipient,
+            token,
+            redirect_to,
+            now_ms,
+        )
         .await
     {
         Ok(()) => {
@@ -698,9 +787,13 @@ pub(crate) async fn verify_email(
     Extension(request_id): Extension<RequestId>,
     Json(payload): Json<VerifyEmailRequest>,
 ) -> Response {
-    let (auth, project_id, _settings) = match required(&state, &project, request_id).await {
+    let (auth, project_id, settings) = match required(&state, &project, request_id).await {
         Ok(value) => value,
         Err(error) => return error.into_response(),
+    };
+    let redirect_to = match validated_auth_redirect(&settings, payload.redirect_to.as_deref()) {
+        Ok(value) => value,
+        Err(()) => return auth_redirect_error(request_id),
     };
     if let Err(response) = enforce_project_rate(&state, project_id, request_id).await {
         return response;
@@ -772,7 +865,7 @@ pub(crate) async fn verify_email(
                 AuditOutcome::Success,
             )
             .await;
-            StatusCode::NO_CONTENT.into_response()
+            Json(AuthActionResult { redirect_to }).into_response()
         }
         Err(error) => {
             let outcome = if matches!(error, OneTimeStoreError::Unavailable) {
@@ -858,7 +951,7 @@ pub(crate) async fn sign_in(
         return response;
     }
     let user_id = user.id;
-    match auth.issue_session(user, now_ms(), settings).await {
+    match auth.issue_session(user, now_ms(), &settings).await {
         Ok(pair) => {
             terminal_auth_audit(
                 &state,
@@ -1174,9 +1267,13 @@ pub(crate) async fn password_reset_start(
     Extension(request_id): Extension<RequestId>,
     Json(payload): Json<PasswordResetStartRequest>,
 ) -> Response {
-    let (auth, project_id, _settings) = match required(&state, &project, request_id).await {
+    let (auth, project_id, settings) = match required(&state, &project, request_id).await {
         Ok(value) => value,
         Err(error) => return error.into_response(),
+    };
+    let redirect_to = match validated_auth_redirect(&settings, payload.redirect_to.as_deref()) {
+        Ok(value) => value,
+        Err(()) => return auth_redirect_error(request_id),
     };
     if let Err(response) = enforce_project_rate(&state, project_id, request_id).await {
         return response;
@@ -1209,9 +1306,17 @@ pub(crate) async fn password_reset_start(
     let now = now_ms();
     match service.issue_password_reset(&payload.email, now).await {
         Ok(Some(token)) => {
+            let project_name = project_display_name(&state, project_id).await;
             let outcome = if auth
                 .email
-                .enqueue_password_reset(project_id, &payload.email, &token, now)
+                .enqueue_password_reset(
+                    project_id,
+                    &project_name,
+                    &payload.email,
+                    &token,
+                    redirect_to.as_deref(),
+                    now,
+                )
                 .await
                 .is_err()
             {
@@ -1265,6 +1370,105 @@ pub(crate) async fn password_reset_start(
     generic_reset_response()
 }
 
+async fn project_display_name(state: &ApiState, project_id: ProjectId) -> String {
+    let Some(management) = &state.management else {
+        return project_id.to_string();
+    };
+    sqlx::query_scalar("SELECT display_name FROM projects WHERE id=$1")
+        .bind(project_id.0)
+        .fetch_optional(&management.pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| project_id.to_string())
+}
+
+fn validated_auth_redirect(
+    settings: &ProjectAuthSettings,
+    value: Option<&str>,
+) -> Result<Option<String>, ()> {
+    normalized_auth_redirect(&settings.allowed_auth_redirects, value)
+}
+
+fn normalized_auth_redirect(
+    allowed_redirects: &[String],
+    value: Option<&str>,
+) -> Result<Option<String>, ()> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if value.is_empty() || value.len() > 2_048 {
+        return Err(());
+    }
+    let url = Url::parse(value).map_err(|_| ())?;
+    if !matches!(url.scheme(), "http" | "https")
+        || url.host_str().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        return Err(());
+    }
+    let normalized = url.to_string();
+    if !allowed_redirects
+        .iter()
+        .any(|allowed| allowed == &normalized)
+    {
+        return Err(());
+    }
+    Ok(Some(normalized))
+}
+
+fn normalized_web_origins(values: &[String]) -> Result<Vec<String>, ()> {
+    normalized_application_urls(values, true)
+}
+
+fn normalized_auth_redirects(values: &[String]) -> Result<Vec<String>, ()> {
+    normalized_application_urls(values, false)
+}
+
+fn normalized_application_urls(values: &[String], origins_only: bool) -> Result<Vec<String>, ()> {
+    if values.len() > 20 {
+        return Err(());
+    }
+    let mut normalized = Vec::with_capacity(values.len());
+    for value in values {
+        let value = value.trim();
+        if value.is_empty() || value.len() > 2_048 {
+            return Err(());
+        }
+        let url = Url::parse(value).map_err(|_| ())?;
+        if !matches!(url.scheme(), "http" | "https")
+            || url.host_str().is_none()
+            || !url.username().is_empty()
+            || url.password().is_some()
+        {
+            return Err(());
+        }
+        let value = if origins_only {
+            if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
+                return Err(());
+            }
+            url.origin().ascii_serialization()
+        } else {
+            url.to_string()
+        };
+        if !normalized.contains(&value) {
+            normalized.push(value);
+        }
+    }
+    Ok(normalized)
+}
+
+fn auth_redirect_error(request_id: RequestId) -> Response {
+    ApiError::new(
+        StatusCode::BAD_REQUEST,
+        "auth.redirect_not_allowed",
+        "redirect_to must exactly match an allowed authentication redirect for this project",
+        request_id,
+    )
+    .into_response()
+}
+
 pub(crate) async fn password_reset_complete(
     State(state): State<ApiState>,
     Path(project): Path<String>,
@@ -1274,6 +1478,10 @@ pub(crate) async fn password_reset_complete(
     let (auth, project_id, settings) = match required(&state, &project, request_id).await {
         Ok(value) => value,
         Err(error) => return error.into_response(),
+    };
+    let redirect_to = match validated_auth_redirect(&settings, payload.redirect_to.as_deref()) {
+        Ok(value) => value,
+        Err(()) => return auth_redirect_error(request_id),
     };
     if let Err(response) = enforce_project_rate(&state, project_id, request_id).await {
         return response;
@@ -1377,7 +1585,7 @@ pub(crate) async fn password_reset_complete(
                 AuditOutcome::Success,
             )
             .await;
-            StatusCode::NO_CONTENT.into_response()
+            Json(AuthActionResult { redirect_to }).into_response()
         }
         Err(error) => {
             terminal_auth_audit(
@@ -1732,7 +1940,18 @@ pub(crate) async fn update_settings(
     if let Err(response) = enforce_api_key_rate(&state, principal.api_key_id.0, request_id).await {
         return response;
     }
-    let proposed = current.applying(&payload);
+    let proposed = match current.applying(&payload) {
+        Ok(value) => value,
+        Err(()) => {
+            return ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "auth.invalid_application_url",
+                "web origins and authentication redirects must be valid HTTP(S) URLs within the supported limits",
+                request_id,
+            )
+            .into_response();
+        }
+    };
     if !proposed.is_valid() {
         return ApiError::new(
             StatusCode::BAD_REQUEST,
@@ -1761,6 +1980,7 @@ pub(crate) async fn update_settings(
         "UPDATE project_auth_settings SET registration_enabled=$2, \
                 email_verification_required=$3,access_token_ttl_seconds=$4, \
                 refresh_token_ttl_seconds=$5,password_min_length=$6, \
+                allowed_web_origins=$7,allowed_auth_redirects=$8, \
                 updated_by=NULL,updated_at=now() WHERE project_id=$1",
     )
     .bind(project_id.0)
@@ -1769,6 +1989,8 @@ pub(crate) async fn update_settings(
     .bind(i32::try_from(proposed.access_token_ttl_seconds).unwrap_or(i32::MAX))
     .bind(i32::try_from(proposed.refresh_token_ttl_seconds).unwrap_or(i32::MAX))
     .bind(i32::from(proposed.password_min_length))
+    .bind(&proposed.allowed_web_origins)
+    .bind(&proposed.allowed_auth_redirects)
     .execute(&auth.pool)
     .await;
     match update {
@@ -2363,19 +2585,23 @@ fn action_url(
     project_id: ProjectId,
     token: &str,
     kind: TemplateKind,
+    redirect_to: Option<&str>,
 ) -> String {
     let route = match kind {
         TemplateKind::EmailVerification => "verify",
         TemplateKind::PasswordReset => "password-reset",
         TemplateKind::EmailChange | TemplateKind::Invitation | TemplateKind::MagicLink => "auth",
     };
-    let query = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("project_id", &project_id.to_string())
-        .append_pair("token", token)
-        .finish();
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query.append_pair("project_id", &project_id.to_string());
+    query.append_pair("token", token);
+    if let Some(redirect_to) = redirect_to {
+        query.append_pair("redirect_to", redirect_to);
+    }
+    let query = query.finish();
     let mut url = public_base_url.clone();
-    // Fragments are consumed by the portal and are not sent to HTTP servers or
-    // request logs, avoiding one-time credential leakage through access logs.
+    // Fragments are consumed by the public web action screen and are not sent
+    // to HTTP servers or request logs, avoiding one-time credential leakage.
     url.set_fragment(Some(&format!("/auth/{route}?{query}")));
     url.to_string()
 }
@@ -2393,6 +2619,7 @@ mod tests {
             project,
             "ffdb_action_secret-value",
             TemplateKind::EmailVerification,
+            Some("https://app.example.test/auth/complete?from=email"),
         );
         let parsed = Url::parse(&rendered)?;
         assert!(parsed.query().is_none());
@@ -2402,7 +2629,44 @@ mod tests {
                 .fragment()
                 .is_some_and(|value| value.contains("secret-value"))
         );
+        let fragment = parsed.fragment().unwrap_or_default();
+        let query = fragment
+            .split_once('?')
+            .map(|(_, query)| query)
+            .unwrap_or_default();
+        let parameters = url::form_urlencoded::parse(query.as_bytes()).collect::<BTreeMap<_, _>>();
+        assert_eq!(
+            parameters.get("redirect_to").map(std::borrow::Cow::as_ref),
+            Some("https://app.example.test/auth/complete?from=email")
+        );
         Ok(())
+    }
+
+    #[test]
+    fn auth_redirects_require_an_exact_configured_url() {
+        let allowed = vec!["https://app.example.test/auth/complete?from=email#done".to_owned()];
+        assert_eq!(
+            normalized_auth_redirect(
+                &allowed,
+                Some("https://app.example.test/auth/complete?from=email#done"),
+            )
+            .ok()
+            .flatten()
+            .as_deref(),
+            Some("https://app.example.test/auth/complete?from=email#done")
+        );
+        assert!(
+            normalized_auth_redirect(
+                &allowed,
+                Some("https://app.example.test/auth/a-different-page"),
+            )
+            .is_err()
+        );
+        assert!(
+            normalized_auth_redirect(&allowed, Some("https://attacker.example/auth/complete"),)
+                .is_err()
+        );
+        assert!(normalized_auth_redirect(&allowed, Some("javascript:alert(1)"),).is_err());
     }
 
     #[test]
@@ -2411,29 +2675,50 @@ mod tests {
     }
 
     #[test]
-    fn auth_settings_updates_are_typed_and_bounded() -> Result<(), serde_json::Error> {
+    fn auth_settings_updates_are_typed_and_bounded() -> Result<(), String> {
         let current = ProjectAuthSettings {
             registration_enabled: true,
             email_verification_required: true,
             access_token_ttl_seconds: 900,
             refresh_token_ttl_seconds: 2_592_000,
             password_min_length: 8,
+            allowed_web_origins: Vec::new(),
+            allowed_auth_redirects: Vec::new(),
         };
         let update: UpdateAuthSettingsRequest = serde_json::from_value(serde_json::json!({
             "registration_enabled": false,
             "access_token_ttl_seconds": 120,
-            "password_min_length": 16
-        }))?;
-        let proposed = current.applying(&update);
+            "password_min_length": 16,
+            "allowed_web_origins": ["http://localhost:5180"],
+            "allowed_auth_redirects": ["http://localhost:5180/auth/complete"]
+        }))
+        .map_err(|error| error.to_string())?;
+        let proposed = current
+            .applying(&update)
+            .map_err(|()| "expected valid application URLs".to_owned())?;
         assert!(proposed.is_valid());
         assert!(!proposed.registration_enabled);
         assert_eq!(proposed.access_token_ttl_seconds, 120);
         assert_eq!(proposed.password_min_length, 16);
+        assert_eq!(proposed.allowed_web_origins, ["http://localhost:5180"]);
+        assert_eq!(
+            proposed.allowed_auth_redirects,
+            ["http://localhost:5180/auth/complete"]
+        );
 
         let invalid: UpdateAuthSettingsRequest = serde_json::from_value(serde_json::json!({
             "refresh_token_ttl_seconds": 3_599
-        }))?;
-        assert!(!current.applying(&invalid).is_valid());
+        }))
+        .map_err(|error| error.to_string())?;
+        let invalid_settings = current
+            .applying(&invalid)
+            .map_err(|()| "expected valid empty application URL lists".to_owned())?;
+        assert!(!invalid_settings.is_valid());
+        let invalid_origin: UpdateAuthSettingsRequest = serde_json::from_value(serde_json::json!({
+            "allowed_web_origins": ["https://app.example.test/not-an-origin"]
+        }))
+        .map_err(|error| error.to_string())?;
+        assert!(current.applying(&invalid_origin).is_err());
         assert!(
             serde_json::from_value::<UpdateAuthSettingsRequest>(serde_json::json!({
                 "password_min_length": 12,

@@ -396,13 +396,31 @@ fn map_auth_credential_error(error: ffdb_auth::CredentialVerificationError) -> C
 }
 
 pub fn router(state: ApiState) -> Router {
-    let allowed_origins = state
-        .cors_allowed_origins
-        .iter()
-        .filter_map(|origin| HeaderValue::from_str(origin).ok())
-        .collect::<Vec<_>>();
+    let instance_origins = Arc::new(state.cors_allowed_origins.to_vec());
+    let project_auth = state.project_auth.clone();
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_origin(AllowOrigin::async_predicate(
+            move |origin: HeaderValue, parts| {
+                let instance_origins = instance_origins.clone();
+                let project_auth = project_auth.clone();
+                let path = parts.uri.path().to_owned();
+                async move {
+                    let Ok(origin) = origin.to_str() else {
+                        return false;
+                    };
+                    if instance_origins.iter().any(|value| value == origin) {
+                        return true;
+                    }
+                    let Some(project_id) = project_id_from_request_path(&path) else {
+                        return false;
+                    };
+                    let Some(project_auth) = project_auth else {
+                        return false;
+                    };
+                    project_auth.allows_web_origin(project_id, origin).await
+                }
+            },
+        ))
         .allow_methods([
             axum::http::Method::GET,
             axum::http::Method::POST,
@@ -800,6 +818,14 @@ pub fn router(state: ApiState) -> Router {
             request_context,
         ))
         .layer(middleware::from_fn_with_state(state, observe_metrics))
+}
+
+fn project_id_from_request_path(path: &str) -> Option<ProjectId> {
+    let segments = path.trim_matches('/').split('/').collect::<Vec<_>>();
+    let ["v1", "projects", project_id, ..] = segments.as_slice() else {
+        return None;
+    };
+    Uuid::parse_str(project_id).ok().map(ProjectId)
 }
 
 async fn pre_auth_rate_limit(
@@ -3223,6 +3249,20 @@ mod tests {
         ] {
             assert!(!is_pre_auth_dimension(dimension));
         }
+    }
+
+    #[test]
+    fn project_cors_policy_resolves_the_project_from_the_request_path() {
+        let project = ProjectId::new();
+        assert_eq!(
+            project_id_from_request_path(&format!("/v1/projects/{project}/query")),
+            Some(project)
+        );
+        assert_eq!(project_id_from_request_path("/v1/organizations"), None);
+        assert_eq!(
+            project_id_from_request_path("/v1/projects/not-a-project/query"),
+            None
+        );
     }
 
     #[tokio::test]

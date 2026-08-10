@@ -373,7 +373,7 @@ describe("portal backend integration", () => {
           user: { id: "user-1", email: "reader@example.test", email_verified: true, disabled: false, role: "authenticated", custom_claims: {}, created_at_ms: 1 },
         });
         if (request.url.endsWith("/auth/users")) return Response.json([]);
-        if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12 });
+        if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12, allowed_web_origins: [], allowed_auth_redirects: [] });
         if (request.url.endsWith("/snapshot")) return Response.json({ schema_version: 1, cursor: "opaque", tables: {} });
         if (request.url.endsWith("/healthz")) return Response.json({ status: "ok" });
         if (request.url.endsWith("/readyz")) return Response.json({ status: "ready" });

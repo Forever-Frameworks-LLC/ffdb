@@ -151,11 +151,11 @@ describe("documentation information architecture", () => {
     const client = JSON.stringify(pageByPath.get("/reference/client"));
     for (const section of [...clientClassSections, ...clientTypeSections]) expect(client).toContain(section.heading);
     expect(clientClassSections.find((section) => section.heading === "FFDBClient class")?.bullets.length).toBeGreaterThan(80);
-    expect(clientTypeSections.flatMap((section) => section.bullets)).toHaveLength(166);
+    expect(clientTypeSections.flatMap((section) => section.bullets)).toHaveLength(168);
 
     const cli = JSON.stringify(pageByPath.get("/cli"));
     for (const section of [...cliCommandSections, ...cliModuleSections]) expect(cli).toContain(section.heading);
-    expect(cliCommandSections.flatMap((section) => section.bullets).length).toBe(44);
+    expect(cliCommandSections.flatMap((section) => section.bullets).length).toBe(91);
 
     const http = JSON.stringify(pageByPath.get("/reference/http-api"));
     for (const section of httpOperationSections) expect(http).toContain(section.heading);

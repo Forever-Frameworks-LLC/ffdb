@@ -20,6 +20,25 @@ per-project, and per-identity rate limits. Enumeration-sensitive flows return a
 generic accepted response. Email addresses are normalized consistently but the
 original display form may be retained separately.
 
+## Email action handoff
+
+Browser applications should provide an absolute `redirect_to` when registering
+and a `redirectTo` action option when starting password recovery. FFDB places the
+one-time credential and callback only in the email URL fragment, removes them
+from the visible address bar before making the API request, and returns the
+validated callback in the successful API response. The transition screen then
+uses `location.replace()` so browser Back does not reopen the consumed link.
+
+Callback URLs must use HTTP(S), contain no URL credentials, remain within the
+bounded URL length, and exactly match an **Allowed auth redirect** saved for the
+project under **Auth → Policy → Application URLs**. The adjacent **Allowed web
+origins** list controls which browser origins may call that project's API. Both
+lists are live project settings and require no SSH access or service restart.
+The API checks the callback before consuming the action token and echoes only an
+approved destination; the browser never redirects merely because a URL appeared
+in an email fragment. If no callback was supplied, the transition screen gives
+close-this-tab guidance instead of sending the user to the FFDB marketing page.
+
 ## Session lifecycle
 
 Sign-in creates a refresh family/session and returns access/refresh tokens. Sign-

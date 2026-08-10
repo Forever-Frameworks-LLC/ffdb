@@ -198,13 +198,13 @@ export const clientClassSections = [
     "bullets": [
       "constructor(private readonly client: FFDBClient)",
       "register(input: RegisterRequest, options: RequestOptions = {}): Promise<RegisterResponse>",
-      "verifyEmail(token: string, options: RequestOptions = {}): Promise<void>",
+      "verifyEmail(token: string, options: AuthActionOptions = {}): Promise<AuthActionResult>",
       "async signIn(email: string, password: string, options: RequestOptions = {}): Promise<AuthTokenPair>",
       "async signOut(options: RequestOptions = {}): Promise<void>",
       "session(): Promise<AuthTokenPair | null>",
       "refresh(signal?: AbortSignal): Promise<AuthTokenPair>",
-      "startPasswordReset(email: string, options: RequestOptions = {}): Promise<void>",
-      "completePasswordReset( token: string, newPassword: string, options: RequestOptions = {},): Promise<void>",
+      "startPasswordReset(email: string, options: AuthActionOptions = {}): Promise<void>",
+      "completePasswordReset( token: string, newPassword: string, options: AuthActionOptions = {},): Promise<AuthActionResult>",
       "sessions(options: RequestOptions = {}): Promise<readonly SessionSummary[]>",
       "revokeSession(id: string, options: RequestOptions = {}): Promise<void>"
     ]
@@ -255,7 +255,9 @@ export const clientTypeSections = [
       "export interface AddOrganizationMemberRequest { readonly email: string; readonly role: OrganizationRole; }",
       "export interface ApiKeySummary { readonly id: string; readonly name: string; readonly prefix: string; readonly scopes: readonly DeveloperScope[]; readonly expires_at_ms: number | null; readonly created_at_ms: number; readonly revoked_at_ms: number | null; }",
       "export interface AuditLogEntry { readonly id: string; readonly occurred_at_ms: number; readonly actor: string; readonly action: string; readonly resource: string; readonly outcome: \"success\" | \"denied\" | \"failed\"; readonly request_id: string | null; }",
-      "export interface AuthSettings { readonly registration_enabled: boolean; readonly email_verification_required: boolean; readonly access_token_ttl_seconds: number; readonly refresh_token_ttl_seconds: number; readonly password_min_length: number; }",
+      "export interface AuthActionOptions extends RequestOptions { /** Must exactly match a callback configured in this project's authentication settings. */ readonly redirectTo?: string; }",
+      "export interface AuthActionResult { readonly redirect_to: string | null; }",
+      "export interface AuthSettings { readonly registration_enabled: boolean; readonly email_verification_required: boolean; readonly access_token_ttl_seconds: number; readonly refresh_token_ttl_seconds: number; readonly password_min_length: number; /** Exact browser origins permitted to call this project's API. */ readonly allowed_web_origins: readonly string[]; /** Exact callback URLs permitted after hosted authentication actions. */ readonly allowed_auth_redirects: readonly string[]; }",
       "export interface AuthTokenPair { readonly access_token: string; readonly refresh_token: string; readonly token_type: string; readonly expires_in_seconds: number; readonly session_id: string; readonly user: AuthUser; }",
       "export interface AuthUser { readonly id: string; readonly email: string; readonly email_verified: boolean; readonly disabled: boolean; readonly role: string; readonly custom_claims: Readonly<Record<string, JsonValue>>; readonly created_at_ms: number; }",
       "export interface BackupResult { readonly backup_id: string; readonly size_bytes: number; readonly sha256: string; }",
@@ -273,9 +275,7 @@ export const clientTypeSections = [
       "export interface CommerceCheckoutLine { readonly price_id: string; readonly quantity: number; }",
       "export interface CommerceCheckoutResponse { readonly url: string; readonly expires_at_ms: number; readonly order_id: string | null; readonly subscription_id: string | null; }",
       "export interface CommerceEntitlementSummary { readonly subject: CommerceMembershipSubject; readonly key: string; readonly value: CommerceEntitlementValue; readonly subscription_id: string | null; readonly order_id: string | null; readonly valid_from_ms: number; readonly valid_until_ms: number | null; }",
-      "export type CommerceEntitlementValue = | { readonly type: \"enabled\"; readonly value: boolean } | { readonly type: \"quantity\"; readonly value: number } | { readonly type: \"text\"; readonly value: string };",
-      "export type CommerceFulfillmentStatus = \"unfulfilled\" | \"processing\" | \"fulfilled\" | \"canceled\";",
-      "export interface CommerceMembershipSubject { readonly kind: CommerceMembershipSubjectKind; readonly id: string; }"
+      "export type CommerceEntitlementValue = | { readonly type: \"enabled\"; readonly value: boolean } | { readonly type: \"quantity\"; readonly value: number } | { readonly type: \"text\"; readonly value: string };"
     ]
   },
   {
@@ -284,6 +284,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export type CommerceFulfillmentStatus = \"unfulfilled\" | \"processing\" | \"fulfilled\" | \"canceled\";",
+      "export interface CommerceMembershipSubject { readonly kind: CommerceMembershipSubjectKind; readonly id: string; }",
       "export type CommerceMembershipSubjectKind = \"individual\" | \"team\" | \"organization\";",
       "export interface CommerceOnboardingResponse { readonly account: CommerceAccountSummary; readonly onboarding_url: string; readonly expires_at_ms: number; }",
       "export interface CommerceOrderLineSummary { readonly product_id: string; readonly price_id: string; readonly product_name: string; readonly currency: string; readonly unit_amount_minor: number; readonly quantity: number; readonly line_total_minor: number; }",
@@ -306,9 +308,7 @@ export const clientTypeSections = [
       "export interface ConfigureCommerceByoRequest { readonly secret_key: string; readonly webhook_secret: string; }",
       "export interface CreateCommerceConnectOnboardingRequest { readonly country: string; readonly email: string; readonly return_url: string; readonly refresh_url: string; }",
       "export interface CreateCommerceCustomerPortalRequest { readonly subject: CommerceMembershipSubject; readonly return_url: string; }",
-      "export interface CreateCommercePriceRequest { readonly product_id: string; readonly lookup_key: string | null; readonly currency: string; readonly unit_amount_minor: number; readonly billing: CommercePriceBilling; readonly entitlements?: Readonly<Record<string, CommerceEntitlementValue>>; }",
-      "export interface CreateCommerceProductRequest { readonly name: string; readonly description: string | null; readonly tax_code: string | null; readonly metadata?: Readonly<Record<string, JsonValue>>; }",
-      "export interface CreateCommerceRefundRequest { readonly payment_id: string; readonly amount_minor: number | null; readonly reason: CommerceRefundReason | null; }"
+      "export interface CreateCommercePriceRequest { readonly product_id: string; readonly lookup_key: string | null; readonly currency: string; readonly unit_amount_minor: number; readonly billing: CommercePriceBilling; readonly entitlements?: Readonly<Record<string, CommerceEntitlementValue>>; }"
     ]
   },
   {
@@ -317,6 +317,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface CreateCommerceProductRequest { readonly name: string; readonly description: string | null; readonly tax_code: string | null; readonly metadata?: Readonly<Record<string, JsonValue>>; }",
+      "export interface CreateCommerceRefundRequest { readonly payment_id: string; readonly amount_minor: number | null; readonly reason: CommerceRefundReason | null; }",
       "export interface CreatedApiKey { readonly id: string; readonly name: string; readonly prefix: string; readonly secret: string; readonly scopes: readonly DeveloperScope[]; readonly expires_at_ms: number | null; readonly created_at_ms: number; }",
       "export interface CreateInstanceConnectOnboardingRequest { readonly return_url: string; readonly refresh_url: string; }",
       "export interface CreateOneTimeCommerceCheckoutRequest { readonly lines: readonly CommerceCheckoutLine[]; readonly subject: CommerceMembershipSubject | null; readonly customer_email: string | null; readonly client_reference: string | null; readonly success_url: string; readonly cancel_url: string; }",
@@ -339,9 +341,7 @@ export const clientTypeSections = [
       "export interface HostUpdateCapabilities { readonly check: boolean; readonly install: boolean; readonly rollback: boolean; readonly automatic_checks: boolean; readonly automatic_apply: boolean; }",
       "export type HostUpdateChannel = \"stable\";",
       "export interface HostUpdateJob { readonly job_id: string; readonly operation: HostUpdateOperation; readonly requested_version: string | null; readonly state: HostUpdateJobState; readonly phase: string; readonly installed_version: string | null; readonly available_version: string | null; readonly previous_version: string | null; readonly backup_path: string | null; readonly message: string; readonly error_code: string | null; readonly retryable: boolean; readonly created_at_ms: number; readonly updated_at_ms: number; }",
-      "export type HostUpdateJobState = \"queued\" | \"running\" | \"succeeded\" | \"failed\";",
-      "export type HostUpdateOperation = \"check\" | \"install\" | \"rollback\" | \"configure\";",
-      "export interface HostUpdateRelease { readonly version: string; readonly active: boolean; readonly rollback_compatible: boolean; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_verified: boolean; readonly signature_identity: string | null; readonly release_url: string | null; }"
+      "export type HostUpdateJobState = \"queued\" | \"running\" | \"succeeded\" | \"failed\";"
     ]
   },
   {
@@ -350,6 +350,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export type HostUpdateOperation = \"check\" | \"install\" | \"rollback\" | \"configure\";",
+      "export interface HostUpdateRelease { readonly version: string; readonly active: boolean; readonly rollback_compatible: boolean; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_verified: boolean; readonly signature_identity: string | null; readonly release_url: string | null; }",
       "export interface HostUpdateSettings { readonly channel: HostUpdateChannel; readonly automatic_checks: boolean; readonly check_interval_hours: number; readonly automatic_apply: boolean; /** Recurring UTC start in zero-padded HH:MM form. */ readonly maintenance_window_start: string | null; readonly maintenance_window_duration_minutes: number; }",
       "export interface HostUpdateStatus { readonly supported: boolean; readonly unavailable_reason: string | null; readonly capabilities: HostUpdateCapabilities; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_identity: string | null; readonly installed_version: string | null; readonly available_version: string | null; readonly update_available: boolean; readonly last_check_at_ms: number | null; readonly active_job: HostUpdateJob | null; readonly releases: readonly HostUpdateRelease[]; readonly settings: HostUpdateSettings; }",
       "export type InstanceAdministratorRole = \"owner\" | \"admin\";",
@@ -372,9 +374,7 @@ export const clientTypeSections = [
       "export type JsonValue = JsonScalar | JsonValue[] | { readonly [key: string]: JsonValue };",
       "export interface LogicalChange { readonly sequence: number; readonly transaction_id: string; readonly table: string; readonly primary_key: JsonValue; readonly operation: ChangeOperation; readonly row_version: number; readonly values: Readonly<Record<string, JsonValue>> | null; readonly tombstone: JsonValue | null; readonly actor: string | null; readonly schema_version: number; readonly committed_at_ms: number; readonly client_mutation_id: string | null; }",
       "export interface MigrationSpec { readonly id: string; readonly name: string; readonly up_sql: string; readonly down_sql: string; readonly checksum: string; readonly created_at_ms: number; }",
-      "export interface MigrationSummary { readonly id: string; readonly name: string; readonly checksum: string; readonly status: string; readonly schema_version_before: number; readonly schema_version_after: number; readonly applied_at_ms: number | null; }",
-      "export interface MultipartPart { readonly partNumber: number; readonly etag: string; }",
-      "export interface MultipartUpload { readonly bucket: string; readonly key: string; readonly uploadId: string; }"
+      "export interface MigrationSummary { readonly id: string; readonly name: string; readonly checksum: string; readonly status: string; readonly schema_version_before: number; readonly schema_version_after: number; readonly applied_at_ms: number | null; }"
     ]
   },
   {
@@ -383,6 +383,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface MultipartPart { readonly partNumber: number; readonly etag: string; }",
+      "export interface MultipartUpload { readonly bucket: string; readonly key: string; readonly uploadId: string; }",
       "export type MutationStatus = \"applied\" | \"duplicate\" | \"rejected\" | \"superseded\";",
       "export type ObjectOperation = | \"upload\" | \"download\" | \"delete\" | \"upload_part\" | \"complete_multipart\" | \"abort_multipart\";",
       "export interface ObservabilityHttpTotals { readonly requests: number; readonly qps: number; readonly client_errors: number; readonly server_errors: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; }",
@@ -405,9 +407,7 @@ export const clientTypeSections = [
       "export interface PlatformErrorBody { readonly code: string; readonly message: string; readonly request_id: string; readonly details?: Readonly<Record<string, JsonValue>>; }",
       "export type PlatformInvoiceStatus = | \"draft\" | \"open\" | \"paid\" | \"uncollectible\" | \"void\" | \"payment_failed\";",
       "export interface PlatformInvoiceSummary { readonly id: string; readonly organization_id: string; readonly status: PlatformInvoiceStatus; readonly currency: string; readonly amount_due_minor: number; readonly amount_paid_minor: number; readonly period_start_ms: number | null; readonly period_end_ms: number | null; readonly hosted_invoice_url: string | null; readonly invoice_pdf_url: string | null; readonly created_at_ms: number; }",
-      "export interface PlatformUsageAllowance { readonly storage_bytes: number; readonly monthly_reads: number; readonly monthly_writes: number; readonly monthly_active_users: number; readonly overage_enabled: boolean; }",
-      "export interface PlatformUsageSummary { readonly organization_id: string; readonly period_start_ms: number; readonly period_end_ms: number; readonly reads: number; readonly writes: number; readonly storage_bytes: number; readonly storage_byte_hours: number; readonly monthly_active_users: number; readonly reporting_status: UsageReportingStatus; readonly reporting_last_success_ms: number | null; readonly as_of_ms: number; }",
-      "export type PolicyCommand = \"all\" | \"select\" | \"insert\" | \"update\" | \"delete\";"
+      "export interface PlatformUsageAllowance { readonly storage_bytes: number; readonly monthly_reads: number; readonly monthly_writes: number; readonly monthly_active_users: number; readonly overage_enabled: boolean; }"
     ]
   },
   {
@@ -416,6 +416,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface PlatformUsageSummary { readonly organization_id: string; readonly period_start_ms: number; readonly period_end_ms: number; readonly reads: number; readonly writes: number; readonly storage_bytes: number; readonly storage_byte_hours: number; readonly monthly_active_users: number; readonly reporting_status: UsageReportingStatus; readonly reporting_last_success_ms: number | null; readonly as_of_ms: number; }",
+      "export type PolicyCommand = \"all\" | \"select\" | \"insert\" | \"update\" | \"delete\";",
       "export interface PolicyDefinition { readonly name: string; readonly table: string; readonly kind: PolicyKind; readonly command: PolicyCommand; readonly roles: readonly string[]; readonly using_expression: string | null; readonly check_expression: string | null; readonly enabled: boolean; readonly forced: boolean; }",
       "export type PolicyKind = \"permissive\" | \"restrictive\";",
       "export type ProjectLifecycleState = | \"provisioning\" | \"active\" | \"suspended\" | \"restoring\" | \"deleting\" | \"deleted\" | \"failed\";",
@@ -428,7 +430,7 @@ export const clientTypeSections = [
       "export interface QueryOptions { readonly max_rows?: number; }",
       "export interface QueryRequest { readonly sql: string; readonly parameters?: readonly SqlParameter[]; readonly options?: QueryOptions; }",
       "export interface QueryResult<Row extends readonly ResultCell[] = readonly ResultCell[]> { readonly columns: readonly ColumnMetadata[]; readonly rows: readonly Row[]; readonly affected_rows: number; readonly last_insert_rowid: number | null; readonly truncated: boolean; }",
-      "export interface RegisterRequest { readonly email: string; readonly password: string; readonly custom_claims?: Readonly<Record<string, JsonValue>>; }",
+      "export interface RegisterRequest { readonly email: string; readonly password: string; readonly custom_claims?: Readonly<Record<string, JsonValue>>; /** * Absolute app URL used after email verification. It must exactly match an * allowed authentication redirect in this project's settings. */ readonly redirect_to?: string; }",
       "export interface RegisterResponse { readonly user_id: string; readonly verification_required: boolean; }",
       "export interface RequestOptions { readonly signal?: AbortSignal; readonly idempotencyKey?: string; readonly retry?: boolean; }",
       "export interface RestoreResult { readonly backup_id: string; readonly integrity_ok: boolean; readonly schema_version: number; }",
@@ -438,9 +440,7 @@ export const clientTypeSections = [
       "export interface SessionSummary { readonly id: string; readonly created_at_ms: number; readonly last_seen_at_ms: number; readonly expires_at_ms: number; readonly user_agent: string | null; readonly ip_address: string | null; readonly current: boolean; readonly revoked_at_ms: number | null; }",
       "export interface SetAuthUserDisabledRequest { readonly disabled: boolean; }",
       "export interface SignedObjectRequest { readonly url: string; readonly method: string; readonly headers: readonly (readonly [string, string])[]; readonly expires_at_ms: number; readonly authorization_token: string | null; }",
-      "export interface SignObjectRequest { readonly bucket: string; readonly key: string; readonly operation: ObjectOperation; readonly content_type: string | null; readonly size_bytes: number | null; readonly checksum_sha256: string | null; readonly upload_id?: string | null; readonly part_number?: number | null; }",
-      "export interface SnapshotResponse { readonly schema_version: number; readonly cursor: string; readonly tables: Readonly<Record<string, QueryResult>>; }",
-      "export type SqlParameter = | { readonly type: \"null\" } | { readonly type: \"integer\"; readonly value: number | string } | { readonly type: \"real\"; readonly value: number } | { readonly type: \"text\"; readonly value: string } | { readonly type: \"blob\"; readonly value: string };"
+      "export interface SignObjectRequest { readonly bucket: string; readonly key: string; readonly operation: ObjectOperation; readonly content_type: string | null; readonly size_bytes: number | null; readonly checksum_sha256: string | null; readonly upload_id?: string | null; readonly part_number?: number | null; }"
     ]
   },
   {
@@ -449,6 +449,8 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface SnapshotResponse { readonly schema_version: number; readonly cursor: string; readonly tables: Readonly<Record<string, QueryResult>>; }",
+      "export type SqlParameter = | { readonly type: \"null\" } | { readonly type: \"integer\"; readonly value: number | string } | { readonly type: \"real\"; readonly value: number } | { readonly type: \"text\"; readonly value: string } | { readonly type: \"blob\"; readonly value: string };",
       "export interface StorageBucket { readonly id: string; readonly name: string; readonly public: boolean; readonly max_object_bytes: number; readonly project_quota_bytes: number; readonly versioning: boolean; readonly created_at_ms: number; }",
       "export interface StorageBucketRequest { readonly name: string; readonly public: boolean; readonly max_object_bytes: number | null; readonly versioning: boolean; }",
       "export interface StorageObjectItem { readonly id: string; readonly object_key: string; readonly owner_id: string; readonly size_bytes: number; readonly content_type: string | null; readonly checksum_sha256: string | null; readonly etag: string | null; readonly version_id: string | null; readonly created_at_ms: number; readonly updated_at_ms: number; }",
@@ -478,84 +480,131 @@ export const cliCommandSections = [
     "heading": "CLI: Usage",
     "bullets": [
       "ffdb [--url URL] [--project ID] [--key KEY] [--config PATH] [--json] <command>",
+      "ffdb help <topic> | ffdb help all",
       "Destructive commands prompt interactively; pass --yes for automation."
     ]
   },
   {
     "heading": "CLI: Project setup",
     "bullets": [
-      "init <directory> [browser|react|node]",
-      "generate [output-path] | generate --out <path> | types generate [--out <path>]"
+      "init <directory> [browser|react|node] — scaffold a starter without embedding secrets",
+      "generate [output-path] — generate TypeScript types from the live schema",
+      "generate --out <path> — choose the generated TypeScript output path",
+      "types generate [--out <path>] — alias for generate"
     ]
   },
   {
     "heading": "CLI: Credential lifecycle",
     "bullets": [
-      "login <email> | logout | project link <project-id>"
+      "login [email] — securely prompt for missing credentials; FFDB_PASSWORD supports automation",
+      "logout — revoke the current session and remove its local credential",
+      "project link <project-id> — persist the active project for future commands"
     ]
   },
   {
     "heading": "CLI: Instance lifecycle",
     "bullets": [
-      "instance setup-status | instance bootstrap <owner-email> | instance status",
-      "bootstrap reads FFDB_BOOTSTRAP_TOKEN and FFDB_PASSWORD without printing them",
-      "instance setup|configure <private|team> <owner_only|authenticated|invitation_only>",
-      "instance setup|configure byo <policy>  # reads FFDB_INSTANCE_STRIPE_SECRET_KEY and FFDB_INSTANCE_STRIPE_WEBHOOK_SECRET",
+      "instance setup-status — inspect public bootstrap availability",
+      "instance bootstrap [owner-email] — create the first owner using secure credentials",
+      "instance status — inspect instance mode, policy, billing, and capabilities",
+      "instance setup|configure <private|team> <policy> — configure a non-billing instance",
+      "instance setup|configure byo <policy> — configure operator-owned Stripe credentials",
       "instance setup|configure connect <policy> <country> <email> <return-url> <refresh-url>",
       "instance policy set <owner_only|authenticated|invitation_only>",
-      "instance connect onboarding <return-url> <refresh-url> | instance connect refresh",
-      "instance admins list | instance admins grant <user-id> | instance admins revoke <user-id> [--yes]",
-      "instance organizations [limit] [offset] | instance users [limit] [offset]",
+      "instance connect onboarding <return-url> <refresh-url>",
+      "instance connect refresh — refresh Stripe Connect readiness",
+      "instance admins list — list delegated instance administrators",
+      "instance admins grant <user-id> — grant instance administration",
+      "instance admins revoke <user-id> [--yes] — revoke instance administration",
+      "instance organizations [limit] [offset] — inspect organizations across the instance",
+      "instance users [limit] [offset] — inspect users across the instance",
       "instance org-disable|org-enable <org-id> [--yes]",
       "instance user-disable|user-enable <user-id> [--yes]",
-      "instance exemptions list | instance exemptions grant <org-id> <json-file>",
-      "instance exemptions revoke <org-id> [--yes]",
-      "instance plans list | instance plans put <free|pay_as_you_go|pro> <json-file>",
-      "instance plans retire <free|pay_as_you_go|pro> [--yes]"
+      "instance exemptions list — list billing exemptions",
+      "instance exemptions grant <org-id> <json-file> — grant a documented exemption",
+      "instance exemptions revoke <org-id> [--yes] — remove an exemption",
+      "instance plans list — list instance plan definitions",
+      "instance plans put <free|pay_as_you_go|pro> <json-file> — create or update a plan",
+      "instance plans retire <free|pay_as_you_go|pro> [--yes] — retire a plan",
+      "Bootstrap reads FFDB_BOOTSTRAP_TOKEN and FFDB_PASSWORD without printing or storing them.",
+      "BYO setup reads FFDB_INSTANCE_STRIPE_SECRET_KEY and FFDB_INSTANCE_STRIPE_WEBHOOK_SECRET."
     ]
   },
   {
     "heading": "CLI: Platform and project",
     "bullets": [
-      "org list | org create <name> <slug> | org members <org-id>",
-      "org invite <org-id> <email> <role> | org member-role <org-id> <user-id> <role>",
-      "org member-remove <org-id> <user-id> [--yes]",
-      "project list <org-id> | project create <org-id> <name> <slug> [region]",
-      "billing status <org-id> | billing checkout <org-id> <pay_as_you_go|pro>",
-      "billing portal <org-id> | billing invoices <org-id> | billing usage <org-id>",
-      "commerce status | commerce refresh | commerce configure-byo | commerce disconnect --yes",
+      "org list — list organizations available to the signed-in developer",
+      "org create <name> <slug> — create an organization",
+      "org members <org-id> — list organization membership",
+      "org invite <org-id> <email> <role> — invite an owner, admin, developer, or viewer",
+      "org member-role <org-id> <user-id> <role> — update a member role",
+      "org member-remove <org-id> <user-id> [--yes] — remove a member",
+      "project list <org-id> — list projects in an organization",
+      "project create <org-id> <name> <slug> [region] — create a project",
+      "billing status <org-id> — inspect subscription status",
+      "billing checkout <org-id> <pay_as_you_go|pro> — start checkout",
+      "billing portal <org-id> — open subscription management",
+      "billing invoices <org-id> — list invoices",
+      "billing usage <org-id> — inspect billable usage",
+      "commerce status — inspect the active project's commerce account",
+      "commerce refresh — refresh provider capabilities",
+      "commerce configure-byo — configure Stripe using secure environment variables",
+      "commerce disconnect --yes — disconnect the project's commerce account",
       "commerce connect <country> <email> <return-url> <refresh-url>",
-      "commerce products [--all] | commerce product-create <json> | commerce product-archive <id>",
-      "commerce prices [--all] | commerce price-create <json> | commerce price-retire <id>",
+      "commerce products [--all] — list products",
+      "commerce product-create <json> | commerce product-archive <id>",
+      "commerce prices [--all] — list prices",
+      "commerce price-create <json> | commerce price-retire <id>",
       "commerce orders | commerce payments | commerce subscriptions",
       "commerce refund <json> | commerce cancel <subscription-id> [--now]",
       "commerce portal <individual|team|organization> <subject-id> <return-url>",
       "commerce entitlements <individual|team|organization> <subject-id>",
       "commerce fulfill <order-id> <unfulfilled|processing|fulfilled|canceled> [note]",
-      "api-key list | api-key create <name> <scope,...> | api-key revoke <id> [--yes]"
+      "api-key list — list developer API keys",
+      "api-key create <name> <scope,...> — create a scoped developer key",
+      "api-key revoke <id> [--yes] — revoke a developer key"
     ]
   },
   {
     "heading": "CLI: Database workflows",
     "bullets": [
-      "sql <statement> | sql --file <path> | seed <path> | schema | policies",
-      "migration create <name> | migration status | migration apply <path>",
-      "migration rollback <id> [--yes]"
+      "sql <statement> — execute an inline SQL statement",
+      "sql --file <path> — execute SQL from a file",
+      "seed <path> — apply a seed file",
+      "schema — inspect the current schema snapshot",
+      "policies — inspect row-level security policies",
+      "migration create <name> — create an up/down migration file",
+      "migration status — inspect applied migration history",
+      "migration apply <path> — apply an idempotent migration",
+      "migration rollback <id> [--yes] — roll back an applied migration"
     ]
   },
   {
     "heading": "CLI: Auth, storage, and email",
     "bullets": [
-      "auth settings | auth set <json> | auth users | auth disable <id> [--yes] | auth enable <id>",
-      "storage buckets | storage create-bucket <name> | storage cleanup",
-      "email templates | email import-artifact <json> | email publish <kind> <version>"
+      "auth settings — inspect project authentication settings",
+      "auth set <json> — update authentication settings from a JSON file",
+      "auth users — list project authentication users",
+      "auth disable <id> [--yes] — disable an authentication user",
+      "auth enable <id> — enable an authentication user",
+      "storage buckets — list object-storage buckets",
+      "storage create-bucket <name> [--versioning] — create a private bucket",
+      "storage cleanup — clean expired upload reservations",
+      "email templates — list project email templates",
+      "email import-artifact <json> — import a compiled email artifact",
+      "email publish <kind> <version> — publish a template version"
     ]
   },
   {
     "heading": "CLI: Operations",
     "bullets": [
-      "logs [limit] | backup list | backup create | backup restore <id> [--yes]",
-      "backup integrity | health | dev"
+      "logs [limit] — read recent project logs",
+      "backup list — list project backups",
+      "backup create — create a project backup",
+      "backup restore <id> [--yes] — replace project data from a backup",
+      "backup integrity — check project database integrity",
+      "health — check API liveness",
+      "dev — check liveness, readiness, API URL, and active project"
     ]
   }
 ] as const;

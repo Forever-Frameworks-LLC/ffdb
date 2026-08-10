@@ -14,9 +14,19 @@ The matching GitHub Release also includes a checksum-listed
 `ffdb-cli-0.3.5.tgz` for verified offline installation.
 
 ```bash
-FFDB_PASSWORD="$FFDB_PASSWORD" ffdb login developer@example.com
+ffdb login
 ffdb project link <project-id>
 ffdb generate --out src/ffdb.types.ts
+```
+
+In a terminal, `ffdb login` prompts for the email and masks the password as it
+is entered. For non-interactive automation, pass the email argument and provide
+`FFDB_PASSWORD` through the process environment. Human terminal output uses
+color and readable labels; `--json` remains stable for automation, and
+`NO_COLOR=1` disables ANSI color.
+
+```bash
+FFDB_PASSWORD="$FFDB_PASSWORD" ffdb login developer@example.com --json
 ```
 
 The CLI stores its platform session in a mode-0600 credential file. A project

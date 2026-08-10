@@ -2,6 +2,7 @@ import type { IconName } from "./icons.js";
 
 export type PortalRoute =
   | "Overview"
+  | "Connect"
   | "Projects"
   | "Members"
   | "SQL Editor"
@@ -33,6 +34,7 @@ export type PortalRoute =
  */
 export const portalRoutes = [
   "Overview",
+  "Connect",
   "Projects",
   "Members",
   "SQL Editor",
@@ -75,6 +77,7 @@ export const navigationGroups: readonly PortalNavigationGroup[] = [
     label: "Workspace",
     items: [
       { label: "Overview", icon: "home", requiresProject: true },
+      { label: "Connect", icon: "connect", requiresProject: true },
       { label: "Projects", icon: "database" },
       { label: "Members", icon: "users" },
       { label: "Observability", icon: "chart", requiresProject: true },
@@ -123,6 +126,7 @@ export const navigationGroups: readonly PortalNavigationGroup[] = [
 
 const routeSlug: Readonly<Record<PortalRoute, string>> = {
   Overview: "overview",
+  Connect: "connect",
   Projects: "projects",
   Members: "members",
   "SQL Editor": "sql",

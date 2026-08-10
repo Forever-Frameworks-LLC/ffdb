@@ -64,6 +64,7 @@ import {
 } from "./polish/OperateRoutes.js";
 import { ObservabilityPanel } from "./polish/Observability.js";
 import { InstanceUpdatesPanel } from "./polish/InstanceUpdates.js";
+import { ConnectPanel } from "./polish/Connect.js";
 
 export interface AppProps {
   readonly client?: FFDBClient;
@@ -525,6 +526,7 @@ function RoutePanel(props: {
 }) {
   switch (props.route) {
     case "Overview": return <ProductionOverviewPanel client={props.client} configuration={props.configuration} onNavigate={props.onOpen} />;
+    case "Connect": return <ConnectPanel configuration={props.configuration} onNotice={props.onNotice} onOpenAuth={() => props.onOpen("Auth")} />;
     case "Projects": return <ProductionWorkspacePanel view="projects" client={props.client} configuration={props.configuration} onConfiguration={props.onConfiguration} onNotice={props.onNotice} onNavigate={props.onOpen} onSetupRequired={props.onSetupRequired} />;
     case "Members": return <ProductionWorkspacePanel view="members" client={props.client} configuration={props.configuration} onConfiguration={props.onConfiguration} onNotice={props.onNotice} onNavigate={props.onOpen} onSetupRequired={props.onSetupRequired} />;
     case "SQL Editor": return <SqlEditorPanel client={props.client} sql={props.sqlDraft} onSqlChange={props.onSqlDraft} />;

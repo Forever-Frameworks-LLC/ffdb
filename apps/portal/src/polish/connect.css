@@ -1,0 +1,108 @@
+.connect-route {
+  --connect-card: color-mix(in oklab, var(--card) 92%, var(--background));
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 32px 0 44px;
+  display: grid;
+  gap: 18px;
+  color: var(--foreground);
+}
+
+.connect-hero { min-width: 0; padding: 8px 4px 18px; display: flex; align-items: end; justify-content: space-between; gap: 28px; }
+.connect-hero__copy { min-width: 0; }
+.connect-eyebrow,
+.connect-section-label { display: inline-flex; align-items: center; gap: 7px; color: var(--theme-primary); font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.connect-hero h1 { max-width: 760px; margin: 8px 0 8px; font-size: clamp(30px, 4vw, 48px); font-weight: 620; line-height: 1.04; letter-spacing: -.045em; }
+.connect-hero p { max-width: 700px; margin: 0; color: var(--theme-muted-foreground); font-size: 14px; line-height: 1.6; }
+.connect-hero__status { width: min(330px, 32vw); min-width: 245px; padding: 15px; display: grid; gap: 5px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--connect-card); }
+.connect-hero__status > span { display: flex; align-items: center; gap: 7px; color: var(--theme-muted-foreground); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.connect-live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--healthy); box-shadow: 0 0 0 4px color-mix(in oklab, var(--healthy) 12%, transparent); }
+.connect-hero__status strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.connect-hero__status code { overflow: hidden; color: var(--theme-muted-foreground); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+.connect-facts { display: grid; grid-template-columns: 1.3fr 1.4fr .8fr; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--connect-card); }
+.connect-facts article { min-width: 0; min-height: 76px; padding: 15px 16px; display: flex; align-items: center; gap: 12px; }
+.connect-facts article + article { border-left: 1px solid var(--theme-border); }
+.connect-fact-icon { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; color: var(--theme-primary); border-radius: 8px; background: color-mix(in oklab, var(--theme-primary) 10%, transparent); }
+.connect-facts article > div { min-width: 0; display: grid; gap: 4px; }
+.connect-facts small { color: var(--theme-muted-foreground); font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.connect-facts strong { overflow: hidden; font-size: 12px; font-weight: 560; text-overflow: ellipsis; white-space: nowrap; }
+.connect-facts .connect-copy { margin-left: auto; }
+
+.connect-guide,
+.connect-readiness { border: 1px solid var(--theme-border); border-radius: 12px; background: var(--connect-card); overflow: hidden; }
+.connect-guide__heading { min-height: 86px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.connect-guide__heading h2,
+.connect-readiness h2 { margin: 5px 0 0; font-size: 21px; font-weight: 620; letter-spacing: -.025em; }
+.connect-guide__heading a { display: inline-flex; align-items: center; gap: 6px; color: var(--theme-muted-foreground); font-size: 11px; text-decoration: none; }
+.connect-guide__heading a:hover { color: var(--theme-primary); }
+.connect-tabs { padding: 0 20px; display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--theme-border); }
+.connect-tabs button { min-height: 43px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; color: var(--theme-muted-foreground); border: 0; border-bottom: 2px solid transparent; background: transparent; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+.connect-tabs button[aria-selected="true"] { color: var(--foreground); border-bottom-color: var(--theme-primary); }
+.connect-tabs button small { padding: 2px 5px; color: var(--attention); border: 1px solid color-mix(in oklab, var(--attention) 35%, var(--theme-border)); border-radius: 999px; font-size: 8px; letter-spacing: .04em; text-transform: uppercase; }
+.connect-tabs button:focus-visible,
+.connect-runtime:focus-visible,
+.connect-code-card pre:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.connect-runtime { min-width: 0; padding: 20px; display: grid; grid-template-columns: minmax(245px, .62fr) minmax(0, 1.38fr); gap: 20px; outline: none; }
+.connect-runtime__intro { min-width: 0; padding: 4px 4px 0; }
+.connect-runtime__intro > span { color: var(--theme-primary); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.connect-runtime__intro h3 { margin: 8px 0 8px; font-size: clamp(20px, 2.3vw, 28px); line-height: 1.15; letter-spacing: -.035em; }
+.connect-runtime__intro > p { margin: 0; color: var(--theme-muted-foreground); font-size: 12px; line-height: 1.6; }
+.connect-trust-note { margin-top: 18px; padding: 12px; display: flex; gap: 9px; color: var(--attention); border: 1px solid color-mix(in oklab, var(--attention) 30%, var(--theme-border)); border-radius: 8px; background: color-mix(in oklab, var(--attention) 7%, transparent); }
+.connect-trust-note.is-safe { color: var(--healthy); border-color: color-mix(in oklab, var(--healthy) 28%, var(--theme-border)); background: color-mix(in oklab, var(--healthy) 6%, transparent); }
+.connect-trust-note svg { flex: 0 0 auto; }
+.connect-trust-note span { color: var(--theme-muted-foreground); font-size: 10px; line-height: 1.5; }
+.connect-trust-note strong { display: block; margin-bottom: 2px; color: var(--foreground); }
+.connect-trust-note code { color: inherit; }
+.connect-code-stack { min-width: 0; display: grid; gap: 10px; }
+.connect-code-card { min-width: 0; overflow: hidden; border: 1px solid var(--theme-border); border-radius: 8px; background: color-mix(in oklab, var(--background) 92%, black); }
+.connect-code-card header { height: 38px; padding: 0 8px 0 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--theme-border); background: color-mix(in oklab, var(--theme-muted) 24%, transparent); }
+.connect-code-card header > span { color: var(--theme-muted-foreground); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.connect-code-card pre { margin: 0; padding: 13px; overflow: auto; color: color-mix(in oklab, var(--foreground) 88%, var(--theme-primary)); font: 10.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; outline: none; }
+.connect-copy { min-height: 28px; padding: 0 7px; display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: var(--theme-muted-foreground); border: 1px solid transparent; border-radius: 6px; background: transparent; font: inherit; font-size: 9px; cursor: pointer; }
+.connect-copy:hover { color: var(--foreground); border-color: var(--theme-border); background: var(--theme-muted); }
+.connect-copy.is-copied { color: var(--healthy); }
+
+.connect-readiness { display: grid; grid-template-columns: minmax(250px, .7fr) minmax(0, 1.3fr); }
+.connect-readiness__intro { padding: 22px; border-right: 1px solid var(--theme-border); }
+.connect-readiness__intro > p { margin: 8px 0 18px; color: var(--theme-muted-foreground); font-size: 12px; line-height: 1.6; }
+.connect-readiness__intro > button { min-height: 36px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; color: var(--theme-primary-foreground); border: 0; border-radius: 7px; background: var(--theme-primary); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.connect-readiness__intro > button svg:last-child { margin-left: 2px; }
+.connect-steps { margin: 0; padding: 0; display: grid; list-style: none; }
+.connect-steps li { min-width: 0; min-height: 75px; padding: 14px 18px; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.connect-steps li + li { border-top: 1px solid var(--theme-border); }
+.connect-steps li > span { color: var(--theme-primary); font: 650 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.connect-steps strong { font-size: 11px; }
+.connect-steps p { margin: 3px 0 0; color: var(--theme-muted-foreground); font-size: 10px; line-height: 1.5; }
+.connect-inline-code { max-width: 330px; margin-top: 8px; padding: 5px 5px 5px 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--background); }
+.connect-inline-code code { min-width: 0; overflow: hidden; color: var(--foreground); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.connect-footer-note { min-width: 0; padding: 13px 15px; display: flex; align-items: center; gap: 9px; color: var(--theme-muted-foreground); border: 1px solid var(--theme-border); border-radius: 9px; background: color-mix(in oklab, var(--theme-primary) 5%, var(--connect-card)); font-size: 10px; line-height: 1.5; }
+.connect-footer-note > svg:first-child { color: var(--theme-primary); flex: 0 0 auto; }
+.connect-footer-note > svg:last-child { margin-left: auto; flex: 0 0 auto; }
+.connect-footer-note code { color: var(--foreground); }
+
+@media (max-width: 900px) {
+  .connect-route { padding-top: 22px; }
+  .connect-hero { align-items: stretch; flex-direction: column; gap: 18px; }
+  .connect-hero__status { width: 100%; }
+  .connect-facts { grid-template-columns: 1fr; }
+  .connect-facts article + article { border-top: 1px solid var(--theme-border); border-left: 0; }
+  .connect-runtime,
+  .connect-readiness { grid-template-columns: 1fr; }
+  .connect-readiness__intro { border-right: 0; border-bottom: 1px solid var(--theme-border); }
+}
+
+@media (max-width: 560px) {
+  .connect-route { gap: 12px; padding: 16px 0 28px; }
+  .connect-hero { padding: 4px 2px 12px; }
+  .connect-hero h1 { font-size: 32px; }
+  .connect-guide__heading { align-items: flex-start; flex-direction: column; }
+  .connect-tabs { padding: 0 10px; }
+  .connect-runtime { padding: 14px; }
+  .connect-code-card pre { font-size: 9.5px; }
+  .connect-copy span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connect-route * { scroll-behavior: auto !important; }
+}

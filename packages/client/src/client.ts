@@ -3,6 +3,8 @@ import type {
   AcceptOrganizationInvitationRequest,
   AddOrganizationMemberRequest,
   AuditLogEntry,
+  AuthActionOptions,
+  AuthActionResult,
   AuthUser,
   AuthTokenPair,
   AuthSettings,
@@ -1514,11 +1516,12 @@ export class AuthClient {
     });
   }
 
-  verifyEmail(token: string, options: RequestOptions = {}): Promise<void> {
+  verifyEmail(token: string, options: AuthActionOptions = {}): Promise<AuthActionResult> {
+    const { redirectTo, ...requestOptions } = options;
     return this.client.request(this.client.projectPath("auth/verify"), {
       method: "POST",
-      body: JSON.stringify({ token }),
-      ...options,
+      body: JSON.stringify({ token, ...(redirectTo === undefined ? {} : { redirect_to: redirectTo }) }),
+      ...requestOptions,
       credential: "none",
     });
   }
@@ -1555,11 +1558,12 @@ export class AuthClient {
     return this.client.refreshSession(signal);
   }
 
-  startPasswordReset(email: string, options: RequestOptions = {}): Promise<void> {
+  startPasswordReset(email: string, options: AuthActionOptions = {}): Promise<void> {
+    const { redirectTo, ...requestOptions } = options;
     return this.client.request(this.client.projectPath("auth/password/reset"), {
       method: "POST",
-      body: JSON.stringify({ email }),
-      ...options,
+      body: JSON.stringify({ email, ...(redirectTo === undefined ? {} : { redirect_to: redirectTo }) }),
+      ...requestOptions,
       credential: "none",
     });
   }
@@ -1567,12 +1571,13 @@ export class AuthClient {
   completePasswordReset(
     token: string,
     newPassword: string,
-    options: RequestOptions = {},
-  ): Promise<void> {
+    options: AuthActionOptions = {},
+  ): Promise<AuthActionResult> {
+    const { redirectTo, ...requestOptions } = options;
     return this.client.request(this.client.projectPath("auth/password/reset/complete"), {
       method: "POST",
-      body: JSON.stringify({ token, new_password: newPassword }),
-      ...options,
+      body: JSON.stringify({ token, new_password: newPassword, ...(redirectTo === undefined ? {} : { redirect_to: redirectTo }) }),
+      ...requestOptions,
       credential: "none",
     });
   }

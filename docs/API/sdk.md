@@ -80,9 +80,11 @@ RLS, storage, sync, email, backups, and platform administration without importin
 server internals.
 
 The CLI resolves explicit flags, environment variables, then its credential
-file. `FFDB_PASSWORD=... ffdb login developer@example.com` exchanges the password
-for the API's rotating platform session and writes the returned opaque session
-with owner-only file permissions. Organization/project management and API-key
+file. In a terminal, `ffdb login` securely prompts for email and a masked
+password. For automation, `FFDB_PASSWORD=... ffdb login developer@example.com
+--json` exchanges the password for the API's rotating platform session and
+writes the returned opaque session with owner-only file permissions.
+Organization/project management and API-key
 issuance use that platform session; database administration uses the separately
 scoped project API key. `ffdb logout` revokes the platform session and deletes the
 local file. Output never prints a complete stored credential unless the server

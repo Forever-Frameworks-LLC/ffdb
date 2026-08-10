@@ -25,7 +25,7 @@ describe("portal route model", () => {
 
   it("keeps project observability beside the other workspace destinations", () => {
     expect(navigationGroups.find((group) => group.label === "Workspace")?.items.map((item) => item.label))
-      .toEqual(["Overview", "Projects", "Members", "Observability"]);
+      .toEqual(["Overview", "Connect", "Projects", "Members", "Observability"]);
     expect(navigationGroups.find((group) => group.label === "Operate")?.items.map((item) => item.label))
       .toEqual(["Activity", "Backups", "Usage"]);
   });
@@ -36,6 +36,7 @@ describe("portal route model", () => {
       ["/app/projects/p_1/products", "Products"],
       ["/app/projects/p_1/orders", "Orders"],
       ["/app/projects/p_1/subscriptions", "Subscriptions"],
+      ["/app/projects/p_1/connect", "Connect"],
     ];
     for (const [path, route] of examples) expect(routeFromLocation(path)).toBe(route);
   });

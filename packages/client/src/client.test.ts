@@ -23,6 +23,7 @@ describe("FFDBClient", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
   it("rejects base URL credentials, query strings, and fragments while preserving a base path", async () => {
     for (const baseUrl of [
@@ -114,6 +115,31 @@ describe("FFDBClient", () => {
     });
 
     await expect(client.auth.startPasswordReset("sam@example.test")).resolves.toBeUndefined();
+  });
+
+  it("carries browser auth actions back to a server-validated app URL", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const client = new FFDBClient({
+      baseUrl: "https://ffdb.example.test",
+      projectId: "project-1",
+      fetch: async (input, init) => {
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith("/auth/register")) return Response.json({ user_id: "user-1", verification_required: true });
+        if (path.endsWith("/auth/password/reset")) return new Response(null, { status: 202 });
+        return Response.json({ redirect_to: "https://app.example.test/auth/complete" });
+      },
+    });
+
+    await client.auth.register({ email: "sam@example.test", password: "long-enough-password", redirect_to: "https://app.example.test/sign-in?source=register" });
+    await client.auth.startPasswordReset("sam@example.test", { redirectTo: "https://app.example.test/sign-in?source=reset" });
+    await client.auth.verifyEmail("synthetic-token", { redirectTo: "https://app.example.test/auth/complete" });
+    await client.auth.completePasswordReset("synthetic-token", "replacement-password", { redirectTo: "https://app.example.test/auth/complete" });
+
+    expect(bodies[0]?.redirect_to).toBe("https://app.example.test/sign-in?source=register");
+    expect(bodies[1]?.redirect_to).toBe("https://app.example.test/sign-in?source=reset");
+    expect(bodies[2]?.redirect_to).toBe("https://app.example.test/auth/complete");
+    expect(bodies[3]?.redirect_to).toBe("https://app.example.test/auth/complete");
   });
 
   it("uses a rotating platform session for organization management", async () => {

@@ -21,11 +21,18 @@ credential file or `FFDB_DEVELOPER_KEY`. JSON output is available for automation
 while a newly created secret is returned only by its creation command.
 
 Point the first login at the public FFDB origin, for example
-`ffdb --url http://127.0.0.1:5173 login developer@example.com` for the packaged
-single-host profile. That port is the compiled nginx gateway, not Vite; nginx
+`ffdb --url http://127.0.0.1:5173 login` for the packaged single-host profile.
+In an interactive terminal, FFDB securely prompts for both the email and masked
+password. Automation supplies the email argument and `FFDB_PASSWORD`, normally
+with `--json`. That port is the compiled nginx gateway, not Vite; nginx
 proxies the request to Axum on the private Compose network. Port `8080` is a
 direct Axum diagnostic only in the contributor Compose model and is not a
 packaged Docker ingress. A successful login persists the selected base URL.
+
+The default terminal view uses color, whitespace, labels, and scoped help such
+as `ffdb help database`; `ffdb help all` prints the complete command reference.
+Redirected output and `--json` remain machine-readable. Set `NO_COLOR=1` to
+disable ANSI styling explicitly.
 
 Project creation and the migration/backup operations documented as replay-safe
 use idempotency keys. Other mutations are not retried automatically. Destructive

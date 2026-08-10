@@ -1112,6 +1112,8 @@ pub struct RegisterRequest {
     pub password: SensitiveString,
     #[serde(default)]
     pub custom_claims: Map<String, Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redirect_to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -1123,6 +1125,13 @@ pub struct RegisterResponse {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct VerifyEmailRequest {
     pub token: SensitiveString,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redirect_to: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct AuthActionResult {
+    pub redirect_to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -1166,12 +1175,16 @@ pub struct RefreshRequest {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct PasswordResetStartRequest {
     pub email: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redirect_to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct PasswordResetCompleteRequest {
     pub token: SensitiveString,
     pub new_password: SensitiveString,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redirect_to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -1304,6 +1317,8 @@ pub struct AuthSettings {
     pub access_token_ttl_seconds: u32,
     pub refresh_token_ttl_seconds: u32,
     pub password_min_length: u16,
+    pub allowed_web_origins: Vec<String>,
+    pub allowed_auth_redirects: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

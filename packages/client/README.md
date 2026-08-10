@@ -35,6 +35,25 @@ Developer API keys are server/operator credentials. Do not embed them in browser
 bundles. End-user requests use the short-lived project session managed by
 `client.auth`.
 
+Email verification and password recovery use a short FFDB-hosted handoff, then
+return to the application with `location.replace()`. Supply the exact callback
+URL when starting the action. Add the browser's origin and the exact callback
+under **Auth → Policy → Application URLs** for the selected project. FFDB
+validates both policies at request time, so changes require no host restart and
+the emailed link cannot become an arbitrary open redirect.
+
+```ts
+const callback = new URL("/auth/complete", window.location.origin).href;
+
+await client.auth.register({ email, password, redirect_to: callback });
+await client.auth.startPasswordReset(email, { redirectTo: callback });
+```
+
+The action credential and callback remain in the URL fragment while FFDB works,
+then are removed from the visible address bar immediately. Apps should render
+their normal sign-in or post-verification state at the callback URL. Server and
+native callers must provide the callback explicitly; FFDB does not guess one.
+
 Platform billing uses the authenticated organization methods
 `organizationBilling()`, `createBillingCheckout()`, and
 `createBillingPortal()`. Application commerce is a separate project-scoped

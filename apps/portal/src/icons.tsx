@@ -4,6 +4,7 @@ import {
   BookOpenText,
   Check,
   ChartNoAxesCombined,
+  Cable,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -39,6 +40,7 @@ export type IconName =
   | "book"
   | "check"
   | "chart"
+  | "connect"
   | "chevronDown"
   | "chevronRight"
   | "chevronUp"
@@ -70,6 +72,7 @@ const icons: Readonly<Record<IconName, LucideIcon>> = {
   book: BookOpenText,
   check: Check,
   chart: ChartNoAxesCombined,
+  connect: Cable,
   chevronDown: ChevronDown,
   chevronRight: ChevronRight,
   chevronUp: ChevronUp,

@@ -412,7 +412,7 @@ VITE_FFDB_API_URL=http://127.0.0.1:5173
 # Production build after TLS/DNS cutover
 VITE_FFDB_API_URL=https://data.example.com` },
         ],
-        callout: { kind: "note", title: "One origin at a time", body: "Use the current origin for the packaged portal. Set the override only for a separately served application that intentionally calls another FFDB origin, and include that exact browser origin in FFDB_CORS_ALLOWED_ORIGINS." },
+        callout: { kind: "note", title: "One origin at a time", body: "Use the current origin for the packaged portal. For a separately served application, save its browser origin under the selected project's Auth → Policy → Application URLs. The project policy takes effect immediately." },
       },
       {
         heading: "Retrieve the bootstrap token without printing it",
@@ -942,7 +942,7 @@ openssl rand -hex 32` },
       {
         heading: "Server configuration groups",
         bullets: [
-          "HTTP: FFDB_HTTP_BIND, FFDB_PUBLIC_BASE_URL, an exact comma-separated FFDB_CORS_ALLOWED_ORIGINS list, and the narrow FFDB_TRUSTED_PROXY_CIDRS boundary.",
+          "HTTP: FFDB_HTTP_BIND, FFDB_PUBLIC_BASE_URL, an exact comma-separated FFDB_CORS_ALLOWED_ORIGINS instance fallback for operator/non-project routes, and the narrow FFDB_TRUSTED_PROXY_CIDRS boundary. Application browser origins are project settings in the portal.",
           "PostgreSQL: FFDB_DATABASE_URL and FFDB_POSTGRES_MAX_CONNECTIONS.",
           "Workers and usage: FFDB_NODE_ID, FFDB_NODE_NAME, FFDB_DATABASE_ROOT, FFDB_BACKUP_ROOT, FFDB_METRICS_ROOT, FFDB_DATABASE_WORKER, FFDB_WORKER_MAX_PROCESSES, and FFDB_WORKER_QUEUE_CAPACITY. A project worker executes one framed request at a time.",
           "Security: FFDB_MASTER_KEY, FFDB_BACKUP_MASTER_KEY, FFDB_CURSOR_HMAC_KEY, and FFDB_BOOTSTRAP_TOKEN.",
@@ -994,7 +994,7 @@ VITE_FFDB_API_URL=http://127.0.0.1:5173
 
 # Production build after TLS and DNS cutover
 VITE_FFDB_API_URL=https://data.example.com` },
-        callout: { kind: "note", title: "Use one origin intentionally", body: "Leave the override unset for the packaged portal. Set it only when a separately served application intentionally calls another FFDB origin, and add that browser origin to FFDB_CORS_ALLOWED_ORIGINS." },
+        callout: { kind: "note", title: "Use one origin intentionally", body: "Leave the override unset for the packaged portal. For a separately served application, add its browser origin under the selected project's Auth → Policy → Application URLs; no host restart is required." },
       },
     ],
   },
@@ -1150,13 +1150,14 @@ CREATE POLICY documents_write ON documents
     sections: [
       {
         heading: "End-user sessions",
-        code: { label: "auth.ts", language: "ts", code: `await ffdb.auth.register({ email, password });
-await ffdb.auth.verifyEmail(token);
+        code: { label: "auth.ts", language: "ts", code: `const callback = new URL("/auth/complete", window.location.origin).href;
+
+await ffdb.auth.register({ email, password, redirect_to: callback });
 
 const session = await ffdb.auth.signIn(email, password);
 const sessions = await ffdb.auth.sessions();
 await ffdb.auth.signOut();` },
-        paragraphs: ["The client stores the returned access/refresh pair, deduplicates concurrent refreshes, and retries one unauthorized end-user request after a successful rotation."],
+        paragraphs: ["The verification email opens a short FFDB-hosted transition, completes the one-time action, and returns with location.replace() to the callback supplied by your app. Add the browser origin and exact callback under the selected project's Auth → Policy → Application URLs. Both policies are validated live by the API, with no host restart. The client stores the returned access/refresh pair, deduplicates concurrent refreshes, and retries one unauthorized end-user request after a successful rotation."],
       },
       {
         heading: "Developer credentials",
