@@ -160,7 +160,7 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.3
+    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.4
     environment:
       - FFDB_ENVIRONMENT
       - FFDB_HTTP_BIND
@@ -216,7 +216,7 @@ services:
     restart: unless-stopped
 
   sync-worker:
-    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.3
+    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.4
     command: ["/usr/local/bin/ffdb-sync-worker"]
     environment:
       - FFDB_SYNC_STATE_DIR
@@ -238,7 +238,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.3
+    image: ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.4
     environment:
       - FFDB_S3_PUBLIC_ORIGIN
     depends_on:
@@ -374,18 +374,18 @@ const routePages = [
   https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh
 less ffdb-install.sh
 sudo sh ffdb-install.sh --profile single-host --start --require-signature` },
-          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.3
+          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.4
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 less ffdb-install.sh
 sudo sh ffdb-install.sh --profile single-host --start --require-signature \\
   --version "$VERSION" --release-base "$RELEASE_BASE"` },
           { label: "Verified mirror or air-gapped bundle", language: "sh", code: `sudo env \\
-  FFDB_VERSION=0.3.3 \\
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3 \\
+  FFDB_VERSION=0.3.4 \\
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.4 \\
   sh ./install.sh --profile single-host --start --require-signature` },
         ],
-        callout: { kind: "warning", title: "Pin production installs", body: "The latest URL follows the stable GitHub Release. The exact-tag example pins the supported 0.3.3 release for reproducible production automation; read that release's notes before installation or upgrade." },
+        callout: { kind: "warning", title: "Pin production installs", body: "The latest URL follows the stable GitHub Release. The exact-tag example pins the supported 0.3.4 release for reproducible production automation; read that release's notes before installation or upgrade." },
       },
       {
         heading: "Verify the single-host services",
@@ -472,7 +472,7 @@ unset FFDB_BOOTSTRAP_TOKEN` },
         heading: "Install the packaged CLI",
         paragraphs: ["The public @ffdb/cli package is separate from the server bundle. Check the registry version, review the matching release notes, and pin that version in trusted operator environments."],
         code: { label: "Terminal", language: "sh", code: `npm view @ffdb/cli version
-npm install --global @ffdb/cli@0.3.3
+npm install --global @ffdb/cli@0.3.4
 ffdb --help` },
       },
       {
@@ -559,7 +559,7 @@ sudo sh ffdb-install.sh --profile single-host --start --require-signature
 sudo ffdb-host status
 # Port 5173 is the packaged nginx gateway, not a Vite server.
 curl --fail http://127.0.0.1:5173/readyz` },
-          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.3
+          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.4
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 less ffdb-install.sh
@@ -569,12 +569,12 @@ sudo ffdb-host status
 # Port 5173 is the packaged nginx gateway, not a Vite server.
 curl --fail http://127.0.0.1:5173/readyz` },
           { label: "Verified mirror or air-gapped bundle", language: "sh", code: `sudo env \\
-  FFDB_VERSION=0.3.3 \\
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3 \\
+  FFDB_VERSION=0.3.4 \\
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.4 \\
   sh ./install.sh --profile single-host --start --require-signature
 sudo ffdb-host status` },
         ],
-        callout: { kind: "warning", title: "Release discovery is separate from installation", body: "The examples pin the supported 0.3.3 release while the latest URL tracks the stable channel. The installer verifies the signed checksum list, bundle, controller, and pinned images. Mirrors must preserve the release filenames and Sigstore bundle unchanged." },
+        callout: { kind: "warning", title: "Release discovery is separate from installation", body: "The examples pin the supported 0.3.4 release while the latest URL tracks the stable channel. The installer verifies the signed checksum list, bundle, controller, and pinned images. Mirrors must preserve the release filenames and Sigstore bundle unchanged." },
       },
       {
         heading: "Understand the single-host boundary",
@@ -592,8 +592,8 @@ sudo ffdb-host status` },
         paragraphs: ["For internet production, configure the external-provider profile with independently backed-up PostgreSQL, private HTTPS S3-compatible storage, real email delivery, and a TLS gateway. Signed release metadata pins the multi-architecture runtime and gateway images by immutable digest, and ffdb-host invokes the matching Compose model."],
         code: { label: "Terminal", language: "sh", code: `# For a directly downloaded and verified bundle:
 sudo ffdb-host install \\
-  --version 0.3.3 \\
-  --bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.3.tar.gz
+  --version 0.3.4 \\
+  --bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.4.tar.gz
 
 # The public/local installer already performs the install step:
 sudo ffdb-host start
@@ -638,8 +638,8 @@ sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update
 sudo ffdb-host status
 
 # Reproducible alternative after reviewing the exact tag:
-sudo ffdb-host update-check --version 0.3.3
-sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.3
+sudo ffdb-host update-check --version 0.3.4
+sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.4
 
 # If acceptance fails:
 sudo ffdb-host rollback 0.3.1 --acknowledge-migration-risk
@@ -669,7 +669,7 @@ sudo ffdb-host stop` },
       {
         heading: "Download and verify one component release",
         paragraphs: ["Choose an announced tag from the canonical GitHub Releases page and download its architecture-matched native archive, signed checksum list, and Sigstore bundle from that same tag. Verify the checksum list before trusting its archive digest; the extracted directory is ffdb-native-VERSION even though the downloaded filename includes the operating system and architecture. Configure the environment in the next step before running the installer because the installer uses its exact public S3 origin to render the gateway Content-Security-Policy."],
-        code: { label: "Linux amd64", language: "sh", code: `VERSION=0.3.3
+        code: { label: "Linux amd64", language: "sh", code: `VERSION=0.3.4
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS.sigstore.json"
@@ -1166,7 +1166,7 @@ await ffdb.auth.signOut();` },
       {
         heading: "Install the versioned email components",
         paragraphs: ["@ffdb/email-components contains the release's React Email defaults and allowed-variable manifest. Install its exact server-matched npm version, or use the checksum-listed tarball from the matching GitHub tag for offline workflows. An application does not need it merely to register or sign in users."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.4
 npm install --save-exact "@ffdb/email-components@$VERSION"` },
       },
     ],
@@ -1406,9 +1406,9 @@ for (const item of push.results) {
         paragraphs: ["Install @ffdb/client at the exact version named by the server release. Inspect npm only for discovery; do not float the production dependency range."],
         codes: [
           { label: "Public npm registry", language: "sh", code: `npm view @ffdb/client dist-tags --json
-npm install --save-exact @ffdb/client@0.3.3
+npm install --save-exact @ffdb/client@0.3.4
 npm ls @ffdb/client` },
-          { label: "Verified offline release artifact", language: "sh", code: `npm install --save-exact ./ffdb-client-0.3.3.tgz` },
+          { label: "Verified offline release artifact", language: "sh", code: `npm install --save-exact ./ffdb-client-0.3.4.tgz` },
           { label: "src/ffdb.ts", language: "ts", code: clientSetup },
         ],
         callout: { kind: "note", title: "Check updates without floating", body: "Run npm outdated @ffdb/client to discover a newer version, read its server and package release notes, then install that exact version and run your application tests. Use only checksum-listed tarballs for offline installation." },
@@ -1447,7 +1447,7 @@ await request;` },
       {
         heading: "Install the matched packages",
         paragraphs: ["Install @ffdb/react and @ffdb/sync-client from npm at the exact @ffdb/client and server version. The matching GitHub tag also contains checksum-listed tarballs for verified offline installation."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.4
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION" "@ffdb/react@$VERSION"` },
       },
@@ -1480,7 +1480,7 @@ function Documents() {
       {
         heading: "Install the native integration",
         paragraphs: ["React Native uses exact-version @ffdb/client, @ffdb/sync-client, and @ffdb/react-native npm packages. The matching tag provides signed offline tarballs. The integration supplies contracts and adapters; your app still chooses its SecureStore-like and SQLite implementations."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.4
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION" "@ffdb/react-native@$VERSION"` },
       },
@@ -1550,7 +1550,7 @@ export function onUserMutation(mutation: SyncMutation): Promise<void> {
       {
         heading: "Install the runtime-neutral package",
         paragraphs: ["Install @ffdb/sync-client from npm at the same version as @ffdb/client and the server. The matching GitHub Release contains a signed tarball for offline installation. Browser and Node adapters are subpath exports of this package."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.4
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION"` },
       },
@@ -1671,7 +1671,7 @@ await sync.sync();` },
         heading: "Install the CLI package",
         paragraphs: ["Install @ffdb/cli at the exact server version in a trusted operator environment. Use the checksum-listed release tarball for verified offline installation."],
         code: { label: "Terminal", language: "sh", code: `npm view @ffdb/cli dist-tags --json
-npm install --global @ffdb/cli@0.3.3
+npm install --global @ffdb/cli@0.3.4
 ffdb --help` },
         callout: { kind: "note", title: "Check before updating", body: "@ffdb/cli installs the ffdb binary. Use npm view @ffdb/cli version only for discovery, read the target release notes, then install the exact server-matched version." },
       },
@@ -2657,7 +2657,7 @@ curl --fail http://127.0.0.1:5173/readyz
     heading: "Connect an application",
     paragraphs: ["Install the version-matched client, replace the project ID, sign in an end user, and issue the first parameterized query."],
     codes: [
-      { label: "Terminal", language: "sh", code: `npm install @ffdb/client@0.3.3` },
+      { label: "Terminal", language: "sh", code: `npm install @ffdb/client@0.3.4` },
       { label: "src/ffdb.ts", language: "ts", code: clientSetup },
       { label: "First query", language: "ts", code: queryExample },
     ],

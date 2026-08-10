@@ -8,11 +8,11 @@ FFDB server and SDK releases are version-matched. Pin the package to the exact
 server version:
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.3
+pnpm add --save-exact @ffdb/client@0.3.4
 ```
 
 The matching GitHub Release also includes a checksum-listed
-`ffdb-client-0.3.3.tgz` for verified offline installation.
+`ffdb-client-0.3.4.tgz` for verified offline installation.
 
 ```ts
 import { BrowserSessionStore, FFDBClient, generateId } from "@ffdb/client";

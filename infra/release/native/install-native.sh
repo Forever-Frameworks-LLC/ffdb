@@ -39,6 +39,10 @@ done
 install -D -m 0644 "$bundle_dir/systemd/ffdb.sysusers.conf" /etc/sysusers.d/ffdb.conf
 systemd-sysusers /etc/sysusers.d/ffdb.conf
 install -D -m 0644 "$bundle_dir/systemd/ffdb.tmpfiles.conf" /etc/tmpfiles.d/ffdb.conf
+# The state root is a trust boundary: services own their dedicated children,
+# while root owns the parent and updater paths. Normalize upgrades from older
+# releases before systemd-tmpfiles evaluates those root-owned descendants.
+install -d -m 0750 -o root -g ffdb /var/lib/ffdb
 systemd-tmpfiles --create /etc/tmpfiles.d/ffdb.conf
 version=$(sed -n '1p' "$bundle_dir/VERSION")
 printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z][0-9A-Za-z.-]*)?$' \

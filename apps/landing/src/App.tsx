@@ -507,7 +507,7 @@ const developerExamples = [
   {
     label: "Install SDK",
     code: `# Keep the client and CLI on the server release version.
-VERSION=0.3.3
+VERSION=0.3.4
 npm install --save-exact "@ffdb/client@$VERSION"
 npm install --global "@ffdb/cli@$VERSION"
 ffdb --help`,
