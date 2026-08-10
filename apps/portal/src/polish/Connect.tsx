@@ -19,7 +19,7 @@ import {
 import type { PortalConfiguration } from "../config.js";
 import "./connect.css";
 
-const FFDB_VERSION = "0.3.5";
+const FFDB_VERSION = "0.3.6";
 const LOCAL_EXAMPLE_ORIGIN = "http://127.0.0.1:5180";
 
 type RuntimeId = "react" | "expo" | "node";

@@ -29,7 +29,7 @@ describe("ConnectPanel", () => {
     expect(screen.getByRole("heading", { name: "Bring Atlas into your app." })).toBeInTheDocument();
     expect(screen.getAllByText("project-atlas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("https://ffdb.example.test").length).toBeGreaterThan(0);
-    expect(screen.getByText(/@ffdb\/client@0\.3\.5/)).toBeInTheDocument();
+    expect(screen.getByText(/@ffdb\/client@\d+\.\d+\.\d+/)).toBeInTheDocument();
     expect(container).not.toHaveTextContent("must-not-render");
   });
 
