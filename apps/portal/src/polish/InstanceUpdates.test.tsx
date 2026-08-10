@@ -114,6 +114,34 @@ describe("instance host updates", () => {
     expect(jobReads).toBe(2);
   });
 
+  it("turns legacy nested updater JSON into one actionable failed-job card", async () => {
+    const active = updateJob({ state: "running", phase: "backup", message: "Creating mandatory pre-update backup" });
+    const failed = updateJob({
+      state: "failed",
+      phase: "failed",
+      message: JSON.stringify({ code: "invalid_request", message: "verified release extraction failed", retryable: false }),
+      error_code: "invalid_request",
+      backup_path: "/var/lib/ffdb/backups/pre-update-0.3.2-to-0.3.3.tar.gz",
+    });
+    const client = await updateClient(async (request) => {
+      const path = new URL(request.url).pathname;
+      if (path === "/v1/instance/updates") return Response.json({ ...updateStatus(), active_job: active });
+      if (path === "/v1/instance/updates/jobs/job-1") return Response.json(failed);
+      return missingResponse();
+    });
+
+    render(<InstanceUpdatesPanel client={client} onNotice={() => undefined} />);
+
+    expect(await screen.findByText("The updater sandbox blocked release extraction", {}, { timeout: 2_000 })).toBeInTheDocument();
+    expect(screen.queryByText("Host update request failed")).not.toBeInTheDocument();
+    expect(screen.queryByText(failed.message)).not.toBeInTheDocument();
+    expect(screen.getByText(/kept the installed release active and preserved the pre-update backup/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Technical details"));
+    expect(screen.getByText("verified release extraction failed")).toBeInTheDocument();
+    expect(screen.getByText("invalid_request")).toBeInTheDocument();
+    expect(screen.getByText(failed.backup_path!)).toBeInTheDocument();
+  });
+
   it("requires a UTC maintenance window before offering an automatic-install policy mutation", async () => {
     const calls: Request[] = [];
     const client = await updateClient(async (request) => {

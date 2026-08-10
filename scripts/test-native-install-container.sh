@@ -86,6 +86,12 @@ PATH="$fake_bin:$PATH" \
 
 test ! -f /opt/ffdb/releases/0.3.0/.signature-verified
 
+install -d -m 0755 /etc/systemd/system/ffdb-update-agent.service.d
+printf '%s\n' '[Service]' 'RestrictSUIDSGID=false' \
+  > /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+printf '%s\n' '[Service]' 'LogLevelMax=notice' \
+  > /etc/systemd/system/ffdb-update-agent.service.d/administrator.conf
+
 FFDB_TEST_COMMAND_LOG=$command_log \
 PATH="$fake_bin:$PATH" \
   "$bundle/install-native.sh" --verified-release --start
@@ -102,6 +108,8 @@ grep -F -q '/releases/tag/v0.3.0' /opt/ffdb/releases/0.3.0/.release-url
 test -f /etc/systemd/system/ffdb-gateway.service
 test -f /etc/systemd/system/ffdb-update-agent.path
 test -f /etc/systemd/system/ffdb-update-check.timer
+test ! -e /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+test -f /etc/systemd/system/ffdb-update-agent.service.d/administrator.conf
 test -f /etc/ffdb/Caddyfile
 test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640

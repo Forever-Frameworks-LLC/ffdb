@@ -24,6 +24,8 @@ rm -f /etc/systemd/system/ffdb-api.service /etc/systemd/system/ffdb-sync-worker.
   /etc/systemd/system/ffdb-update-agent.service \
   /etc/systemd/system/ffdb-update-check.service \
   /etc/systemd/system/ffdb-update-check.timer
+rm -f /etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
+rmdir /etc/systemd/system/ffdb-update-agent.service.d 2>/dev/null || true
 rm -f /usr/local/bin/ffdb-api /usr/local/bin/ffdb-database-worker \
   /usr/local/bin/ffdb-sync-worker /usr/local/bin/ffdb-backup /usr/local/bin/ffdb-update
 rm -f /etc/ffdb/Caddyfile

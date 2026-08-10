@@ -26,7 +26,10 @@ ProtectKernelModules=true
 ProtectKernelTunables=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictRealtime=true
-RestrictSUIDSGID=true
+# RestrictSUIDSGID blocks openat2 entirely because seccomp cannot inspect the
+# indirect mode argument. GNU tar uses openat2 for safe extraction, so the
+# updater validates archive modes itself and extracts without restoring owner
+# or unrestricted permissions instead.
 SystemCallArchitectures=native
 CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETGID CAP_SETUID
 AmbientCapabilities=
