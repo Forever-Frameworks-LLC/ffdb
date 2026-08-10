@@ -90,12 +90,17 @@ describe("instance host updates", () => {
 
   it("keeps a persisted job visible while the API restarts, then reconnects and reports completion", async () => {
     let jobReads = 0;
+    let statusReads = 0;
     let completed = false;
     const notice = vi.fn();
     const active = updateJob({ state: "running", phase: "restart", message: "Restarting FFDB services" });
     const client = await updateClient(async (request) => {
       const path = new URL(request.url).pathname;
-      if (path === "/v1/instance/updates" && request.method === "GET") return Response.json({ ...updateStatus(completed), active_job: completed ? null : active });
+      if (path === "/v1/instance/updates" && request.method === "GET") {
+        statusReads += 1;
+        if (completed && statusReads === 2) throw new TypeError("gateway still restarting after the job completed");
+        return Response.json({ ...updateStatus(completed), active_job: completed ? null : active });
+      }
       if (path === "/v1/instance/updates/jobs/job-1") {
         jobReads += 1;
         if (jobReads === 1) throw new TypeError("connection closed during restart");
@@ -110,8 +115,9 @@ describe("instance host updates", () => {
     expect(await screen.findByText("Restarting FFDB services")).toBeInTheDocument();
     expect(await screen.findByText("Reconnecting to FFDB…", {}, { timeout: 2_000 })).toBeInTheDocument();
     expect(screen.getByText(/gateway can remain available while the API restarts/i)).toBeInTheDocument();
-    await waitFor(() => expect(notice).toHaveBeenCalledWith("Updated to FFDB 0.3.3"), { timeout: 5_000 });
-    expect(jobReads).toBe(2);
+    await waitFor(() => expect(notice).toHaveBeenCalledWith("Updated to FFDB 0.3.3"), { timeout: 8_000 });
+    expect(jobReads).toBe(3);
+    expect(statusReads).toBe(3);
   });
 
   it("turns legacy nested updater JSON into one actionable failed-job card", async () => {

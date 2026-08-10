@@ -32,6 +32,13 @@ const defaultSettings: HostUpdateSettings = {
   maintenance_window_duration_minutes: 60,
 };
 
+const updatePollIntervalMs = 1_500;
+const updateReconnectLimitMs = 3 * 60_000;
+
+function updateReconnectDelayMs(attempt: number): number {
+  return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
+}
+
 export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }: {
   readonly client: FFDBClient;
   onNotice(message: string): void;
@@ -77,29 +84,51 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
     if (job === null || !isActiveJob(job)) return;
     let current = true;
     let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
+    let reconnectStartedAt: number | null = null;
+    let reconnectAttempts = 0;
+    const schedulePoll = (delay: number) => {
+      timer = globalThis.setTimeout(() => void poll(), delay);
+    };
     const poll = async () => {
       try {
         const next = await client.hostUpdateJob(job.job_id, { retry: false });
         if (!current) return;
-        setJob(next);
-        setReconnecting(false);
-        setError(null);
         if (isActiveJob(next)) {
-          timer = globalThis.setTimeout(() => void poll(), 1_500);
+          setJob(next);
+          setReconnecting(false);
+          setError(null);
+          reconnectStartedAt = null;
+          reconnectAttempts = 0;
+          schedulePoll(updatePollIntervalMs);
           return;
         }
         if (next.state === "succeeded") {
           const refreshed = await loadStatus();
           if (!current) return;
+          setJob(next);
+          setReconnecting(false);
+          setError(null);
           onNotice(completionNotice(next, refreshed));
+          return;
         }
+        setJob(next);
+        setReconnecting(false);
+        setError(null);
       } catch (cause) {
         if (!current) return;
+        const now = Date.now();
+        reconnectStartedAt ??= now;
+        if (now - reconnectStartedAt >= updateReconnectLimitMs) {
+          setReconnecting(false);
+          setError("FFDB did not reconnect within three minutes. The update continues independently; reload this page after application traffic returns.");
+          return;
+        }
         setReconnecting(true);
-        timer = globalThis.setTimeout(() => void poll(), 2_000);
+        schedulePoll(updateReconnectDelayMs(reconnectAttempts));
+        reconnectAttempts += 1;
       }
     };
-    timer = globalThis.setTimeout(() => void poll(), 650);
+    schedulePoll(650);
     return () => {
       current = false;
       if (timer !== undefined) globalThis.clearTimeout(timer);

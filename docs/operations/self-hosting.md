@@ -73,13 +73,13 @@ pin an exact version, require signatures, and start only after validation:
 
 ```sh
 curl -fsSLo /tmp/ffdb-install.sh \
-  https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.7/install.sh
-sudo sh /tmp/ffdb-install.sh --version 0.3.7 \
-  --release-base https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.7 \
+  https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.8/install.sh
+sudo sh /tmp/ffdb-install.sh --version 0.3.8 \
+  --release-base https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.8 \
   --env-file /secure/path/ffdb.env --start --require-signature
 ```
 
-Replace `0.3.7` with the announced version you reviewed. Without `--version` or
+Replace `0.3.8` with the announced version you reviewed. Without `--version` or
 `--tag`, the installer resolves `stable.txt` from the latest stable GitHub
 Release. It downloads the release checksums, verifies their Sigstore bundle when
 `cosign` is available, always verifies the bundle/controller SHA-256 digests,
@@ -211,8 +211,8 @@ sudo ffdb-host update-check
 sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update
 
 # Reproducible scheduled alternative:
-sudo ffdb-host update-check --version 0.3.7
-sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.7
+sudo ffdb-host update-check --version 0.3.8
+sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.8
 ```
 
 The new release is installed beside prior releases and the same configuration
@@ -258,9 +258,9 @@ filesystem. This is also the supported way to exercise a release candidate
 before its GitHub tag is published:
 
 ```sh
-sudo FFDB_VERSION=0.3.7 \
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.7 \
-  sh /srv/ffdb/releases/v0.3.7/install.sh \
+sudo FFDB_VERSION=0.3.8 \
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.8 \
+  sh /srv/ffdb/releases/v0.3.8/install.sh \
   --env-file /secure/path/ffdb.env
 ```
 
@@ -276,7 +276,7 @@ checkout without publishing them:
 
 ```sh
 make release-check
-FFDB_VERSION=0.3.7 \
+FFDB_VERSION=0.3.8 \
 FFDB_RUNTIME_IMAGE=ghcr.io/example/ffdb-runtime@sha256:FULL_DIGEST \
 FFDB_GATEWAY_IMAGE=ghcr.io/example/ffdb-gateway@sha256:FULL_DIGEST \
 FFDB_POSTGRES_IMAGE=postgres:17.5-alpine@sha256:FULL_DIGEST \
@@ -323,7 +323,7 @@ the backup or signed-update prerequisites are missing. Download the architecture
 verify the signed checksum list and then the archive before extraction:
 
 ```sh
-VERSION=0.3.7
+VERSION=0.3.8
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS.sigstore.json"

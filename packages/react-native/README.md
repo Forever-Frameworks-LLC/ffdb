@@ -15,8 +15,8 @@ It does not bundle Expo SecureStore, AsyncStorage, Expo SQLite, a fetch polyfill
 or React components.
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.7 @ffdb/sync-client@0.3.7 \
-  @ffdb/react-native@0.3.7
+pnpm add --save-exact @ffdb/client@0.3.8 @ffdb/sync-client@0.3.8 \
+  @ffdb/react-native@0.3.8
 ```
 
 The matching GitHub Release also provides checksum-listed `.tgz` files for

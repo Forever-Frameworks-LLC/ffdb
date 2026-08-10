@@ -5,8 +5,8 @@ React providers and hooks layered over `@ffdb/client` and
 the underlying client/session/replica adapters support that runtime.
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.7 @ffdb/sync-client@0.3.7 \
-  @ffdb/react@0.3.7 react
+pnpm add --save-exact @ffdb/client@0.3.8 @ffdb/sync-client@0.3.8 \
+  @ffdb/react@0.3.8 react
 ```
 
 The matching GitHub Release also provides checksum-listed `.tgz` files for
