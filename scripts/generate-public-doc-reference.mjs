@@ -116,13 +116,13 @@ function collectOpenApiReference(contract) {
 }
 
 function collectCliCommands(source) {
-  const match = source.match(/function help\(\): string \{\s*return `([\s\S]*?)`;\s*\}/u);
-  if (match === null) throw new Error("CLI help template was not found");
+  const match = source.match(/function referenceHelp\(\): string \{\s*return `([\s\S]*?)`;\s*\}/u);
+  if (match === null) throw new Error("CLI reference help template was not found");
   const groups = [];
   let current;
   for (const rawLine of match[1].split("\n")) {
     const line = rawLine.trim();
-    if (line === "" || line === "ffdb — manage projects and SQLite data") continue;
+    if (line === "") continue;
     if (line.endsWith(":")) {
       current = { name: line.slice(0, -1), commands: [] };
       groups.push(current);

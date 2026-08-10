@@ -31,6 +31,7 @@ provides checksum-listed tarballs for verified offline installation.
 - `apps/landing`: public React/Vite landing site
 - `apps/docs`: React/Vite documentation application
 - `apps/portal`: React/Vite management portal
+- `examples/field-notes`: polished React + Node feature lab for the public FFDB application surface
 - `crates`: narrow Rust security, data, and provider components
 - `packages`: TypeScript client, React/RN integrations, sync client, CLI, and email components
 - `infra`: local PostgreSQL and deployment assets

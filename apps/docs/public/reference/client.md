@@ -160,13 +160,13 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 
 - `constructor(private readonly client: FFDBClient)`
 - `register(input: RegisterRequest, options: RequestOptions = {}): Promise<RegisterResponse>`
-- `verifyEmail(token: string, options: RequestOptions = {}): Promise<void>`
+- `verifyEmail(token: string, options: AuthActionOptions = {}): Promise<AuthActionResult>`
 - `async signIn(email: string, password: string, options: RequestOptions = {}): Promise<AuthTokenPair>`
 - `async signOut(options: RequestOptions = {}): Promise<void>`
 - `session(): Promise<AuthTokenPair | null>`
 - `refresh(signal?: AbortSignal): Promise<AuthTokenPair>`
-- `startPasswordReset(email: string, options: RequestOptions = {}): Promise<void>`
-- `completePasswordReset( token: string, newPassword: string, options: RequestOptions = {},): Promise<void>`
+- `startPasswordReset(email: string, options: AuthActionOptions = {}): Promise<void>`
+- `completePasswordReset( token: string, newPassword: string, options: AuthActionOptions = {},): Promise<AuthActionResult>`
 - `sessions(options: RequestOptions = {}): Promise<readonly SessionSummary[]>`
 - `revokeSession(id: string, options: RequestOptions = {}): Promise<void>`
 
@@ -203,7 +203,9 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 - `export interface AddOrganizationMemberRequest { readonly email: string; readonly role: OrganizationRole; }`
 - `export interface ApiKeySummary { readonly id: string; readonly name: string; readonly prefix: string; readonly scopes: readonly DeveloperScope[]; readonly expires_at_ms: number | null; readonly created_at_ms: number; readonly revoked_at_ms: number | null; }`
 - `export interface AuditLogEntry { readonly id: string; readonly occurred_at_ms: number; readonly actor: string; readonly action: string; readonly resource: string; readonly outcome: "success" | "denied" | "failed"; readonly request_id: string | null; }`
-- `export interface AuthSettings { readonly registration_enabled: boolean; readonly email_verification_required: boolean; readonly access_token_ttl_seconds: number; readonly refresh_token_ttl_seconds: number; readonly password_min_length: number; }`
+- `export interface AuthActionOptions extends RequestOptions { /** Must exactly match a callback configured in this project's authentication settings. */ readonly redirectTo?: string; }`
+- `export interface AuthActionResult { readonly redirect_to: string | null; }`
+- `export interface AuthSettings { readonly registration_enabled: boolean; readonly email_verification_required: boolean; readonly access_token_ttl_seconds: number; readonly refresh_token_ttl_seconds: number; readonly password_min_length: number; /** Exact browser origins permitted to call this project's API. */ readonly allowed_web_origins: readonly string[]; /** Exact callback URLs permitted after hosted authentication actions. */ readonly allowed_auth_redirects: readonly string[]; }`
 - `export interface AuthTokenPair { readonly access_token: string; readonly refresh_token: string; readonly token_type: string; readonly expires_in_seconds: number; readonly session_id: string; readonly user: AuthUser; }`
 - `export interface AuthUser { readonly id: string; readonly email: string; readonly email_verified: boolean; readonly disabled: boolean; readonly role: string; readonly custom_claims: Readonly<Record<string, JsonValue>>; readonly created_at_ms: number; }`
 - `export interface BackupResult { readonly backup_id: string; readonly size_bytes: number; readonly sha256: string; }`
@@ -336,7 +338,7 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 - `export interface QueryOptions { readonly max_rows?: number; }`
 - `export interface QueryRequest { readonly sql: string; readonly parameters?: readonly SqlParameter[]; readonly options?: QueryOptions; }`
 - `export interface QueryResult<Row extends readonly ResultCell[] = readonly ResultCell[]> { readonly columns: readonly ColumnMetadata[]; readonly rows: readonly Row[]; readonly affected_rows: number; readonly last_insert_rowid: number | null; readonly truncated: boolean; }`
-- `export interface RegisterRequest { readonly email: string; readonly password: string; readonly custom_claims?: Readonly<Record<string, JsonValue>>; }`
+- `export interface RegisterRequest { readonly email: string; readonly password: string; readonly custom_claims?: Readonly<Record<string, JsonValue>>; /** * Absolute app URL used after email verification. It must exactly match an * allowed authentication redirect in this project's settings. */ readonly redirect_to?: string; }`
 - `export interface RegisterResponse { readonly user_id: string; readonly verification_required: boolean; }`
 - `export interface RequestOptions { readonly signal?: AbortSignal; readonly idempotencyKey?: string; readonly retry?: boolean; }`
 - `export interface RestoreResult { readonly backup_id: string; readonly integrity_ok: boolean; readonly schema_version: number; }`

@@ -185,6 +185,18 @@ pub(crate) fn migrator() -> Migrator {
                 "../../../infra/postgres/migrations/0016_auth_rate_limit_dimensions.down.sql"
             ),
         ),
+        up(
+            17,
+            "project application URLs",
+            include_str!("../../../infra/postgres/migrations/0017_project_application_urls.up.sql"),
+        ),
+        down(
+            17,
+            "project application URLs",
+            include_str!(
+                "../../../infra/postgres/migrations/0017_project_application_urls.down.sql"
+            ),
+        ),
     ];
     Migrator::with_migrations(migrations)
 }
@@ -255,6 +267,8 @@ mod tests {
                 (15, MigrationType::ReversibleDown),
                 (16, MigrationType::ReversibleUp),
                 (16, MigrationType::ReversibleDown),
+                (17, MigrationType::ReversibleUp),
+                (17, MigrationType::ReversibleDown),
             ]
         );
         assert!(

@@ -122,8 +122,8 @@ export interface TemplateManifestEntry {
 }
 
 export const templateManifest: readonly TemplateManifestEntry[] = [
-  { kind: "verification", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Verify your {{project_name}} email" },
-  { kind: "password_reset", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Reset your {{project_name}} password" },
+  { kind: "verification", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Verify your email for {{project_name}}" },
+  { kind: "password_reset", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Reset your password for {{project_name}}" },
   { kind: "email_change", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Confirm your new {{project_name}} email" },
   { kind: "invitation", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "You were invited to {{project_name}}" },
   { kind: "magic_link", allowedVariables: ["project_name", "action_url", "expires_in"], defaultSubject: "Sign in to {{project_name}}" },

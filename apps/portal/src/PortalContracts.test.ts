@@ -10,6 +10,7 @@ const appSource = readFileSync(sourcePath("App.tsx"), "utf8");
 const overviewSource = readFileSync(sourcePath("polish/OverviewWorkspace.tsx"), "utf8");
 const databaseSource = readFileSync(sourcePath("polish/DatabaseActivity.tsx"), "utf8");
 const observabilitySource = readFileSync(sourcePath("polish/Observability.tsx"), "utf8");
+const connectSource = readFileSync(sourcePath("polish/Connect.tsx"), "utf8");
 const authSource = readFileSync(sourcePath("polish/AuthSync.tsx"), "utf8");
 const managedTableSource = readFileSync(sourcePath("polish/ManagedTable.tsx"), "utf8");
 const polishedTableSource = readFileSync(sourcePath("polish/PolishedDataTable.tsx"), "utf8");
@@ -36,6 +37,7 @@ const responsiveCss = [
 
 const expectedPanel: Readonly<Record<PortalRoute, string>> = {
   Overview: "ProductionOverviewPanel",
+  Connect: "ConnectPanel",
   Projects: "ProductionWorkspacePanel",
   Members: "ProductionWorkspacePanel",
   "SQL Editor": "SqlEditorPanel",
@@ -92,6 +94,15 @@ describe("portal route/action coverage matrix", () => {
       expect(overviewSource).toContain(`onNavigate("${destination}")`);
     }
     expect(overviewSource).not.toMatch(/ow-quick-actions[\s\S]*?onClick=\{\(\) => onNotice\(/u);
+  });
+
+  it("keeps project connection guidance scoped, copyable, and secret-safe", () => {
+    expect(navigationGroups.find((group) => group.label === "Workspace")?.items.some((item) => item.label === "Connect")).toBe(true);
+    expect(connectSource).toContain("configuration.projectId");
+    expect(connectSource).toContain("configuration.apiUrl");
+    expect(connectSource).toContain("EXPO_PUBLIC_FFDB_PROJECT_ID");
+    expect(connectSource).toContain("FFDB_DEVELOPER_KEY=ffdb_dev_replace_me");
+    expect(connectSource).not.toContain("configuration.developerKey");
   });
 
   it("returns invalid or signed-out account sessions to the authentication gate", () => {

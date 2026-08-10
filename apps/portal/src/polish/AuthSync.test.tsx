@@ -71,9 +71,9 @@ describe("polished Auth and Sync routes", () => {
     }));
     const calls: Request[] = [];
     const client = testClient(async (request) => {
-      calls.push(request);
+      calls.push(request.clone());
       if (request.url.endsWith("/auth/settings") && request.method === "PATCH") return Response.json(await request.json());
-      if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12 });
+      if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12, allowed_web_origins: ["http://localhost:5180"], allowed_auth_redirects: ["http://localhost:5180/?ffdb_auth=verified"] });
       if (request.url.endsWith("/auth/users")) return Response.json(users);
       return new Response(null, { status: 204 });
     });
@@ -88,8 +88,16 @@ describe("polished Auth and Sync routes", () => {
     expect(registration).toHaveAttribute("aria-checked", "true");
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     fireEvent.click(registration);
+    expect(screen.getByRole("textbox", { name: /Allowed web origins/i })).toHaveValue("http://localhost:5180");
+    fireEvent.change(screen.getByRole("textbox", { name: /Allowed auth redirects/i }), { target: { value: "http://localhost:5180/?ffdb_auth=verified\nhttp://localhost:5180/?ffdb_auth=password-reset" } });
     fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
     await waitFor(() => expect(calls.some((request) => request.url.endsWith("/auth/settings") && request.method === "PATCH")).toBe(true));
+    const update = calls.find((request) => request.url.endsWith("/auth/settings") && request.method === "PATCH");
+    expect(update).toBeDefined();
+    await expect(update!.clone().json()).resolves.toMatchObject({
+      allowed_web_origins: ["http://localhost:5180"],
+      allowed_auth_redirects: ["http://localhost:5180/?ffdb_auth=verified", "http://localhost:5180/?ffdb_auth=password-reset"],
+    });
 
     fireEvent.click(screen.getByRole("tab", { name: /Users 12/i }));
     const usersCard = screen.getByRole("heading", { name: "Project auth users" }).closest("section");

@@ -397,14 +397,14 @@ pub fn default_template(
     let (template_id, subject, heading, action, explanatory) = match kind {
         TemplateKind::EmailVerification => (
             "email-verification",
-            "Verify your {{project_name}} email",
+            "Verify your email for {{project_name}}",
             "Verify your email",
             "Verify email",
             "Confirm this address to finish creating your account.",
         ),
         TemplateKind::PasswordReset => (
             "password-reset",
-            "Reset your {{project_name}} password",
+            "Reset your password for {{project_name}}",
             "Reset your password",
             "Reset password",
             "Use this secure link to choose a new password.",

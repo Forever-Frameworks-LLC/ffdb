@@ -273,6 +273,8 @@ function AuthSettingsCard({ client, resource, onChange, onNotice }: {
 }) {
   const [draft, setDraft] = useState<AuthSettings | null>(resource.status === "ready" ? resource.data : null);
   const [baseline, setBaseline] = useState<AuthSettings | null>(resource.status === "ready" ? resource.data : null);
+  const [webOriginsText, setWebOriginsText] = useState(resource.status === "ready" ? resource.data.allowed_web_origins.join("\n") : "");
+  const [authRedirectsText, setAuthRedirectsText] = useState(resource.status === "ready" ? resource.data.allowed_auth_redirects.join("\n") : "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -280,19 +282,31 @@ function AuthSettingsCard({ client, resource, onChange, onNotice }: {
     if (resource.status !== "ready") return;
     setDraft(resource.data);
     setBaseline(resource.data);
+    setWebOriginsText(resource.data.allowed_web_origins.join("\n"));
+    setAuthRedirectsText(resource.data.allowed_auth_redirects.join("\n"));
   }, [resource]);
 
-  const dirty = draft !== null && baseline !== null && JSON.stringify(draft) !== JSON.stringify(baseline);
+  const webOrigins = parseApplicationUrls(webOriginsText, "origin");
+  const authRedirects = parseApplicationUrls(authRedirectsText, "redirect");
+  const urlError = webOrigins.error ?? authRedirects.error;
+  const proposed = draft === null ? null : {
+    ...draft,
+    allowed_web_origins: webOrigins.values,
+    allowed_auth_redirects: authRedirects.values,
+  };
+  const dirty = proposed !== null && baseline !== null && JSON.stringify(proposed) !== JSON.stringify(baseline);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (draft === null) return;
+    if (proposed === null || urlError !== null) return;
     setPending(true);
     setError(null);
     try {
-      const value = await client.updateAuthSettings(draft);
+      const value = await client.updateAuthSettings(proposed);
       setDraft(value);
       setBaseline(value);
+      setWebOriginsText(value.allowed_web_origins.join("\n"));
+      setAuthRedirectsText(value.allowed_auth_redirects.join("\n"));
       onChange({ status: "ready", data: value });
       onNotice?.("Authentication settings saved");
     } catch (cause) {
@@ -328,10 +342,46 @@ function AuthSettingsCard({ client, resource, onChange, onNotice }: {
             <NumberInput label="Access token TTL" value={draft.access_token_ttl_seconds} min={60} suffix="seconds" onChange={(value) => setDraft({ ...draft, access_token_ttl_seconds: value })} />
             <NumberInput label="Refresh token TTL" value={draft.refresh_token_ttl_seconds} min={60} suffix="seconds" onChange={(value) => setDraft({ ...draft, refresh_token_ttl_seconds: value })} />
           </div>
+          <div className="auth-application-urls">
+            <div className="auth-application-urls__heading">
+              <div>
+                <strong>Application URLs</strong>
+                <span>Project-scoped browser and auth destinations. Changes take effect immediately—no server restart.</span>
+              </div>
+              <span>Up to 20 each</span>
+            </div>
+            <div className="auth-url-grid">
+              <label>
+                <span>Allowed web origins</span>
+                <small>Browser origins permitted to call this project’s API. One origin per line; no path.</small>
+                <textarea
+                  aria-describedby="allowed-web-origins-hint"
+                  placeholder={"http://localhost:5180\nhttps://app.example.com"}
+                  spellCheck={false}
+                  value={webOriginsText}
+                  onChange={(event) => setWebOriginsText(event.target.value)}
+                />
+                <small id="allowed-web-origins-hint">Use the exact scheme, host, and port your browser shows.</small>
+              </label>
+              <label>
+                <span>Allowed auth redirects</span>
+                <small>Exact pages FFDB may return to after verification or password reset.</small>
+                <textarea
+                  aria-describedby="allowed-auth-redirects-hint"
+                  placeholder={"http://localhost:5180/?ffdb_auth=verified\nhttp://localhost:5180/?ffdb_auth=password-reset"}
+                  spellCheck={false}
+                  value={authRedirectsText}
+                  onChange={(event) => setAuthRedirectsText(event.target.value)}
+                />
+                <small id="allowed-auth-redirects-hint">Paths, query strings, and fragments must match exactly.</small>
+              </label>
+            </div>
+          </div>
+          {urlError === null ? null : <InlineError message={urlError} />}
           {error === null ? null : <InlineError message={error} />}
           <div className="auth-form-actions">
             <span>{dirty ? "Unsaved policy changes" : "Policy is up to date"}</span>
-            <button className="auth-button auth-button--primary" disabled={!dirty || pending} type="submit">
+            <button className="auth-button auth-button--primary" disabled={!dirty || pending || urlError !== null} type="submit">
               {pending ? "Saving…" : "Save policy"}
             </button>
           </div>
@@ -339,6 +389,29 @@ function AuthSettingsCard({ client, resource, onChange, onNotice }: {
       )}
     </section>
   );
+}
+
+function parseApplicationUrls(value: string, kind: "origin" | "redirect"): { readonly values: readonly string[]; readonly error: string | null } {
+  const lines = value.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 20) return { values: [], error: `Use no more than 20 ${kind === "origin" ? "web origins" : "auth redirects"}.` };
+  const values: string[] = [];
+  for (const line of lines) {
+    let url: URL;
+    try {
+      url = new URL(line);
+    } catch {
+      return { values: [], error: `“${line}” is not a valid absolute URL.` };
+    }
+    if (!(["http:", "https:"] as const).includes(url.protocol as "http:" | "https:") || url.username !== "" || url.password !== "") {
+      return { values: [], error: `“${line}” must be an HTTP(S) URL without embedded credentials.` };
+    }
+    if (kind === "origin" && (url.pathname !== "/" || url.search !== "" || url.hash !== "")) {
+      return { values: [], error: `“${line}” includes a path, query, or fragment; web origins stop after the port.` };
+    }
+    const normalized = kind === "origin" ? url.origin : url.href;
+    if (!values.includes(normalized)) values.push(normalized);
+  }
+  return { values, error: null };
 }
 
 function AuthUsersCard({ resource, hasSession, onReload, onTest, onToggle }: {

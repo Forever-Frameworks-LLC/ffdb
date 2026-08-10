@@ -2,6 +2,7 @@ packages:
   - "apps/portal"
   - "apps/landing"
   - "apps/docs"
+  - "examples/field-notes"
   - "packages/*"
 
 overrides:

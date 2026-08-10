@@ -97,11 +97,20 @@ export interface RegisterRequest {
   readonly email: string;
   readonly password: string;
   readonly custom_claims?: Readonly<Record<string, JsonValue>>;
+  /**
+   * Absolute app URL used after email verification. It must exactly match an
+   * allowed authentication redirect in this project's settings.
+   */
+  readonly redirect_to?: string;
 }
 
 export interface RegisterResponse {
   readonly user_id: string;
   readonly verification_required: boolean;
+}
+
+export interface AuthActionResult {
+  readonly redirect_to: string | null;
 }
 
 export interface SessionSummary {
@@ -1051,6 +1060,10 @@ export interface AuthSettings {
   readonly access_token_ttl_seconds: number;
   readonly refresh_token_ttl_seconds: number;
   readonly password_min_length: number;
+  /** Exact browser origins permitted to call this project's API. */
+  readonly allowed_web_origins: readonly string[];
+  /** Exact callback URLs permitted after hosted authentication actions. */
+  readonly allowed_auth_redirects: readonly string[];
 }
 
 export interface AuditLogEntry {
@@ -1170,4 +1183,9 @@ export interface RequestOptions {
   readonly signal?: AbortSignal;
   readonly idempotencyKey?: string;
   readonly retry?: boolean;
+}
+
+export interface AuthActionOptions extends RequestOptions {
+  /** Must exactly match a callback configured in this project's authentication settings. */
+  readonly redirectTo?: string;
 }
