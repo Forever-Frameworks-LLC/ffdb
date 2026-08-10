@@ -6,12 +6,12 @@ FFDB server and CLI releases are version-matched. Pin the CLI to the server
 version:
 
 ```bash
-npm install --global @ffdb/cli@0.3.7
+npm install --global @ffdb/cli@0.3.8
 ffdb --help
 ```
 
 The matching GitHub Release also includes a checksum-listed
-`ffdb-cli-0.3.7.tgz` for verified offline installation.
+`ffdb-cli-0.3.8.tgz` for verified offline installation.
 
 ```bash
 ffdb login

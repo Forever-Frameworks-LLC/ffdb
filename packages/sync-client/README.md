@@ -7,11 +7,11 @@ The runtime must also support `@ffdb/client` (or supply its `fetch`
 implementation) and an authenticated end-user session.
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.7 @ffdb/sync-client@0.3.7
+pnpm add --save-exact @ffdb/client@0.3.8 @ffdb/sync-client@0.3.8
 ```
 
 The matching GitHub Release also provides a checksum-listed
-`ffdb-sync-client-0.3.7.tgz` for verified offline installation.
+`ffdb-sync-client-0.3.8.tgz` for verified offline installation.
 
 ```ts
 import { FFDBClient, MemorySessionStore } from "@ffdb/client";
