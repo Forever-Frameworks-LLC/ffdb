@@ -108,7 +108,7 @@ For a reproducible rollout, download the installer from an exact announced tag
 and pass the same version explicitly:
 
 ```bash
-VERSION=0.3.0
+VERSION=0.3.2
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 sudo sh ffdb-install.sh --version "$VERSION" \
@@ -137,7 +137,7 @@ The TypeScript SDK, sync client, React/React Native integrations, email
 components, and CLI are version-matched public npm packages:
 
 ```bash
-VERSION=0.3.0
+VERSION=0.3.2
 npm install --save-exact \
   "@ffdb/client@$VERSION" \
   "@ffdb/sync-client@$VERSION" \

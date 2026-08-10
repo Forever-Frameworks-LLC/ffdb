@@ -27,6 +27,40 @@ for (const path of jsonFiles) {
   }
 }
 
+const releaseFacingTextFiles = [
+  "README.md",
+  "docs/operations/self-hosting.md",
+  "docs/API/sdk.md",
+  "apps/docs/src/content.ts",
+  "apps/docs/src/content.test.ts",
+  "apps/landing/src/App.tsx",
+  "packages/client/README.md",
+  "packages/sync-client/README.md",
+  "packages/react/README.md",
+  "packages/react-native/README.md",
+  "packages/email-components/README.md",
+  "packages/cli/README.md",
+];
+const releasePinPatterns = [
+  /@ffdb\/[a-z-]+@(\d+\.\d+\.\d+)/g,
+  /ffdb-(?:compose-bundle|native-linux-(?:amd64|arm64)|client|sync-client|react|react-native|email-components|cli)-(\d+\.\d+\.\d+)/g,
+  /ghcr\.io\/forever-frameworks-llc\/ffdb-(?:runtime|gateway):(\d+\.\d+\.\d+)/g,
+  /\b(?:FFDB_)?VERSION=(\d+\.\d+\.\d+)/g,
+  /releases\/(?:download\/)?v(\d+\.\d+\.\d+)/g,
+  /--version\s+(\d+\.\d+\.\d+)/g,
+  /supported\s+(\d+\.\d+\.\d+)\s+release/g,
+];
+for (const path of releaseFacingTextFiles) {
+  const source = readFileSync(path, "utf8");
+  for (const pattern of releasePinPatterns) {
+    for (const match of source.matchAll(pattern)) {
+      if (match[1] !== version) {
+        throw new Error(`${path} has release pin ${match[1]}; expected ${version}`);
+      }
+    }
+  }
+}
+
 const workspace = readFileSync("Cargo.toml", "utf8");
 const workspaceVersion = workspace.match(/\[workspace\.package\][\s\S]*?\nversion\s*=\s*"([^"]+)"/)?.[1];
 if (workspaceVersion !== version) {
