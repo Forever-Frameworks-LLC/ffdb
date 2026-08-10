@@ -1,0 +1,12 @@
+[Unit]
+Description=Check the stable FFDB release channel hourly
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=10min
+Persistent=true
+Unit=ffdb-update-check.service
+
+[Install]
+WantedBy=timers.target

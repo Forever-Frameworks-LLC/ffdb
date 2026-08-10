@@ -84,6 +84,13 @@ export const clientClassSections = [
       "async instanceSetupStatus(options: RequestOptions = {}): Promise<PublicInstanceSetupStatus>",
       "async developerBootstrap( bootstrapToken: string, email: string, password: string, options: RequestOptions = {},): Promise<DeveloperSession>",
       "async instanceStatus(options: RequestOptions = {}): Promise<InstanceStatus>",
+      "async hostUpdateStatus(options: RequestOptions = {}): Promise<HostUpdateStatus>",
+      "async checkForHostUpdate(options: RequestOptions = {}): Promise<HostUpdateJob>",
+      "async installHostUpdate( version: string, options: RequestOptions = {},): Promise<HostUpdateJob>",
+      "async rollbackHostUpdate( version: string, options: RequestOptions = {},): Promise<HostUpdateJob>",
+      "async hostUpdateJob(jobId: string, options: RequestOptions = {}): Promise<HostUpdateJob>",
+      "async hostUpdateSettings(options: RequestOptions = {}): Promise<HostUpdateSettings>",
+      "async configureHostUpdates( settings: HostUpdateSettings, options: RequestOptions = {},): Promise<HostUpdateJob>",
       "async configureInstance( input: CompleteInstanceSetupRequest, options: RequestOptions = {},): Promise<CompleteInstanceSetupResponse>",
       "async createInstanceConnectOnboarding( input: CreateInstanceConnectOnboardingRequest, options: RequestOptions = {},): Promise<InstanceBillingOnboarding>",
       "async refreshInstanceBilling(options: RequestOptions = {}): Promise<InstanceStatus>",
@@ -329,12 +336,12 @@ export const clientTypeSections = [
       "export interface GrantInstanceAdministratorRequest { readonly user_id: string; }",
       "export interface GrantOrganizationBillingExemptionRequest { readonly reason: string; }",
       "export interface HealthStatus { readonly status: string; readonly version?: number; }",
-      "export type InstanceAdministratorRole = \"owner\" | \"admin\";",
-      "export interface InstanceAdministratorSummary { readonly user_id: string; readonly email: string; readonly role: InstanceAdministratorRole; readonly granted_by: string | null; readonly created_at_ms: number; }",
-      "export type InstanceBillingAccountStatus = | \"pending\" | \"onboarding\" | \"enabled\" | \"restricted\" | \"disconnected\";",
-      "export interface InstanceBillingAccountSummary { readonly mode: InstanceBillingMode; readonly status: InstanceBillingAccountStatus; readonly provider_account_id: string | null; readonly charges_enabled: boolean; readonly payouts_enabled: boolean; readonly details_submitted: boolean; readonly capabilities: readonly string[]; readonly credentials_configured: boolean; readonly updated_at_ms: number; }",
-      "export type InstanceBillingMode = \"byo_keys\" | \"stripe_connect\";",
-      "export interface InstanceBillingOnboarding { readonly url: string; readonly expires_at_ms: number; }"
+      "export interface HostUpdateCapabilities { readonly check: boolean; readonly install: boolean; readonly rollback: boolean; readonly automatic_checks: boolean; readonly automatic_apply: boolean; }",
+      "export type HostUpdateChannel = \"stable\";",
+      "export interface HostUpdateJob { readonly job_id: string; readonly operation: HostUpdateOperation; readonly requested_version: string | null; readonly state: HostUpdateJobState; readonly phase: string; readonly installed_version: string | null; readonly available_version: string | null; readonly previous_version: string | null; readonly backup_path: string | null; readonly message: string; readonly error_code: string | null; readonly retryable: boolean; readonly created_at_ms: number; readonly updated_at_ms: number; }",
+      "export type HostUpdateJobState = \"queued\" | \"running\" | \"succeeded\" | \"failed\";",
+      "export type HostUpdateOperation = \"check\" | \"install\" | \"rollback\" | \"configure\";",
+      "export interface HostUpdateRelease { readonly version: string; readonly active: boolean; readonly rollback_compatible: boolean; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_verified: boolean; readonly signature_identity: string | null; readonly release_url: string | null; }"
     ]
   },
   {
@@ -343,6 +350,14 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface HostUpdateSettings { readonly channel: HostUpdateChannel; readonly automatic_checks: boolean; readonly check_interval_hours: number; readonly automatic_apply: boolean; /** Recurring UTC start in zero-padded HH:MM form. */ readonly maintenance_window_start: string | null; readonly maintenance_window_duration_minutes: number; }",
+      "export interface HostUpdateStatus { readonly supported: boolean; readonly unavailable_reason: string | null; readonly capabilities: HostUpdateCapabilities; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_identity: string | null; readonly installed_version: string | null; readonly available_version: string | null; readonly update_available: boolean; readonly last_check_at_ms: number | null; readonly active_job: HostUpdateJob | null; readonly releases: readonly HostUpdateRelease[]; readonly settings: HostUpdateSettings; }",
+      "export type InstanceAdministratorRole = \"owner\" | \"admin\";",
+      "export interface InstanceAdministratorSummary { readonly user_id: string; readonly email: string; readonly role: InstanceAdministratorRole; readonly granted_by: string | null; readonly created_at_ms: number; }",
+      "export type InstanceBillingAccountStatus = | \"pending\" | \"onboarding\" | \"enabled\" | \"restricted\" | \"disconnected\";",
+      "export interface InstanceBillingAccountSummary { readonly mode: InstanceBillingMode; readonly status: InstanceBillingAccountStatus; readonly provider_account_id: string | null; readonly charges_enabled: boolean; readonly payouts_enabled: boolean; readonly details_submitted: boolean; readonly capabilities: readonly string[]; readonly credentials_configured: boolean; readonly updated_at_ms: number; }",
+      "export type InstanceBillingMode = \"byo_keys\" | \"stripe_connect\";",
+      "export interface InstanceBillingOnboarding { readonly url: string; readonly expires_at_ms: number; }",
       "export type InstanceDeploymentMode = | \"unconfigured\" | \"private\" | \"team\" | \"platform_byo\" | \"platform_connect\";",
       "export interface InstanceOrganizationPage { readonly organizations: readonly InstanceOrganizationSummary[]; readonly total: number; readonly limit: number; readonly offset: number; }",
       "export interface InstanceOrganizationSummary { readonly id: string; readonly name: string; readonly slug: string; readonly disabled: boolean; readonly member_count: number; readonly project_count: number; readonly billing_exempt: boolean; readonly created_at_ms: number; }",
@@ -359,15 +374,7 @@ export const clientTypeSections = [
       "export interface MigrationSpec { readonly id: string; readonly name: string; readonly up_sql: string; readonly down_sql: string; readonly checksum: string; readonly created_at_ms: number; }",
       "export interface MigrationSummary { readonly id: string; readonly name: string; readonly checksum: string; readonly status: string; readonly schema_version_before: number; readonly schema_version_after: number; readonly applied_at_ms: number | null; }",
       "export interface MultipartPart { readonly partNumber: number; readonly etag: string; }",
-      "export interface MultipartUpload { readonly bucket: string; readonly key: string; readonly uploadId: string; }",
-      "export type MutationStatus = \"applied\" | \"duplicate\" | \"rejected\" | \"superseded\";",
-      "export type ObjectOperation = | \"upload\" | \"download\" | \"delete\" | \"upload_part\" | \"complete_multipart\" | \"abort_multipart\";",
-      "export interface ObservabilityHttpTotals { readonly requests: number; readonly qps: number; readonly client_errors: number; readonly server_errors: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; }",
-      "export interface ObservabilityQueryMetric { readonly fingerprint: string; readonly shape: string; readonly statement_kind: string; readonly read_only: boolean; readonly executions: number; readonly errors: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; readonly rows_returned: number; readonly rows_affected: number; }",
-      "export type ObservabilityRange = \"1h\" | \"6h\" | \"24h\" | \"7d\" | \"30d\";",
-      "export interface ObservabilityRouteMetric { readonly method: string; readonly route: string; readonly requests: number; readonly qps: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; }",
-      "export interface ObservabilityRuntimeSnapshot { readonly healthy: boolean; readonly active_workers: number; readonly max_workers: number; readonly worker_saturation: number; readonly execution_slots_in_use: number; readonly queue_capacity: number; readonly queue_saturation: number; }",
-      "export interface ObservabilityStorageSnapshot { readonly logical_database_bytes: number; readonly sampled_projects: number; readonly database_disk_total_bytes: number | null; readonly database_disk_available_bytes: number | null; readonly database_disk_used_percent: number | null; readonly backup_disk_total_bytes: number | null; readonly backup_disk_available_bytes: number | null; readonly backup_disk_used_percent: number | null; readonly last_sample_at_ms: number | null; }"
+      "export interface MultipartUpload { readonly bucket: string; readonly key: string; readonly uploadId: string; }"
     ]
   },
   {
@@ -376,6 +383,14 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export type MutationStatus = \"applied\" | \"duplicate\" | \"rejected\" | \"superseded\";",
+      "export type ObjectOperation = | \"upload\" | \"download\" | \"delete\" | \"upload_part\" | \"complete_multipart\" | \"abort_multipart\";",
+      "export interface ObservabilityHttpTotals { readonly requests: number; readonly qps: number; readonly client_errors: number; readonly server_errors: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; }",
+      "export interface ObservabilityQueryMetric { readonly fingerprint: string; readonly shape: string; readonly statement_kind: string; readonly read_only: boolean; readonly executions: number; readonly errors: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; readonly rows_returned: number; readonly rows_affected: number; }",
+      "export type ObservabilityRange = \"1h\" | \"6h\" | \"24h\" | \"7d\" | \"30d\";",
+      "export interface ObservabilityRouteMetric { readonly method: string; readonly route: string; readonly requests: number; readonly qps: number; readonly error_rate: number; readonly average_latency_ms: number | null; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; readonly max_latency_ms: number | null; }",
+      "export interface ObservabilityRuntimeSnapshot { readonly healthy: boolean; readonly active_workers: number; readonly max_workers: number; readonly worker_saturation: number; readonly execution_slots_in_use: number; readonly queue_capacity: number; readonly queue_saturation: number; }",
+      "export interface ObservabilityStorageSnapshot { readonly logical_database_bytes: number; readonly sampled_projects: number; readonly database_disk_total_bytes: number | null; readonly database_disk_available_bytes: number | null; readonly database_disk_used_percent: number | null; readonly backup_disk_total_bytes: number | null; readonly backup_disk_available_bytes: number | null; readonly backup_disk_used_percent: number | null; readonly last_sample_at_ms: number | null; }",
       "export interface ObservabilitySummary { readonly scope: \"instance\" | \"project\"; readonly project_id: string | null; readonly generated_at_ms: number; readonly window_start_ms: number; readonly window_end_ms: number; readonly resolution_seconds: number; readonly retention_days: number; readonly current_inflight: number; readonly dropped_samples: number; readonly totals: ObservabilityHttpTotals; readonly series: readonly ObservabilityTimePoint[]; readonly busiest_routes: readonly ObservabilityRouteMetric[]; readonly slowest_routes: readonly ObservabilityRouteMetric[]; readonly frequent_queries: readonly ObservabilityQueryMetric[]; readonly slow_queries: readonly ObservabilityQueryMetric[]; readonly runtime: ObservabilityRuntimeSnapshot; readonly storage: ObservabilityStorageSnapshot; }",
       "export interface ObservabilityTimePoint { readonly timestamp_ms: number; readonly requests: number; readonly qps: number; readonly client_errors: number; readonly server_errors: number; readonly p50_latency_ms: number | null; readonly p95_latency_ms: number | null; readonly p99_latency_ms: number | null; }",
       "export interface OrganizationBillingExemptionSummary { readonly organization_id: string; readonly organization_name: string; readonly reason: string; readonly created_by: string; readonly created_by_email: string; readonly created_at_ms: number; }",
@@ -392,15 +407,7 @@ export const clientTypeSections = [
       "export interface PlatformInvoiceSummary { readonly id: string; readonly organization_id: string; readonly status: PlatformInvoiceStatus; readonly currency: string; readonly amount_due_minor: number; readonly amount_paid_minor: number; readonly period_start_ms: number | null; readonly period_end_ms: number | null; readonly hosted_invoice_url: string | null; readonly invoice_pdf_url: string | null; readonly created_at_ms: number; }",
       "export interface PlatformUsageAllowance { readonly storage_bytes: number; readonly monthly_reads: number; readonly monthly_writes: number; readonly monthly_active_users: number; readonly overage_enabled: boolean; }",
       "export interface PlatformUsageSummary { readonly organization_id: string; readonly period_start_ms: number; readonly period_end_ms: number; readonly reads: number; readonly writes: number; readonly storage_bytes: number; readonly storage_byte_hours: number; readonly monthly_active_users: number; readonly reporting_status: UsageReportingStatus; readonly reporting_last_success_ms: number | null; readonly as_of_ms: number; }",
-      "export type PolicyCommand = \"all\" | \"select\" | \"insert\" | \"update\" | \"delete\";",
-      "export interface PolicyDefinition { readonly name: string; readonly table: string; readonly kind: PolicyKind; readonly command: PolicyCommand; readonly roles: readonly string[]; readonly using_expression: string | null; readonly check_expression: string | null; readonly enabled: boolean; readonly forced: boolean; }",
-      "export type PolicyKind = \"permissive\" | \"restrictive\";",
-      "export type ProjectLifecycleState = | \"provisioning\" | \"active\" | \"suspended\" | \"restoring\" | \"deleting\" | \"deleted\" | \"failed\";",
-      "export interface ProjectPaymentCapabilities { readonly checkout_sessions: boolean; readonly recurring_billing: boolean; readonly customer_portal: boolean; readonly webhooks: boolean; }",
-      "export type ProjectPaymentsStatus = \"not_configured\" | \"enabled\" | \"restricted\";",
-      "export interface ProjectPaymentsSummary { readonly project_id: string; readonly organization_id: string; readonly status: ProjectPaymentsStatus; readonly provider: string | null; readonly capabilities: ProjectPaymentCapabilities; }",
-      "export interface ProjectSummary { readonly id: string; readonly organization_id: string; readonly name: string; readonly slug: string; readonly region: string; readonly state: ProjectLifecycleState; readonly schema_version: number; readonly created_at_ms: number; }",
-      "export interface PublicInstanceSetupStatus { readonly bootstrap_available: boolean; readonly setup_required: boolean; readonly platform_byo_available: boolean; readonly platform_connect_available: boolean; }"
+      "export type PolicyCommand = \"all\" | \"select\" | \"insert\" | \"update\" | \"delete\";"
     ]
   },
   {
@@ -409,6 +416,14 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface PolicyDefinition { readonly name: string; readonly table: string; readonly kind: PolicyKind; readonly command: PolicyCommand; readonly roles: readonly string[]; readonly using_expression: string | null; readonly check_expression: string | null; readonly enabled: boolean; readonly forced: boolean; }",
+      "export type PolicyKind = \"permissive\" | \"restrictive\";",
+      "export type ProjectLifecycleState = | \"provisioning\" | \"active\" | \"suspended\" | \"restoring\" | \"deleting\" | \"deleted\" | \"failed\";",
+      "export interface ProjectPaymentCapabilities { readonly checkout_sessions: boolean; readonly recurring_billing: boolean; readonly customer_portal: boolean; readonly webhooks: boolean; }",
+      "export type ProjectPaymentsStatus = \"not_configured\" | \"enabled\" | \"restricted\";",
+      "export interface ProjectPaymentsSummary { readonly project_id: string; readonly organization_id: string; readonly status: ProjectPaymentsStatus; readonly provider: string | null; readonly capabilities: ProjectPaymentCapabilities; }",
+      "export interface ProjectSummary { readonly id: string; readonly organization_id: string; readonly name: string; readonly slug: string; readonly region: string; readonly state: ProjectLifecycleState; readonly schema_version: number; readonly created_at_ms: number; }",
+      "export interface PublicInstanceSetupStatus { readonly bootstrap_available: boolean; readonly setup_required: boolean; readonly platform_byo_available: boolean; readonly platform_connect_available: boolean; }",
       "export type PutInstancePlanCatalogEntryRequest = Omit< InstancePlanCatalogEntry, \"tier\" | \"provider_catalog_bound\" | \"updated_at_ms\" >;",
       "export interface QueryOptions { readonly max_rows?: number; }",
       "export interface QueryRequest { readonly sql: string; readonly parameters?: readonly SqlParameter[]; readonly options?: QueryOptions; }",
@@ -425,15 +440,7 @@ export const clientTypeSections = [
       "export interface SignedObjectRequest { readonly url: string; readonly method: string; readonly headers: readonly (readonly [string, string])[]; readonly expires_at_ms: number; readonly authorization_token: string | null; }",
       "export interface SignObjectRequest { readonly bucket: string; readonly key: string; readonly operation: ObjectOperation; readonly content_type: string | null; readonly size_bytes: number | null; readonly checksum_sha256: string | null; readonly upload_id?: string | null; readonly part_number?: number | null; }",
       "export interface SnapshotResponse { readonly schema_version: number; readonly cursor: string; readonly tables: Readonly<Record<string, QueryResult>>; }",
-      "export type SqlParameter = | { readonly type: \"null\" } | { readonly type: \"integer\"; readonly value: number | string } | { readonly type: \"real\"; readonly value: number } | { readonly type: \"text\"; readonly value: string } | { readonly type: \"blob\"; readonly value: string };",
-      "export interface StorageBucket { readonly id: string; readonly name: string; readonly public: boolean; readonly max_object_bytes: number; readonly project_quota_bytes: number; readonly versioning: boolean; readonly created_at_ms: number; }",
-      "export interface StorageBucketRequest { readonly name: string; readonly public: boolean; readonly max_object_bytes: number | null; readonly versioning: boolean; }",
-      "export interface StorageObjectItem { readonly id: string; readonly object_key: string; readonly owner_id: string; readonly size_bytes: number; readonly content_type: string | null; readonly checksum_sha256: string | null; readonly etag: string | null; readonly version_id: string | null; readonly created_at_ms: number; readonly updated_at_ms: number; }",
-      "export interface StorageObjectPage { readonly items: readonly StorageObjectItem[]; readonly next_cursor: string | null; }",
-      "export type SyncControl = | { readonly type: \"resnapshot_required\"; readonly reason: string; readonly minimum_schema_version: number; } | { readonly type: \"invalidate_scope\"; readonly scope_fingerprint: string };",
-      "export interface SyncMutation { readonly mutation_id: string; readonly table: string; readonly primary_key: JsonValue; readonly operation: ChangeOperation; readonly values: Readonly<Record<string, JsonValue>> | null; readonly base_row_version: number | null; readonly client_timestamp_ms: number | null; }",
-      "export interface SyncMutationResult { readonly mutation_id: string; readonly status: MutationStatus; readonly server_sequence: number | null; readonly row_version: number | null; readonly error_code: string | null; }",
-      "export interface SyncPullResponse { readonly changes: readonly LogicalChange[]; readonly cursor: string; readonly has_more: boolean; readonly control: SyncControl | null; }"
+      "export type SqlParameter = | { readonly type: \"null\" } | { readonly type: \"integer\"; readonly value: number | string } | { readonly type: \"real\"; readonly value: number } | { readonly type: \"text\"; readonly value: string } | { readonly type: \"blob\"; readonly value: string };"
     ]
   },
   {
@@ -442,6 +449,14 @@ export const clientTypeSections = [
       "Readonly markers, optional properties, unions, and generic defaults are preserved from the public declaration."
     ],
     "bullets": [
+      "export interface StorageBucket { readonly id: string; readonly name: string; readonly public: boolean; readonly max_object_bytes: number; readonly project_quota_bytes: number; readonly versioning: boolean; readonly created_at_ms: number; }",
+      "export interface StorageBucketRequest { readonly name: string; readonly public: boolean; readonly max_object_bytes: number | null; readonly versioning: boolean; }",
+      "export interface StorageObjectItem { readonly id: string; readonly object_key: string; readonly owner_id: string; readonly size_bytes: number; readonly content_type: string | null; readonly checksum_sha256: string | null; readonly etag: string | null; readonly version_id: string | null; readonly created_at_ms: number; readonly updated_at_ms: number; }",
+      "export interface StorageObjectPage { readonly items: readonly StorageObjectItem[]; readonly next_cursor: string | null; }",
+      "export type SyncControl = | { readonly type: \"resnapshot_required\"; readonly reason: string; readonly minimum_schema_version: number; } | { readonly type: \"invalidate_scope\"; readonly scope_fingerprint: string };",
+      "export interface SyncMutation { readonly mutation_id: string; readonly table: string; readonly primary_key: JsonValue; readonly operation: ChangeOperation; readonly values: Readonly<Record<string, JsonValue>> | null; readonly base_row_version: number | null; readonly client_timestamp_ms: number | null; }",
+      "export interface SyncMutationResult { readonly mutation_id: string; readonly status: MutationStatus; readonly server_sequence: number | null; readonly row_version: number | null; readonly error_code: string | null; }",
+      "export interface SyncPullResponse { readonly changes: readonly LogicalChange[]; readonly cursor: string; readonly has_more: boolean; readonly control: SyncControl | null; }",
       "export interface SyncPushRequest { readonly schema_version: number; readonly mutations: readonly SyncMutation[]; }",
       "export interface SyncPushResponse { readonly results: readonly SyncMutationResult[]; readonly cursor: string; }",
       "export interface TableDefinition { readonly name: string; readonly sql: string; readonly rls_enabled: boolean; readonly rls_forced: boolean; }",
@@ -622,6 +637,13 @@ export const httpOperationSections = [
       "GET /v1/instance/setup/status — getPublicInstanceSetupStatus; auth: public; arguments: none; body: none; returns: 200: object; 503: ErrorEnvelope; errors: 503",
       "GET /v1/instance — getInstance; auth: developerBearer; arguments: none; body: none; returns: 200: object; 403: ErrorEnvelope; errors: 403",
       "POST /v1/instance — completeOrReconfigureInstance; auth: developerBearer; arguments: Idempotency-Key (header, required, string); body: required object JSON; returns: 200: object; 400: ErrorEnvelope; 403: ErrorEnvelope; 409: ErrorEnvelope; errors: 400, 403, 409; Idempotency-Key required",
+      "GET /v1/instance/updates — getHostUpdateStatus; auth: developerBearer; arguments: none; body: none; returns: 200: HostUpdateStatus; 403: ErrorEnvelope; 503: ErrorEnvelope; errors: 403, 503",
+      "POST /v1/instance/updates/check — checkForHostUpdate; auth: developerBearer; arguments: none; body: none; returns: 202: HostUpdateJob; 403: ErrorEnvelope; 409: ErrorEnvelope; 503: ErrorEnvelope; errors: 403, 409, 503",
+      "POST /v1/instance/updates/install — installHostUpdate; auth: developerBearer; arguments: none; body: required HostUpdateVersionRequest JSON; returns: 202: HostUpdateJob; 400: ErrorEnvelope; 403: ErrorEnvelope; 409: ErrorEnvelope; 428: ErrorEnvelope; 503: ErrorEnvelope; errors: 400, 403, 409, 428, 503",
+      "POST /v1/instance/updates/rollback — rollbackHostUpdate; auth: developerBearer; arguments: none; body: required HostUpdateVersionRequest JSON; returns: 202: HostUpdateJob; 400: ErrorEnvelope; 403: ErrorEnvelope; 409: ErrorEnvelope; 428: ErrorEnvelope; 503: ErrorEnvelope; errors: 400, 403, 409, 428, 503",
+      "GET /v1/instance/updates/jobs/{job_id} — getHostUpdateJob; auth: developerBearer; arguments: job_id (path, required, string); body: none; returns: 200: HostUpdateJob; 400: ErrorEnvelope; 403: ErrorEnvelope; 404: ErrorEnvelope; 503: ErrorEnvelope; errors: 400, 403, 404, 503",
+      "GET /v1/instance/updates/settings — getHostUpdateSettings; auth: developerBearer; arguments: none; body: none; returns: 200: HostUpdateSettings; 403: ErrorEnvelope; 503: ErrorEnvelope; errors: 403, 503",
+      "PATCH /v1/instance/updates/settings — configureHostUpdates; auth: developerBearer; arguments: none; body: required HostUpdateSettings JSON; returns: 202: HostUpdateJob; 400: ErrorEnvelope; 403: ErrorEnvelope; 428: ErrorEnvelope; 503: ErrorEnvelope; errors: 400, 403, 428, 503",
       "PATCH /v1/instance/organization-creation-policy — updateOrganizationCreationPolicy; auth: developerBearer; arguments: none; body: required object JSON; returns: 200: object; 403: ErrorEnvelope; errors: 403",
       "POST /v1/instance/billing/connect/onboarding — createInstanceConnectOnboarding; auth: developerBearer; arguments: Idempotency-Key (header, required, string); body: required object JSON; returns: 200: object; 403: ErrorEnvelope; 409: ErrorEnvelope; errors: 403, 409; Idempotency-Key required",
       "POST /v1/instance/billing/refresh — refreshInstanceBillingAccount; auth: developerBearer; arguments: none; body: none; returns: 200: object; 403: ErrorEnvelope; 409: ErrorEnvelope; errors: 403, 409",

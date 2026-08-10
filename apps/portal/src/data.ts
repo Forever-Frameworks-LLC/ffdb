@@ -22,6 +22,7 @@ export type PortalRoute =
   | "Instance"
   | "Instance Billing"
   | "Instance Users"
+  | "Updates"
   | "Settings"
   | "Account";
 
@@ -52,6 +53,7 @@ export const portalRoutes = [
   "Instance",
   "Instance Billing",
   "Instance Users",
+  "Updates",
   "Settings",
   "Account",
 ] as const satisfies readonly PortalRoute[];
@@ -113,6 +115,7 @@ export const navigationGroups: readonly PortalNavigationGroup[] = [
       { label: "Instance", icon: "settings", administratorOnly: true },
       { label: "Instance Billing", icon: "creditCard", administratorOnly: true },
       { label: "Instance Users", icon: "users", administratorOnly: true },
+      { label: "Updates", icon: "sync", administratorOnly: true },
       { label: "Settings", icon: "settings" },
     ],
   },
@@ -140,6 +143,7 @@ const routeSlug: Readonly<Record<PortalRoute, string>> = {
   Instance: "instance",
   "Instance Billing": "instance/billing",
   "Instance Users": "instance/users",
+  Updates: "instance/updates",
   Settings: "settings",
   Account: "account",
 };
@@ -154,7 +158,7 @@ export function routeFromLocation(pathname: string): PortalRoute | null {
 
 export function pathForRoute(route: PortalRoute, projectId: string, organizationId?: string): string {
   const slug = routeSlug[route];
-  if (["Instance", "Instance Billing", "Instance Users", "Settings", "Account"].includes(route)) return `/app/${slug}`;
+  if (["Instance", "Instance Billing", "Instance Users", "Updates", "Settings", "Account"].includes(route)) return `/app/${slug}`;
   if (["Projects", "Members", "Usage"].includes(route)) return `/app/organizations/${organizationId ?? "current"}/${slug}`;
   return `/app/projects/${projectId || "current"}/${slug}`;
 }

@@ -85,8 +85,16 @@ tar -tzf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
 tar -tzf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
   > "$test_root/native-archive.list"
 grep -q 'ffdb-native-0.1.0/ffdb-backup' "$test_root/native-archive.list"
+grep -q 'ffdb-native-0.1.0/bin/ffdb-update' "$test_root/native-archive.list"
+grep -q 'ffdb-native-0.1.0/COMPATIBILITY' "$test_root/native-archive.list"
 tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
   'ffdb-native-0.1.0/ffdb-backup' | grep -F -q 'BACKUP_TOOL_VERSION="0.1.0"'
+tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
+  'ffdb-native-0.1.0/COMPATIBILITY' \
+  | grep -F -q 'FFDB_NATIVE_STATE_SCHEMA=1'
+tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
+  'ffdb-native-0.1.0/COMPATIBILITY' \
+  | grep -F -q 'FFDB_NATIVE_MINIMUM_ROLLBACK_VERSION=0.3.0'
 tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
   'ffdb-native-0.1.0/systemd/ffdb.env.example' \
   | grep -F -q 'FFDB_METRICS_ROOT=/var/lib/ffdb/metrics'
@@ -128,7 +136,12 @@ if (manifest.schema_version !== 2
     || manifest.version !== version
     || manifest.release_tag !== `v${version}`
     || manifest.github_repository !== repository
-    || manifest.github_release_url !== releaseUrl) {
+    || manifest.github_release_url !== releaseUrl
+    || manifest.native_update?.state_schema !== 1
+    || manifest.native_update?.minimum_upgrade_version !== "0.3.0"
+    || manifest.native_update?.minimum_rollback_version !== "0.3.0"
+    || manifest.native_update?.assets?.amd64 !== `ffdb-native-linux-amd64-${version}.tar.gz`
+    || manifest.native_update?.assets?.arm64 !== `ffdb-native-linux-arm64-${version}.tar.gz`) {
   throw new Error("release manifest GitHub metadata is inconsistent");
 }
 NODE

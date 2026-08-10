@@ -2200,6 +2200,19 @@ body {
 .nav-group-items.is-collapsed { max-height: 0; padding-bottom: 0; overflow: hidden; visibility: hidden; }
 .nav-item { min-height: 37px; border-radius: 6px; font-size: 13px; }
 .nav-item.selected { color: var(--theme-sidebar-accent-foreground); background: var(--theme-sidebar-accent); }
+.nav-update-badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  color: color-mix(in oklab, var(--theme-primary) 74%, var(--theme-sidebar-foreground));
+  background: color-mix(in oklab, var(--theme-primary) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--theme-primary) 34%, var(--theme-sidebar-border));
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 720;
+  line-height: 1.35;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
 .profile { margin-inline: 9px; border-radius: 7px; }
 
 .app-body {

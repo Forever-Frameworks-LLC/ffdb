@@ -18,7 +18,7 @@ credentials and must not be exposed publicly.
 | `ffdb-compose-bundle-VERSION.tar.gz` | Recommended external-provider model, explicit single-host evaluation model, exact image digests, configuration template, controller, and scripts |
 | `ffdb-host-VERSION` | Architecture-neutral POSIX lifecycle controller |
 | `SHA256SUMS` and `SHA256SUMS.sigstore.json` | Mandatory asset digests and keyless Sigstore signature bundle |
-| `release-manifest.json` | Machine-readable version, architecture, image digest, and signer metadata |
+| `release-manifest.json` | Machine-readable version, architecture, image digest, signer, native state-schema, rollback floor, and architecture asset metadata |
 | `ffdb-native-linux-{amd64,arm64}-VERSION.tar.gz` | Advanced native Linux/systemd binaries, static web applications, units, and installers |
 | `ffdb-host.rb` | Generated, checksum-pinned Homebrew formula candidate; not a published tap |
 
@@ -73,13 +73,13 @@ pin an exact version, require signatures, and start only after validation:
 
 ```sh
 curl -fsSLo /tmp/ffdb-install.sh \
-  https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.2/install.sh
-sudo sh /tmp/ffdb-install.sh --version 0.3.2 \
-  --release-base https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.2 \
+  https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.3/install.sh
+sudo sh /tmp/ffdb-install.sh --version 0.3.3 \
+  --release-base https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v0.3.3 \
   --env-file /secure/path/ffdb.env --start --require-signature
 ```
 
-Replace `0.3.2` with the announced version you reviewed. Without `--version` or
+Replace `0.3.3` with the announced version you reviewed. Without `--version` or
 `--tag`, the installer resolves `stable.txt` from the latest stable GitHub
 Release. It downloads the release checksums, verifies their Sigstore bundle when
 `cosign` is available, always verifies the bundle/controller SHA-256 digests,
@@ -211,8 +211,8 @@ sudo ffdb-host update-check
 sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update
 
 # Reproducible scheduled alternative:
-sudo ffdb-host update-check --version 0.3.2
-sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.2
+sudo ffdb-host update-check --version 0.3.3
+sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.3
 ```
 
 The new release is installed beside prior releases and the same configuration
@@ -258,9 +258,9 @@ filesystem. This is also the supported way to exercise a release candidate
 before its GitHub tag is published:
 
 ```sh
-sudo FFDB_VERSION=0.3.2 \
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.2 \
-  sh /srv/ffdb/releases/v0.3.2/install.sh \
+sudo FFDB_VERSION=0.3.3 \
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3 \
+  sh /srv/ffdb/releases/v0.3.3/install.sh \
   --env-file /secure/path/ffdb.env
 ```
 
@@ -276,7 +276,7 @@ checkout without publishing them:
 
 ```sh
 make release-check
-FFDB_VERSION=0.3.2 \
+FFDB_VERSION=0.3.3 \
 FFDB_RUNTIME_IMAGE=ghcr.io/example/ffdb-runtime@sha256:FULL_DIGEST \
 FFDB_GATEWAY_IMAGE=ghcr.io/example/ffdb-gateway@sha256:FULL_DIGEST \
 FFDB_POSTGRES_IMAGE=postgres:17.5-alpine@sha256:FULL_DIGEST \
@@ -316,14 +316,14 @@ is not required for the GitHub installation path.
 Native bundles are an advanced Linux-only alternative for operators who accept
 responsibility for systemd, Caddy, DNS, and distribution-library compatibility. They
 do not require a checkout or local compiler. The host must provide `caddy`,
-`systemd`, `curl`, `tar`, PostgreSQL client tools (`pg_dump`/`pg_restore`), and
-`sqlite3`; the installer fails before mutation if the backup prerequisites are
-missing. Download the architecture archive,
+`systemd`, `curl`, `tar`, `cosign`, PostgreSQL client tools
+(`pg_dump`/`pg_restore`), and `sqlite3`; the installer fails before mutation if
+the backup or signed-update prerequisites are missing. Download the architecture archive,
 `SHA256SUMS`, and `SHA256SUMS.sigstore.json` from the same version directory;
 verify the signed checksum list and then the archive before extraction:
 
 ```sh
-VERSION=0.3.2
+VERSION=0.3.3
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS.sigstore.json"
@@ -335,7 +335,8 @@ cosign verify-blob SHA256SUMS \
 sha256sum --check --ignore-missing SHA256SUMS
 tar -xzf "ffdb-native-linux-amd64-$VERSION.tar.gz"
 cd "ffdb-native-$VERSION"
-sudo ./install-native.sh --env-file /secure/path/ffdb.env --start
+sudo ./install-native.sh --verified-release \
+  --env-file /secure/path/ffdb.env --start
 ```
 
 Choose the `arm64` archive on ARM64. The installer creates the `ffdb` account and
@@ -348,12 +349,64 @@ installer preserves `/etc/ffdb` and
 `/var/lib/ffdb` by default, including the mode-`0700`
 `/var/lib/ffdb/metrics` billing-ledger directory:
 
+Use `--verified-release` only after the preceding Sigstore and SHA-256 checks
+succeed. The flag records the canonical release-workflow identity on the
+installed release so it remains eligible as a future rollback target.
+
 ```sh
 sudo ffdb-backup create /secure/ffdb-native-2026-08-03.tar.gz
 sudo ./uninstall-native.sh
 # Irreversible:
 sudo ./uninstall-native.sh --purge-data --yes
 ```
+
+### Signed native updates from the portal
+
+The native installer also installs `ffdb-update`, a root-owned systemd path
+agent, and a periodic stable-release check. The unprivileged API may submit only
+typed check, exact-version install, exact-version rollback, schedule, and job
+lookups. It cannot provide a download URL, executable path, or shell text. The
+agent verifies the canonical release manifest, keyless Sigstore identity, and
+asset checksum before it creates a coordinated backup or changes the host.
+
+```sh
+sudo systemctl --no-pager --full status \
+  ffdb-update-agent.path ffdb-update-check.timer
+sudo -u ffdb /usr/local/bin/ffdb-update inspect
+```
+
+Open **Global administration → Updates** as an instance owner or administrator
+to check the stable channel. Install, rollback, and schedule changes require a
+platform session issued within 15 minutes; the portal reauthenticates through
+the normal sign-in route and never sends a password to the updater. The portal
+receives a persisted job ID before Axum restarts and reconnects through Caddy
+until readiness returns.
+
+Releases are installed side by side below `/opt/ffdb/releases/VERSION` and the
+complete API, database worker, sync worker, units, and web assets are selected
+by the atomic `/opt/ffdb/current` link. Rollback is limited to a previously
+verified installed release with a compatible native state schema and rollback
+floor. A rejected compatibility check requires the coordinated backup/restore
+workflow; it is not an acknowledgement flag that an operator can bypass.
+
+Automatic checks are enabled by default. Automatic application is disabled by
+default and requires an explicit UTC maintenance window. A check outside that
+window records availability without restarting anything. On failure, keep the
+job ID and inspect the root service plus application journal before submitting
+another operation:
+
+```sh
+sudo -u ffdb /usr/local/bin/ffdb-update job "$JOB_ID"
+sudo journalctl -u ffdb-update-agent.service -u ffdb-api.service \
+  -u ffdb-sync-worker.service --since today --no-pager
+curl --fail http://127.0.0.1:8080/readyz
+curl --fail http://127.0.0.1:5173/readyz
+```
+
+The Docker release controller remains host operated. FFDB intentionally does
+not mount the Docker socket or a host root command boundary into the API
+container solely to expose a portal update button; use signed `ffdb-host
+update-check`, `update`, and compatible `rollback` there.
 
 There is no public Homebrew tap, `.deb`, or `.rpm` today. A release-generated
 Homebrew formula is intentionally controller-only and must not be advertised

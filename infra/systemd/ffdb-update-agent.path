@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for constrained FFDB host update requests
+
+[Path]
+DirectoryNotEmpty=/var/lib/ffdb/update-requests
+Unit=ffdb-update-agent.service
+
+[Install]
+WantedBy=multi-user.target

@@ -9,8 +9,10 @@ command_log=$test_root/commands.log
 install -d "$bundle/bin" "$bundle/web/docs" "$bundle/web/app" "$bundle/systemd" "$fake_bin"
 
 cp /src/infra/release/native/install-native.sh "$bundle/install-native.sh"
+cp /src/infra/release/native/ffdb-update "$bundle/bin/ffdb-update"
 cp /src/infra/systemd/* "$bundle/systemd/"
 chmod 0755 "$bundle/install-native.sh"
+chmod 0755 "$bundle/bin/ffdb-update"
 printf '%s\n' '#!/bin/sh' 'exit 0' > "$bundle/ffdb-backup"
 chmod 0755 "$bundle/ffdb-backup"
 for binary in ffdb-api ffdb-database-worker ffdb-sync-worker; do
@@ -21,8 +23,13 @@ printf '%s\n' '<!doctype html><title>landing</title>' > "$bundle/web/index.html"
 printf '%s\n' '<!doctype html><title>docs</title>' > "$bundle/web/docs/index.html"
 printf '%s\n' '<!doctype html><title>portal</title>' > "$bundle/web/app/index.html"
 printf '%s\n' '0.3.0' > "$bundle/VERSION"
+cat > "$bundle/COMPATIBILITY" <<'EOF'
+FFDB_NATIVE_STATE_SCHEMA=1
+FFDB_NATIVE_MINIMUM_UPGRADE_VERSION=0.3.0
+FFDB_NATIVE_MINIMUM_ROLLBACK_VERSION=0.3.0
+EOF
 
-for command in pg_dump pg_restore sqlite3 curl tar; do
+for command in pg_dump pg_restore sqlite3 curl tar jq cosign flock sha256sum diff; do
   printf '%s\n' '#!/bin/sh' 'exit 0' > "$fake_bin/$command"
   chmod 0755 "$fake_bin/$command"
 done
@@ -74,12 +81,26 @@ EOF
 
 FFDB_TEST_COMMAND_LOG=$command_log \
 PATH="$fake_bin:$PATH" \
-  "$bundle/install-native.sh" --env-file "$test_root/ffdb.env" --start
+  "$bundle/install-native.sh" --env-file "$test_root/ffdb.env"
+
+test ! -f /opt/ffdb/releases/0.3.0/.signature-verified
+
+FFDB_TEST_COMMAND_LOG=$command_log \
+PATH="$fake_bin:$PATH" \
+  "$bundle/install-native.sh" --verified-release --start
 
 test -x /usr/local/bin/ffdb-api
 test -x /usr/local/bin/ffdb-database-worker
 test -x /usr/local/bin/ffdb-sync-worker
+test -x /usr/local/bin/ffdb-update
+test "$(readlink /opt/ffdb/current)" = /opt/ffdb/releases/0.3.0
+test -f /opt/ffdb/releases/0.3.0/COMPATIBILITY
+test -f /opt/ffdb/releases/0.3.0/.signature-verified
+grep -F -q 'refs/tags/v0.3.0' /opt/ffdb/releases/0.3.0/.signature-identity
+grep -F -q '/releases/tag/v0.3.0' /opt/ffdb/releases/0.3.0/.release-url
 test -f /etc/systemd/system/ffdb-gateway.service
+test -f /etc/systemd/system/ffdb-update-agent.path
+test -f /etc/systemd/system/ffdb-update-check.timer
 test -f /etc/ffdb/Caddyfile
 test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640
@@ -87,5 +108,5 @@ test "$(stat -c '%a' /etc/ffdb/Caddyfile)" = 640
 ! grep -F -q 'example.com' /etc/ffdb/Caddyfile
 grep -F -q 'handle @metrics {' /etc/ffdb/Caddyfile
 grep -F -q 'respond 404' /etc/ffdb/Caddyfile
-grep -F -q 'enable --now ffdb-api.service ffdb-sync-worker.service' "$command_log"
-grep -F -q 'enable --now ffdb-gateway.service' "$command_log"
+grep -F -q 'enable --now ffdb-update-agent.path ffdb-update-check.timer' "$command_log"
+grep -F -q 'restart ffdb-api.service ffdb-sync-worker.service ffdb-gateway.service' "$command_log"

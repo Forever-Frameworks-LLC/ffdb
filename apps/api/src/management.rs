@@ -2320,7 +2320,7 @@ fn membership_role_name(value: OrganizationRole) -> &'static str {
     }
 }
 
-async fn enforce_platform_user_rate(
+pub(crate) async fn enforce_platform_user_rate(
     state: &ApiState,
     user_id: UserId,
     request_id: RequestId,

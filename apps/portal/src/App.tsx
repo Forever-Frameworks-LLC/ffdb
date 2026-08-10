@@ -63,6 +63,7 @@ import {
   StoragePanel as ProductionStoragePanel,
 } from "./polish/OperateRoutes.js";
 import { ObservabilityPanel } from "./polish/Observability.js";
+import { InstanceUpdatesPanel } from "./polish/InstanceUpdates.js";
 
 export interface AppProps {
   readonly client?: FFDBClient;
@@ -83,6 +84,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
   const [developerAccess, setDeveloperAccess] = useState<DeveloperSession | null | undefined>(undefined);
   const [instanceSetup, setInstanceSetup] = useState<Awaited<ReturnType<FFDBClient["instanceSetupStatus"]>> | null | undefined>(undefined);
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null | undefined>(undefined);
+  const [hostUpdateAvailable, setHostUpdateAvailable] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [projectCredentialError, setProjectCredentialError] = useState<string | null>(null);
   const [projectCredentialPending, setProjectCredentialPending] = useState(false);
@@ -126,6 +128,19 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
     );
     return () => { current = false; };
   }, [client, developerAccess, instanceSetup?.setup_required]);
+
+  useEffect(() => {
+    if (!isInstanceAdministrator(instanceStatus)) {
+      setHostUpdateAvailable(false);
+      return;
+    }
+    let current = true;
+    void client.hostUpdateStatus({ retry: false }).then(
+      (value) => { if (current) setHostUpdateAvailable(value.supported && value.update_available); },
+      () => { if (current) setHostUpdateAvailable(false); },
+    );
+    return () => { current = false; };
+  }, [client, instanceStatus]);
 
   useEffect(() => {
     if (
@@ -251,7 +266,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
 
   return (
     <div className="app-shell">
-      <Sidebar client={client} configuration={configuration} instanceStatus={instanceStatus} selected={selected} canAdministerInstance={canAdministerInstance} onConfiguration={setConfiguration} onInstanceChange={(next) => { setConfiguration(next); setDeveloperAccess(undefined); setInstanceSetup(undefined); setInstanceStatus(undefined); }} onNotice={setNotice} onSelect={open} />
+      <Sidebar client={client} configuration={configuration} instanceStatus={instanceStatus} selected={selected} canAdministerInstance={canAdministerInstance} hostUpdateAvailable={hostUpdateAvailable} onConfiguration={setConfiguration} onInstanceChange={(next) => { setConfiguration(next); setDeveloperAccess(undefined); setInstanceSetup(undefined); setInstanceStatus(undefined); }} onNotice={setNotice} onSelect={open} />
       <div className="app-body">
         <ProjectBar
           client={client}
@@ -272,7 +287,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
           onNotice={setNotice}
         />
         <main className={selected === "SQL Editor" || selected === "Database" || selected === "Observability" || selected === "Migrations" ? "main-content main-content--workbench" : "main-content"}>
-          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && (projectCredentialPending || configuration.developerKey === undefined) ? <ProjectCredentialLoading /> : (
+          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Updates", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && (projectCredentialPending || configuration.developerKey === undefined) ? <ProjectCredentialLoading /> : (
             <RoutePanel
               route={selected}
               client={client}
@@ -285,6 +300,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
               onSetupRequired={returnToRequiredSetup}
               onAuthenticationRequired={() => setDeveloperAccess(null)}
               canAdministerInstance={canAdministerInstance}
+              onHostUpdateAvailability={setHostUpdateAvailable}
             />
           )}
         </main>
@@ -295,7 +311,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
           <button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button>
         </div>
       )}
-      {mobileNavigationOpen ? <div className="mobile-navigation-drawer"><button className="mobile-drawer-close" type="button" aria-label="Close navigation" onClick={() => setMobileNavigationOpen(false)}>×</button><Sidebar client={client} configuration={configuration} instanceStatus={instanceStatus} selected={selected} canAdministerInstance={canAdministerInstance} onConfiguration={setConfiguration} onInstanceChange={(next) => { setConfiguration(next); setDeveloperAccess(undefined); setInstanceSetup(undefined); setInstanceStatus(undefined); }} onNotice={setNotice} onSelect={open} /></div> : null}
+      {mobileNavigationOpen ? <div className="mobile-navigation-drawer"><button className="mobile-drawer-close" type="button" aria-label="Close navigation" onClick={() => setMobileNavigationOpen(false)}>×</button><Sidebar client={client} configuration={configuration} instanceStatus={instanceStatus} selected={selected} canAdministerInstance={canAdministerInstance} hostUpdateAvailable={hostUpdateAvailable} onConfiguration={setConfiguration} onInstanceChange={(next) => { setConfiguration(next); setDeveloperAccess(undefined); setInstanceSetup(undefined); setInstanceStatus(undefined); }} onNotice={setNotice} onSelect={open} /></div> : null}
     </div>
   );
 }
@@ -505,6 +521,7 @@ function RoutePanel(props: {
   onSetupRequired(): void;
   onAuthenticationRequired(): void;
   readonly canAdministerInstance: boolean;
+  onHostUpdateAvailability(available: boolean): void;
 }) {
   switch (props.route) {
     case "Overview": return <ProductionOverviewPanel client={props.client} configuration={props.configuration} onNavigate={props.onOpen} />;
@@ -529,6 +546,7 @@ function RoutePanel(props: {
     case "Instance": return <InstancePanel apiUrl={props.configuration.apiUrl} client={props.client} onNotice={props.onNotice} view="overview" />;
     case "Instance Billing": return <InstancePanel apiUrl={props.configuration.apiUrl} client={props.client} onNotice={props.onNotice} view="billing" />;
     case "Instance Users": return <InstancePanel apiUrl={props.configuration.apiUrl} client={props.client} onNotice={props.onNotice} view="users" />;
+    case "Updates": return <InstanceUpdatesPanel client={props.client} onNotice={props.onNotice} onUpdateAvailability={props.onHostUpdateAvailability} />;
     case "Account": return <ProductionAccountPanel client={props.client} configuration={props.configuration} onInstanceChange={props.onConfiguration} onNotice={props.onNotice} onSignedOut={props.onAuthenticationRequired} />;
     default: return <EmptyState title="Unknown section" detail="Choose a project section from the navigation." />;
   }
@@ -554,7 +572,7 @@ function InstanceAccessDenied() {
 }
 
 function isInstanceAdministrationRoute(route: PortalRoute): boolean {
-  return route === "Instance" || route === "Instance Billing" || route === "Instance Users";
+  return route === "Instance" || route === "Instance Billing" || route === "Instance Users" || route === "Updates";
 }
 
 function requiresProjectCredential(route: PortalRoute): boolean {
@@ -577,12 +595,13 @@ function isInstanceAdministrator(status: InstanceStatus | null | undefined): sta
   return status?.current_user_role === "owner" || status?.current_user_role === "admin";
 }
 
-function Sidebar({ client, configuration, instanceStatus, selected, canAdministerInstance, onConfiguration, onInstanceChange, onNotice, onSelect }: {
+function Sidebar({ client, configuration, instanceStatus, selected, canAdministerInstance, hostUpdateAvailable, onConfiguration, onInstanceChange, onNotice, onSelect }: {
   readonly client: FFDBClient;
   readonly configuration: PortalConfiguration;
   readonly instanceStatus: InstanceStatus | null | undefined;
   readonly selected: PortalRoute;
   readonly canAdministerInstance: boolean;
+  readonly hostUpdateAvailable: boolean;
   onConfiguration(value: PortalConfiguration): void;
   onInstanceChange(value: PortalConfiguration): void;
   onNotice(value: string): void;
@@ -623,7 +642,7 @@ function Sidebar({ client, configuration, instanceStatus, selected, canAdministe
               key={item.label}
               onClick={() => onSelect(item.label)}
             >
-              <Icon name={item.icon} /><span>{item.label === "Instance Billing" ? "Billing" : item.label === "Instance Users" ? "Users" : item.label}</span>
+              <Icon name={item.icon} /><span>{item.label === "Instance Billing" ? "Billing" : item.label === "Instance Users" ? "Users" : item.label}</span>{item.label === "Updates" && hostUpdateAvailable ? <span className="nav-update-badge" aria-label="Update available">New</span> : null}
             </button>)}</div></div>;
         })}
       </nav>

@@ -9,7 +9,7 @@ User=ffdb
 Group=ffdb
 WorkingDirectory=/var/lib/ffdb
 EnvironmentFile=/etc/ffdb/ffdb.env
-ExecStart=/usr/local/bin/ffdb-api
+ExecStart=/opt/ffdb/current/bin/ffdb-api
 Restart=on-failure
 RestartSec=5s
 # The current daemon installs a Ctrl-C handler for its graceful drain path.
@@ -29,6 +29,7 @@ ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics
+ReadWritePaths=/var/lib/ffdb/update-requests /var/lib/ffdb/updater/jobs
 CapabilityBoundingSet=
 AmbientCapabilities=
 LockPersonality=true

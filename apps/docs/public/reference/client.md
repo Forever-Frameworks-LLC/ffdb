@@ -56,6 +56,13 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 - `async instanceSetupStatus(options: RequestOptions = {}): Promise<PublicInstanceSetupStatus>`
 - `async developerBootstrap( bootstrapToken: string, email: string, password: string, options: RequestOptions = {},): Promise<DeveloperSession>`
 - `async instanceStatus(options: RequestOptions = {}): Promise<InstanceStatus>`
+- `async hostUpdateStatus(options: RequestOptions = {}): Promise<HostUpdateStatus>`
+- `async checkForHostUpdate(options: RequestOptions = {}): Promise<HostUpdateJob>`
+- `async installHostUpdate( version: string, options: RequestOptions = {},): Promise<HostUpdateJob>`
+- `async rollbackHostUpdate( version: string, options: RequestOptions = {},): Promise<HostUpdateJob>`
+- `async hostUpdateJob(jobId: string, options: RequestOptions = {}): Promise<HostUpdateJob>`
+- `async hostUpdateSettings(options: RequestOptions = {}): Promise<HostUpdateSettings>`
+- `async configureHostUpdates( settings: HostUpdateSettings, options: RequestOptions = {},): Promise<HostUpdateJob>`
 - `async configureInstance( input: CompleteInstanceSetupRequest, options: RequestOptions = {},): Promise<CompleteInstanceSetupResponse>`
 - `async createInstanceConnectOnboarding( input: CreateInstanceConnectOnboardingRequest, options: RequestOptions = {},): Promise<InstanceBillingOnboarding>`
 - `async refreshInstanceBilling(options: RequestOptions = {}): Promise<InstanceStatus>`
@@ -261,6 +268,14 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 - `export interface GrantInstanceAdministratorRequest { readonly user_id: string; }`
 - `export interface GrantOrganizationBillingExemptionRequest { readonly reason: string; }`
 - `export interface HealthStatus { readonly status: string; readonly version?: number; }`
+- `export interface HostUpdateCapabilities { readonly check: boolean; readonly install: boolean; readonly rollback: boolean; readonly automatic_checks: boolean; readonly automatic_apply: boolean; }`
+- `export type HostUpdateChannel = "stable";`
+- `export interface HostUpdateJob { readonly job_id: string; readonly operation: HostUpdateOperation; readonly requested_version: string | null; readonly state: HostUpdateJobState; readonly phase: string; readonly installed_version: string | null; readonly available_version: string | null; readonly previous_version: string | null; readonly backup_path: string | null; readonly message: string; readonly error_code: string | null; readonly retryable: boolean; readonly created_at_ms: number; readonly updated_at_ms: number; }`
+- `export type HostUpdateJobState = "queued" | "running" | "succeeded" | "failed";`
+- `export type HostUpdateOperation = "check" | "install" | "rollback" | "configure";`
+- `export interface HostUpdateRelease { readonly version: string; readonly active: boolean; readonly rollback_compatible: boolean; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_verified: boolean; readonly signature_identity: string | null; readonly release_url: string | null; }`
+- `export interface HostUpdateSettings { readonly channel: HostUpdateChannel; readonly automatic_checks: boolean; readonly check_interval_hours: number; readonly automatic_apply: boolean; /** Recurring UTC start in zero-padded HH:MM form. */ readonly maintenance_window_start: string | null; readonly maintenance_window_duration_minutes: number; }`
+- `export interface HostUpdateStatus { readonly supported: boolean; readonly unavailable_reason: string | null; readonly capabilities: HostUpdateCapabilities; readonly state_schema: number; readonly minimum_rollback_version: string | null; readonly signature_identity: string | null; readonly installed_version: string | null; readonly available_version: string | null; readonly update_available: boolean; readonly last_check_at_ms: number | null; readonly active_job: HostUpdateJob | null; readonly releases: readonly HostUpdateRelease[]; readonly settings: HostUpdateSettings; }`
 - `export type InstanceAdministratorRole = "owner" | "admin";`
 - `export interface InstanceAdministratorSummary { readonly user_id: string; readonly email: string; readonly role: InstanceAdministratorRole; readonly granted_by: string | null; readonly created_at_ms: number; }`
 - `export type InstanceBillingAccountStatus = | "pending" | "onboarding" | "enabled" | "restricted" | "disconnected";`

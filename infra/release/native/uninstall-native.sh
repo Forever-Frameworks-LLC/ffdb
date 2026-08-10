@@ -16,13 +16,19 @@ if [ "$purge" -eq 1 ] && [ "$yes" -ne 1 ]; then
   exit 1
 fi
 
-systemctl disable --now ffdb-gateway.service ffdb-sync-worker.service ffdb-api.service 2>/dev/null || true
+systemctl disable --now ffdb-update-check.timer ffdb-update-agent.path \
+  ffdb-gateway.service ffdb-sync-worker.service ffdb-api.service 2>/dev/null || true
 rm -f /etc/systemd/system/ffdb-api.service /etc/systemd/system/ffdb-sync-worker.service \
-  /etc/systemd/system/ffdb-gateway.service
+  /etc/systemd/system/ffdb-gateway.service \
+  /etc/systemd/system/ffdb-update-agent.path \
+  /etc/systemd/system/ffdb-update-agent.service \
+  /etc/systemd/system/ffdb-update-check.service \
+  /etc/systemd/system/ffdb-update-check.timer
 rm -f /usr/local/bin/ffdb-api /usr/local/bin/ffdb-database-worker \
-  /usr/local/bin/ffdb-sync-worker /usr/local/bin/ffdb-backup
+  /usr/local/bin/ffdb-sync-worker /usr/local/bin/ffdb-backup /usr/local/bin/ffdb-update
 rm -f /etc/ffdb/Caddyfile
 rm -rf /var/www/ffdb
+rm -rf /opt/ffdb/releases /opt/ffdb/current /var/cache/ffdb-updater
 systemctl daemon-reload
 if [ "$purge" -eq 1 ]; then
   rm -rf /var/lib/ffdb /etc/ffdb

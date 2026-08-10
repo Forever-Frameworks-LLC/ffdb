@@ -215,6 +215,50 @@ describe("portal backend integration", () => {
     expect(screen.getAllByText("Self-hosted admin · Team mode").length).toBeGreaterThan(0);
   });
 
+  it("surfaces an available host release to administrators without running a check mutation", async () => {
+    const calls: Request[] = [];
+    const developerSessionStore = await signedInDeveloperStore("portal-update-badge-test");
+    const client = new FFDBClient({
+      baseUrl: configuration.apiUrl,
+      projectId: configuration.projectId,
+      developerKey: "ffdb_dev_test.secret",
+      developerSessionStore,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/v1/instance/setup/status")) return Response.json({ bootstrap_available: false, setup_required: false, platform_byo_available: true, platform_connect_available: true });
+        if (request.url.endsWith("/v1/instance/updates")) return Response.json({
+          supported: true,
+          unavailable_reason: null,
+          capabilities: { check: true, install: true, rollback: true, automatic_checks: true, automatic_apply: true },
+          state_schema: 1,
+          minimum_rollback_version: "0.3.2",
+          signature_identity: "release-workflow",
+          installed_version: "0.3.2",
+          available_version: "0.3.3",
+          update_available: true,
+          last_check_at_ms: Date.now(),
+          active_job: null,
+          releases: [],
+          settings: { channel: "stable", automatic_checks: true, check_interval_hours: 24, automatic_apply: false, maintenance_window_start: null, maintenance_window_duration_minutes: 60 },
+        });
+        if (request.url.endsWith("/v1/instance")) return Response.json(administratorStatus("owner"));
+        if (request.url.endsWith("/v1/organizations")) return Response.json([]);
+        if (request.url.endsWith("/healthz")) return Response.json({ status: "ok" });
+        if (request.url.endsWith("/readyz")) return Response.json({ status: "ready" });
+        if (request.url.endsWith("/metrics")) return new Response("ffdb_http_requests_total 1\n");
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [] });
+        if (request.url.endsWith("/policies")) return Response.json([]);
+        return Response.json([]);
+      },
+    });
+
+    render(<App client={client} configuration={configuration} />);
+
+    expect(await screen.findByLabelText("Update available")).toHaveTextContent("New");
+    expect(calls.some((request) => request.url.endsWith("/v1/instance/updates/check"))).toBe(false);
+  });
+
   it("renders a safe degraded state when a scoped route is unavailable", async () => {
     const client = new FFDBClient({
       baseUrl: configuration.apiUrl,

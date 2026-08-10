@@ -90,6 +90,7 @@ fn test_state() -> ApiState {
         usage_metering: None,
         commerce: None,
         instance: None,
+        host_updates: None,
         cors_allowed_origins: vec!["https://portal.example.test".to_owned()],
         trusted_proxy_cidrs: Vec::new(),
         rate_limiter: None,

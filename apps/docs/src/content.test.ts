@@ -50,7 +50,7 @@ describe("documentation information architecture", () => {
       sample.code.includes("FFDB_S3_PUBLIC_ORIGIN=https://s3.us-east-1.amazonaws.com"),
     );
     const installIndex = systemdSamples.findIndex((sample) =>
-      sample.code.includes("sudo ./install-native.sh --env-file /root/ffdb.env"),
+      sample.code.includes("sudo ./install-native.sh --verified-release --env-file /root/ffdb.env"),
     );
     expect(stagedEnvironmentIndex).toBeGreaterThanOrEqual(0);
     expect(installIndex).toBeGreaterThan(stagedEnvironmentIndex);
@@ -132,10 +132,10 @@ describe("documentation information architecture", () => {
     const cli = JSON.stringify(cliPage);
     const clientSamples = clientPage?.sections.flatMap((section) => [section.code, ...(section.codes ?? [])]) ?? [];
     expect(client).toContain("exact version named by the server release");
-    expect(clientSamples.some((sample) => sample?.code.includes("@ffdb/client@0.3.2"))).toBe(true);
-    expect(client).toContain("ffdb-client-0.3.2.tgz");
+    expect(clientSamples.some((sample) => sample?.code.includes("@ffdb/client@0.3.3"))).toBe(true);
+    expect(client).toContain("ffdb-client-0.3.3.tgz");
     expect(cli).toContain("exact server version");
-    expect(cli).toContain("@ffdb/cli@0.3.2");
+    expect(cli).toContain("@ffdb/cli@0.3.3");
     expect(JSON.stringify(pageByPath.get("/react"))).toContain("@ffdb/react@$VERSION");
     expect(JSON.stringify(pageByPath.get("/react-native"))).toContain("@ffdb/react-native@$VERSION");
     expect(JSON.stringify(pageByPath.get("/sync-client"))).toContain("@ffdb/sync-client@$VERSION");
@@ -151,7 +151,7 @@ describe("documentation information architecture", () => {
     const client = JSON.stringify(pageByPath.get("/reference/client"));
     for (const section of [...clientClassSections, ...clientTypeSections]) expect(client).toContain(section.heading);
     expect(clientClassSections.find((section) => section.heading === "FFDBClient class")?.bullets.length).toBeGreaterThan(80);
-    expect(clientTypeSections.flatMap((section) => section.bullets)).toHaveLength(158);
+    expect(clientTypeSections.flatMap((section) => section.bullets)).toHaveLength(166);
 
     const cli = JSON.stringify(pageByPath.get("/cli"));
     for (const section of [...cliCommandSections, ...cliModuleSections]) expect(cli).toContain(section.heading);
@@ -159,7 +159,7 @@ describe("documentation information architecture", () => {
 
     const http = JSON.stringify(pageByPath.get("/reference/http-api"));
     for (const section of httpOperationSections) expect(http).toContain(section.heading);
-    expect(httpOperationSections.flatMap((section) => section.bullets)).toHaveLength(118);
+    expect(httpOperationSections.flatMap((section) => section.bullets)).toHaveLength(125);
 
     for (const path of ["../public/reference/client.md", "../public/reference/cli.md", "../public/reference/http-api.md", "../public/openapi.json"]) {
       expect(readFileSync(new URL(path, import.meta.url), "utf8").length, path).toBeGreaterThan(1_000);
@@ -184,9 +184,9 @@ describe("documentation information architecture", () => {
       "ffdb-native-linux-amd64-$VERSION.tar.gz",
       "ffdb-native-linux-ARCH-VERSION.tar.gz",
       "https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh",
-      "FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.2",
+      "FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3",
       "sudo ffdb-host install",
-      "--bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.2.tar.gz",
+      "--bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.3.tar.gz",
       "sudo ffdb-host verify",
       "sudo ffdb-host start",
       "sudo ffdb-host status",
@@ -200,9 +200,9 @@ describe("documentation information architecture", () => {
       "sudo ./install-native.sh",
       "/opt/ffdb",
       "/etc/ffdb/ffdb.env",
-      "ExecStart=/usr/local/bin/ffdb-api",
-      "ExecStart=/usr/local/bin/ffdb-sync-worker",
-      "FFDB_DATABASE_WORKER=/usr/local/bin/ffdb-database-worker",
+      "ExecStart=/opt/ffdb/current/bin/ffdb-api",
+      "ExecStart=/opt/ffdb/current/bin/ffdb-sync-worker",
+      "FFDB_DATABASE_WORKER=/opt/ffdb/current/bin/ffdb-database-worker",
       "ffdb init ../notes-app react",
       "ffdb generate --out ../notes-app/src/ffdb.types.ts",
       "NativeSQLiteReplica",
@@ -249,8 +249,8 @@ describe("documentation information architecture", () => {
     for (const contract of [
       "name: ffdb",
       "docker compose up --detach --wait",
-      "ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.2",
-      "ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.2",
+      "ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.3",
+      "ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.3",
       "POSTGRES_PASSWORD",
       "FFDB_BOOTSTRAP_TOKEN",
       "seven named volumes",
@@ -458,7 +458,7 @@ describe("documentation information architecture", () => {
   });
 
   it("enforces task-oriented depth on every route", () => {
-    expect(pages).toHaveLength(31);
+    expect(pages).toHaveLength(32);
     for (const page of pages) {
       const sections = new Map(page.sections.map((section) => [section.heading, section]));
       expect(sections.has("What, why, and when"), page.path).toBe(false);

@@ -56,6 +56,7 @@ const expectedPanel: Readonly<Record<PortalRoute, string>> = {
   Instance: "InstancePanel",
   "Instance Billing": "InstancePanel",
   "Instance Users": "InstancePanel",
+  Updates: "InstanceUpdatesPanel",
   Settings: "ProductionSettingsPanel",
   Account: "ProductionAccountPanel",
 };

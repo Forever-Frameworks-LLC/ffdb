@@ -336,6 +336,72 @@ export interface InstanceAdministratorSummary {
   readonly created_at_ms: number;
 }
 
+export type HostUpdateChannel = "stable";
+export type HostUpdateOperation = "check" | "install" | "rollback" | "configure";
+export type HostUpdateJobState = "queued" | "running" | "succeeded" | "failed";
+
+export interface HostUpdateCapabilities {
+  readonly check: boolean;
+  readonly install: boolean;
+  readonly rollback: boolean;
+  readonly automatic_checks: boolean;
+  readonly automatic_apply: boolean;
+}
+
+export interface HostUpdateSettings {
+  readonly channel: HostUpdateChannel;
+  readonly automatic_checks: boolean;
+  readonly check_interval_hours: number;
+  readonly automatic_apply: boolean;
+  /** Recurring UTC start in zero-padded HH:MM form. */
+  readonly maintenance_window_start: string | null;
+  readonly maintenance_window_duration_minutes: number;
+}
+
+export interface HostUpdateRelease {
+  readonly version: string;
+  readonly active: boolean;
+  readonly rollback_compatible: boolean;
+  readonly state_schema: number;
+  readonly minimum_rollback_version: string | null;
+  readonly signature_verified: boolean;
+  readonly signature_identity: string | null;
+  readonly release_url: string | null;
+}
+
+export interface HostUpdateJob {
+  readonly job_id: string;
+  readonly operation: HostUpdateOperation;
+  readonly requested_version: string | null;
+  readonly state: HostUpdateJobState;
+  readonly phase: string;
+  readonly installed_version: string | null;
+  readonly available_version: string | null;
+  readonly previous_version: string | null;
+  readonly backup_path: string | null;
+  readonly message: string;
+  readonly error_code: string | null;
+  readonly retryable: boolean;
+  readonly created_at_ms: number;
+  readonly updated_at_ms: number;
+}
+
+export interface HostUpdateStatus {
+  readonly supported: boolean;
+  readonly unavailable_reason: string | null;
+  readonly capabilities: HostUpdateCapabilities;
+  readonly state_schema: number;
+  readonly minimum_rollback_version: string | null;
+  readonly signature_identity: string | null;
+  readonly installed_version: string | null;
+  readonly available_version: string | null;
+  readonly update_available: boolean;
+  readonly last_check_at_ms: number | null;
+  readonly active_job: HostUpdateJob | null;
+  readonly releases: readonly HostUpdateRelease[];
+  readonly settings: HostUpdateSettings;
+}
+
 export interface GrantInstanceAdministratorRequest {
   readonly user_id: string;
 }

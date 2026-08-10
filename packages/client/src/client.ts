@@ -23,6 +23,9 @@ import type {
   ErrorEnvelope,
   HealthStatus,
   GrantOrganizationBillingExemptionRequest,
+  HostUpdateJob,
+  HostUpdateSettings,
+  HostUpdateStatus,
   InstanceAdministratorSummary,
   InstanceBillingOnboarding,
   InstanceOrganizationPage,
@@ -353,6 +356,73 @@ export class FFDBClient {
 
   async instanceStatus(options: RequestOptions = {}): Promise<InstanceStatus> {
     return this.request("/v1/instance", { ...options, credential: "platform" });
+  }
+
+  async hostUpdateStatus(options: RequestOptions = {}): Promise<HostUpdateStatus> {
+    return this.request("/v1/instance/updates", { ...options, credential: "platform" });
+  }
+
+  async checkForHostUpdate(options: RequestOptions = {}): Promise<HostUpdateJob> {
+    return this.request("/v1/instance/updates/check", {
+      method: "POST",
+      ...options,
+      credential: "platform",
+      retry: false,
+    });
+  }
+
+  async installHostUpdate(
+    version: string,
+    options: RequestOptions = {},
+  ): Promise<HostUpdateJob> {
+    return this.request("/v1/instance/updates/install", {
+      method: "POST",
+      body: JSON.stringify({ version }),
+      ...options,
+      credential: "platform",
+      retry: false,
+    });
+  }
+
+  async rollbackHostUpdate(
+    version: string,
+    options: RequestOptions = {},
+  ): Promise<HostUpdateJob> {
+    return this.request("/v1/instance/updates/rollback", {
+      method: "POST",
+      body: JSON.stringify({ version }),
+      ...options,
+      credential: "platform",
+      retry: false,
+    });
+  }
+
+  async hostUpdateJob(jobId: string, options: RequestOptions = {}): Promise<HostUpdateJob> {
+    return this.request(`/v1/instance/updates/jobs/${encodeURIComponent(jobId)}`, {
+      ...options,
+      credential: "platform",
+      retry: false,
+    });
+  }
+
+  async hostUpdateSettings(options: RequestOptions = {}): Promise<HostUpdateSettings> {
+    return this.request("/v1/instance/updates/settings", {
+      ...options,
+      credential: "platform",
+    });
+  }
+
+  async configureHostUpdates(
+    settings: HostUpdateSettings,
+    options: RequestOptions = {},
+  ): Promise<HostUpdateJob> {
+    return this.request("/v1/instance/updates/settings", {
+      method: "PATCH",
+      body: JSON.stringify(settings),
+      ...options,
+      credential: "platform",
+      retry: false,
+    });
   }
 
   async configureInstance(

@@ -150,12 +150,14 @@ release-check:
 		scripts/test-host-backup.sh scripts/test-host-backup-compose.sh \
 		scripts/test-native-install-linux.sh \
 		scripts/test-native-install-container.sh \
+		scripts/test-native-updater.sh \
 		scripts/configure-github-security.sh; do \
 		sh -n "$$script" || exit; \
 	done
 	scripts/test-host-backup.sh
 	scripts/test-host-backup-compose.sh
 	scripts/test-release-image-resolution.sh
+	scripts/test-native-updater.sh
 	scripts/test-release-distribution.sh
 
 release-bundle:
