@@ -568,7 +568,15 @@ async fn authorized_actor(
         .await
         .map_err(|error| error.into_response())?;
     enforce_platform_user_rate(state, identity.user_id, request_id).await?;
-    let instance = required_instance(state.instance.clone(), request_id)?;
+    let Some(instance) = state.instance.clone() else {
+        return Err(ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "instance.unavailable",
+            "instance administration is temporarily unavailable",
+            request_id,
+        )
+        .into_response());
+    };
     let role = instance
         .authorize_host_updates(identity.user_id)
         .await
@@ -740,21 +748,6 @@ async fn authorized(
         .into_response()
     })?;
     Ok((updater, actor))
-}
-
-fn required_instance(
-    instance: Option<std::sync::Arc<InstanceService>>,
-    request_id: RequestId,
-) -> Result<std::sync::Arc<InstanceService>, Response> {
-    instance.ok_or_else(|| {
-        ApiError::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "instance.unavailable",
-            "instance administration is temporarily unavailable",
-            request_id,
-        )
-        .into_response()
-    })
 }
 
 fn instance_auth_error(error: InstanceServiceError, request_id: RequestId) -> Response {
