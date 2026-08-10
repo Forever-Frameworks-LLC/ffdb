@@ -102,6 +102,9 @@ tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
   'ffdb-native-0.1.0/systemd/ffdb.tmpfiles.conf' \
   | grep -F -q 'd /var/lib/ffdb/metrics 0700 ffdb ffdb -'
 tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
+  'ffdb-native-0.1.0/systemd/ffdb.tmpfiles.conf' \
+  | grep -F -q 'd /var/lib/ffdb 0750 root ffdb -'
+tar -xOf "$native_output/ffdb-native-linux-amd64-0.1.0.tar.gz" \
   'ffdb-native-0.1.0/systemd/ffdb-api.service' \
   | grep -F -q 'ReadWritePaths=/var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics'
 SOURCE_DATE_EPOCH=1 FFDB_EXTRA_ASSETS_DIR="$extra_output" \

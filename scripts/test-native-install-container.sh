@@ -44,7 +44,8 @@ exit 0
 EOF
 cat > "$fake_bin/systemd-tmpfiles" <<'EOF'
 #!/bin/sh
-exit 0
+set -eu
+[ "$(stat -c '%U:%G:%a' /var/lib/ffdb)" = root:ffdb:750 ]
 EOF
 cat > "$fake_bin/caddy" <<'EOF'
 #!/bin/sh
@@ -105,6 +106,8 @@ test -f /etc/ffdb/Caddyfile
 test -f /var/www/ffdb/index.html
 test "$(stat -c '%a' /etc/ffdb/ffdb.env)" = 640
 test "$(stat -c '%a' /etc/ffdb/Caddyfile)" = 640
+test "$(stat -c '%U:%G:%a' /var/lib/ffdb)" = root:ffdb:750
+test "$(stat -c '%U:%G:%a' /var/lib/ffdb/projects)" = ffdb:ffdb:700
 ! grep -F -q 'example.com' /etc/ffdb/Caddyfile
 grep -F -q 'handle @metrics {' /etc/ffdb/Caddyfile
 grep -F -q 'respond 404' /etc/ffdb/Caddyfile
