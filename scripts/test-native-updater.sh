@@ -102,7 +102,9 @@ EOF
 FFDB_UPDATER_TEST_MODE=1
 FFDB_UPDATER_TEST_ROOT=$test_root
 FFDB_UPDATER_LIBRARY_MODE=1
-export FFDB_UPDATER_TEST_MODE FFDB_UPDATER_TEST_ROOT FFDB_UPDATER_LIBRARY_MODE
+FFDB_UPDATER_SYSTEMCTL=true
+export FFDB_UPDATER_TEST_MODE FFDB_UPDATER_TEST_ROOT FFDB_UPDATER_LIBRARY_MODE \
+  FFDB_UPDATER_SYSTEMCTL
 . "$ROOT_DIR/infra/release/native/ffdb-update"
 
 # The updater replaces RestrictSUIDSGID's security intent by rejecting
@@ -153,6 +155,13 @@ restart_and_wait() {
   readiness_attempt=$((readiness_attempt + 1))
   [ "$readiness_attempt" -gt 1 ]
 }
+
+compat_dir=$test_root/etc/systemd/system/ffdb-update-agent.service.d
+install -d "$compat_dir"
+printf '%s\n' '[Service]' 'RestrictSUIDSGID=false' \
+  > "$compat_dir/ffdb-extraction-compat.conf"
+printf '%s\n' '[Service]' 'LogLevelMax=notice' \
+  > "$compat_dir/administrator.conf"
 if activate_with_health_or_restore "$next_release" "$release"; then
   printf '%s\n' "failed release unexpectedly passed readiness" >&2
   exit 1
@@ -160,6 +169,14 @@ fi
 [ "$(readlink "$test_root/opt/ffdb/current")" = "$release" ]
 grep -F -q 'https://ffdb.test' "$test_root/etc/ffdb/Caddyfile"
 ! grep -F -q 'X-Release next' "$test_root/etc/ffdb/Caddyfile"
+test -f "$compat_dir/ffdb-extraction-compat.conf"
+
+# A failed activation keeps the exact extraction compatibility override in
+# place. Cleanup is a post-readiness updater action and preserves unrelated
+# administrator drop-ins.
+remove_extraction_compat_dropin
+test ! -e "$compat_dir/ffdb-extraction-compat.conf"
+test -f "$compat_dir/administrator.conf"
 unset FFDB_UPDATER_LIBRARY_MODE
 
 if updater submit install latest >/dev/null 2>&1; then

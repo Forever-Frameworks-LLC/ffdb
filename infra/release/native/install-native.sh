@@ -72,7 +72,13 @@ if [ ! -d "$release_dir" ]; then
   install -d -m 0755 "$release_staging/release"
   cp -R "$bundle_dir/." "$release_staging/release/"
   chown -R root:root "$release_staging/release"
+  # The updater service intentionally runs with UMask=0077. cp applies that
+  # mask to newly staged files, so normalize the immutable release payload
+  # before services running as ffdb need to execute binaries or read web
+  # assets. Executability is derived only from the signed bundle's owner bit.
   find "$release_staging/release" -type d -exec chmod 0755 {} \;
+  find "$release_staging/release" -type f -perm -0100 -exec chmod 0755 {} \;
+  find "$release_staging/release" -type f ! -perm -0100 -exec chmod 0644 {} \;
   mv "$release_staging/release" "$release_dir"
   rmdir "$release_staging"
   trap - EXIT HUP INT TERM
@@ -118,19 +124,6 @@ for unit in ffdb-api.service ffdb-sync-worker.service ffdb-gateway.service \
   mv -Tf "$unit_tmp" "/etc/systemd/system/$unit"
 done
 
-# Remove only the exact FFDB compatibility override used to repair updater
-# releases whose RestrictSUIDSGID filter blocked GNU tar's openat2 calls. The
-# fixed release unit no longer needs the override; unrelated administrator
-# drop-ins remain untouched.
-updater_compat_dropin=/etc/systemd/system/ffdb-update-agent.service.d/ffdb-extraction-compat.conf
-if [ -f "$updater_compat_dropin" ] \
-  && [ "$(wc -l < "$updater_compat_dropin" | tr -d ' ')" = 2 ] \
-  && [ "$(sed -n '1p' "$updater_compat_dropin")" = '[Service]' ] \
-  && [ "$(sed -n '2p' "$updater_compat_dropin")" = 'RestrictSUIDSGID=false' ]; then
-  rm -f "$updater_compat_dropin"
-  rmdir /etc/systemd/system/ffdb-update-agent.service.d 2>/dev/null || true
-fi
-
 for binary in ffdb-api ffdb-database-worker ffdb-sync-worker; do
   link_tmp=/usr/local/bin/.$binary.$$
   rm -f "$link_tmp"
@@ -154,11 +147,14 @@ rm -f "$web_tmp"
 ln -s "$current_link/web" "$web_tmp"
 if [ -d /var/www/ffdb ] && [ ! -L /var/www/ffdb ]; then rm -rf /var/www/ffdb; fi
 mv -Tf "$web_tmp" /var/www/ffdb
+install -m 0644 /dev/null /var/lib/ffdb/installed-version
 printf '%s\n' "$version" > /var/lib/ffdb/installed-version
 if [ "$verified_release" -eq 1 ]; then
   install -m 0644 /dev/null "$release_dir/.signature-verified"
+  install -m 0644 /dev/null "$release_dir/.signature-identity"
   printf '%s\n' "https://github.com/Forever-Frameworks-LLC/ffdb/.github/workflows/release.yml@refs/tags/v$version" \
     > "$release_dir/.signature-identity"
+  install -m 0644 /dev/null "$release_dir/.release-url"
   printf '%s\n' "https://github.com/Forever-Frameworks-LLC/ffdb/releases/tag/v$version" \
     > "$release_dir/.release-url"
 fi
