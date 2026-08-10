@@ -37,7 +37,14 @@ for required_command in pg_dump pg_restore sqlite3 curl tar jq cosign flock sha2
 done
 
 install -D -m 0644 "$bundle_dir/systemd/ffdb.sysusers.conf" /etc/sysusers.d/ffdb.conf
-systemd-sysusers /etc/sysusers.d/ffdb.conf
+# Native upgrades run inside a service whose writable paths deliberately do
+# not include the system account databases. The ffdb identity is created by
+# the initial host install, so avoid asking systemd-sysusers to lock or rewrite
+# those protected files when both records already exist.
+if ! getent passwd ffdb >/dev/null 2>&1 \
+  || ! getent group ffdb >/dev/null 2>&1; then
+  systemd-sysusers /etc/sysusers.d/ffdb.conf
+fi
 install -D -m 0644 "$bundle_dir/systemd/ffdb.tmpfiles.conf" /etc/tmpfiles.d/ffdb.conf
 # The state root is a trust boundary: services own their dedicated children,
 # while root owns the parent and updater paths. Normalize upgrades from older
