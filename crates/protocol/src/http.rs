@@ -399,6 +399,113 @@ pub struct InstanceAdministratorSummary {
     pub created_at_ms: i64,
 }
 
+/// Release channel accepted by the host updater. Additional channels must be
+/// introduced as protocol variants rather than forwarded as unchecked text to
+/// the privileged updater.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HostUpdateChannel {
+    Stable,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HostUpdateOperation {
+    Check,
+    Install,
+    Rollback,
+    Configure,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HostUpdateJobState {
+    Queued,
+    Running,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostUpdateVersionRequest {
+    /// An exact signed FFDB release version, without a leading `v`.
+    pub version: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostUpdateSettings {
+    pub channel: HostUpdateChannel,
+    pub automatic_checks: bool,
+    pub check_interval_hours: u16,
+    pub automatic_apply: bool,
+    /// Recurring UTC start in zero-padded `HH:MM` form.
+    pub maintenance_window_start: Option<String>,
+    pub maintenance_window_duration_minutes: u16,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct HostUpdateRelease {
+    pub version: String,
+    pub active: bool,
+    pub rollback_compatible: bool,
+    #[serde(default)]
+    pub state_schema: u32,
+    #[serde(default)]
+    pub minimum_rollback_version: Option<String>,
+    #[serde(default)]
+    pub signature_verified: bool,
+    #[serde(default)]
+    pub signature_identity: Option<String>,
+    #[serde(default)]
+    pub release_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct HostUpdateCapabilities {
+    pub check: bool,
+    pub install: bool,
+    pub rollback: bool,
+    pub automatic_checks: bool,
+    pub automatic_apply: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct HostUpdateJob {
+    pub job_id: String,
+    pub operation: HostUpdateOperation,
+    pub requested_version: Option<String>,
+    pub state: HostUpdateJobState,
+    pub phase: String,
+    pub installed_version: Option<String>,
+    pub available_version: Option<String>,
+    pub previous_version: Option<String>,
+    pub backup_path: Option<String>,
+    pub message: String,
+    pub error_code: Option<String>,
+    pub retryable: bool,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct HostUpdateStatus {
+    pub supported: bool,
+    pub unavailable_reason: Option<String>,
+    pub capabilities: HostUpdateCapabilities,
+    pub state_schema: u32,
+    pub minimum_rollback_version: Option<String>,
+    pub signature_identity: Option<String>,
+    pub installed_version: Option<String>,
+    pub available_version: Option<String>,
+    pub update_available: bool,
+    pub last_check_at_ms: Option<i64>,
+    pub active_job: Option<HostUpdateJob>,
+    pub releases: Vec<HostUpdateRelease>,
+    pub settings: HostUpdateSettings,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GrantInstanceAdministratorRequest {

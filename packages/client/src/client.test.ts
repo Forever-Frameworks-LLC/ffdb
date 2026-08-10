@@ -158,6 +158,56 @@ describe("FFDBClient", () => {
     expect(calls.every((call) => call.headers.get("authorization") === "Bearer platform-session")).toBe(true);
   });
 
+  it("uses only fixed host update routes and exact version bodies", async () => {
+    const calls: Request[] = [];
+    const developerSessions = new MemoryDeveloperSessionStore("host-update-test");
+    await developerSessions.set({
+      session_token: "recent-owner-session",
+      user_id: "owner-1",
+      email: "owner@example.test",
+      expires_at_ms: 99_999,
+    });
+    const client = new FFDBClient({
+      baseUrl: "https://ffdb.example.test",
+      developerSessionStore: developerSessions,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({
+          job_id: "0191439c-37c4-70a1-8d88-1a81f5c0f461",
+          operation: "install",
+          requested_version: "0.3.3",
+          state: "queued",
+          phase: "queued",
+          installed_version: "0.3.2",
+          available_version: "0.3.3",
+          previous_version: "0.3.2",
+          backup_path: null,
+          message: "Queued",
+          error_code: null,
+          retryable: false,
+          created_at_ms: 1,
+          updated_at_ms: 1,
+        });
+      },
+    });
+
+    await client.checkForHostUpdate();
+    await client.installHostUpdate("0.3.3");
+    await client.rollbackHostUpdate("0.3.2");
+    await client.hostUpdateJob("0191439c-37c4-70a1-8d88-1a81f5c0f461");
+
+    expect(calls.map((call) => [call.method, new URL(call.url).pathname])).toEqual([
+      ["POST", "/v1/instance/updates/check"],
+      ["POST", "/v1/instance/updates/install"],
+      ["POST", "/v1/instance/updates/rollback"],
+      ["GET", "/v1/instance/updates/jobs/0191439c-37c4-70a1-8d88-1a81f5c0f461"],
+    ]);
+    await expect(calls[1]?.clone().json()).resolves.toEqual({ version: "0.3.3" });
+    await expect(calls[2]?.clone().json()).resolves.toEqual({ version: "0.3.2" });
+    expect(calls.every((call) => call.headers.get("authorization") === "Bearer recent-owner-session")).toBe(true);
+  });
+
   it("clears the local developer session when remote sign-out rejects an expired credential", async () => {
     const developerSessions = new MemoryDeveloperSessionStore("failed-signout-test");
     await developerSessions.set({

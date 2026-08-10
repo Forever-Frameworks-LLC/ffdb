@@ -1,6 +1,6 @@
 {
   "name": "@ffdb/sync-client",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Runtime-neutral FFDB logical offline-sync orchestration",
   "keywords": ["ffdb", "sqlite", "database", "offline-first", "sync"],
   "homepage": "https://ffdb.forever-frameworks.com/docs/sync-client",

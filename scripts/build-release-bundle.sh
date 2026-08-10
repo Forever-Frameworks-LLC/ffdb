@@ -99,6 +99,15 @@ cat > "$OUTPUT_DIR/release-manifest.json" <<EOF
     "minio": "$MINIO_IMAGE",
     "mailpit": "$MAILPIT_IMAGE"
   },
+  "native_update": {
+    "state_schema": 1,
+    "minimum_upgrade_version": "0.3.0",
+    "minimum_rollback_version": "0.3.0",
+    "assets": {
+      "amd64": "ffdb-native-linux-amd64-$VERSION.tar.gz",
+      "arm64": "ffdb-native-linux-arm64-$VERSION.tar.gz"
+    }
+  },
   "signature_identity": "$SIGNATURE_IDENTITY",
   "signature_issuer": "https://token.actions.githubusercontent.com"
 }

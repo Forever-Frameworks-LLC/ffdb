@@ -18,6 +18,7 @@ describe("portal route model", () => {
 
   it("keeps administration, organization, and project routes in distinct scopes", () => {
     expect(pathForRoute("Instance Billing", "project_123", "org_123")).toBe("/app/instance/billing");
+    expect(pathForRoute("Updates", "project_123", "org_123")).toBe("/app/instance/updates");
     expect(pathForRoute("Members", "project_123", "org_123")).toBe("/app/organizations/org_123/members");
     expect(pathForRoute("Database", "project_123", "org_123")).toBe("/app/projects/project_123/database");
   });

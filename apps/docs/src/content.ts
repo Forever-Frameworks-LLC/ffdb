@@ -160,7 +160,7 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.2
+    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.3
     environment:
       - FFDB_ENVIRONMENT
       - FFDB_HTTP_BIND
@@ -216,7 +216,7 @@ services:
     restart: unless-stopped
 
   sync-worker:
-    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.2
+    image: ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.3
     command: ["/usr/local/bin/ffdb-sync-worker"]
     environment:
       - FFDB_SYNC_STATE_DIR
@@ -238,7 +238,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.2
+    image: ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.3
     environment:
       - FFDB_S3_PUBLIC_ORIGIN
     depends_on:
@@ -280,7 +280,7 @@ FFDB_NODE_NAME=ffdb-single-host-01
 FFDB_DATABASE_ROOT=/var/lib/ffdb/projects
 FFDB_BACKUP_ROOT=/var/lib/ffdb/backups
 FFDB_METRICS_ROOT=/var/lib/ffdb/metrics
-FFDB_DATABASE_WORKER=/usr/local/bin/ffdb-database-worker
+FFDB_DATABASE_WORKER=/opt/ffdb/current/bin/ffdb-database-worker
 FFDB_MASTER_KEY=replace-with-openssl-rand-base64-32
 FFDB_BACKUP_MASTER_KEY=replace-with-an-independent-base64-key
 FFDB_CURSOR_HMAC_KEY=replace-with-openssl-rand-hex-32
@@ -374,18 +374,18 @@ const routePages = [
   https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh
 less ffdb-install.sh
 sudo sh ffdb-install.sh --profile single-host --start --require-signature` },
-          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.2
+          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.3
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 less ffdb-install.sh
 sudo sh ffdb-install.sh --profile single-host --start --require-signature \\
   --version "$VERSION" --release-base "$RELEASE_BASE"` },
           { label: "Verified mirror or air-gapped bundle", language: "sh", code: `sudo env \\
-  FFDB_VERSION=0.3.2 \\
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.2 \\
+  FFDB_VERSION=0.3.3 \\
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3 \\
   sh ./install.sh --profile single-host --start --require-signature` },
         ],
-        callout: { kind: "warning", title: "Pin production installs", body: "The latest URL follows the stable GitHub Release. The exact-tag example pins the supported 0.3.2 release for reproducible production automation; read that release's notes before installation or upgrade." },
+        callout: { kind: "warning", title: "Pin production installs", body: "The latest URL follows the stable GitHub Release. The exact-tag example pins the supported 0.3.3 release for reproducible production automation; read that release's notes before installation or upgrade." },
       },
       {
         heading: "Verify the single-host services",
@@ -472,7 +472,7 @@ unset FFDB_BOOTSTRAP_TOKEN` },
         heading: "Install the packaged CLI",
         paragraphs: ["The public @ffdb/cli package is separate from the server bundle. Check the registry version, review the matching release notes, and pin that version in trusted operator environments."],
         code: { label: "Terminal", language: "sh", code: `npm view @ffdb/cli version
-npm install --global @ffdb/cli@0.3.2
+npm install --global @ffdb/cli@0.3.3
 ffdb --help` },
       },
       {
@@ -559,7 +559,7 @@ sudo sh ffdb-install.sh --profile single-host --start --require-signature
 sudo ffdb-host status
 # Port 5173 is the packaged nginx gateway, not a Vite server.
 curl --fail http://127.0.0.1:5173/readyz` },
-          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.2
+          { label: "Reproducible exact tag", language: "sh", code: `VERSION=0.3.3
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 less ffdb-install.sh
@@ -569,12 +569,12 @@ sudo ffdb-host status
 # Port 5173 is the packaged nginx gateway, not a Vite server.
 curl --fail http://127.0.0.1:5173/readyz` },
           { label: "Verified mirror or air-gapped bundle", language: "sh", code: `sudo env \\
-  FFDB_VERSION=0.3.2 \\
-  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.2 \\
+  FFDB_VERSION=0.3.3 \\
+  FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.3 \\
   sh ./install.sh --profile single-host --start --require-signature
 sudo ffdb-host status` },
         ],
-        callout: { kind: "warning", title: "Release discovery is separate from installation", body: "The examples pin the supported 0.3.2 release while the latest URL tracks the stable channel. The installer verifies the signed checksum list, bundle, controller, and pinned images. Mirrors must preserve the release filenames and Sigstore bundle unchanged." },
+        callout: { kind: "warning", title: "Release discovery is separate from installation", body: "The examples pin the supported 0.3.3 release while the latest URL tracks the stable channel. The installer verifies the signed checksum list, bundle, controller, and pinned images. Mirrors must preserve the release filenames and Sigstore bundle unchanged." },
       },
       {
         heading: "Understand the single-host boundary",
@@ -592,8 +592,8 @@ sudo ffdb-host status` },
         paragraphs: ["For internet production, configure the external-provider profile with independently backed-up PostgreSQL, private HTTPS S3-compatible storage, real email delivery, and a TLS gateway. Signed release metadata pins the multi-architecture runtime and gateway images by immutable digest, and ffdb-host invokes the matching Compose model."],
         code: { label: "Terminal", language: "sh", code: `# For a directly downloaded and verified bundle:
 sudo ffdb-host install \\
-  --version 0.3.2 \\
-  --bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.2.tar.gz
+  --version 0.3.3 \\
+  --bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.3.tar.gz
 
 # The public/local installer already performs the install step:
 sudo ffdb-host start
@@ -638,8 +638,8 @@ sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update
 sudo ffdb-host status
 
 # Reproducible alternative after reviewing the exact tag:
-sudo ffdb-host update-check --version 0.3.2
-sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.2
+sudo ffdb-host update-check --version 0.3.3
+sudo FFDB_REQUIRE_SIGNATURE=1 ffdb-host update --version 0.3.3
 
 # If acceptance fails:
 sudo ffdb-host rollback 0.3.1 --acknowledge-migration-risk
@@ -658,7 +658,7 @@ sudo ffdb-host stop` },
     sections: [
       {
         heading: "Provision dependencies",
-        paragraphs: ["This installation shape assumes a Linux host with systemd, an HTTPS reverse proxy, PostgreSQL, and S3-compatible storage already provisioned. Production FFDB rejects SMTP and requires a Resend API key."],
+        paragraphs: ["This installation shape assumes a Linux host with systemd, Caddy, curl, tar, cosign, PostgreSQL client tools, SQLite tooling, PostgreSQL, and S3-compatible storage already provisioned. Production FFDB rejects SMTP and requires a Resend API key. Cosign is required by the installed updater because unattended root activation must fail closed when release identity cannot be verified."],
         bullets: [
           "Use durable local or block storage for project SQLite files; verify SQLite locking before using any network filesystem.",
           "Use independently protected backup and organization-metrics directories, plus an independent 32-byte backup master key.",
@@ -669,7 +669,7 @@ sudo ffdb-host stop` },
       {
         heading: "Download and verify one component release",
         paragraphs: ["Choose an announced tag from the canonical GitHub Releases page and download its architecture-matched native archive, signed checksum list, and Sigstore bundle from that same tag. Verify the checksum list before trusting its archive digest; the extracted directory is ffdb-native-VERSION even though the downloaded filename includes the operating system and architecture. Configure the environment in the next step before running the installer because the installer uses its exact public S3 origin to render the gateway Content-Security-Policy."],
-        code: { label: "Linux amd64", language: "sh", code: `VERSION=0.3.2
+        code: { label: "Linux amd64", language: "sh", code: `VERSION=0.3.3
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS"
 curl -fsSLO "$RELEASE_BASE/SHA256SUMS.sigstore.json"
@@ -700,7 +700,7 @@ FFDB_NODE_NAME=ffdb-prod-01
 FFDB_DATABASE_ROOT=/var/lib/ffdb/projects
 FFDB_BACKUP_ROOT=/var/lib/ffdb/backups
 FFDB_METRICS_ROOT=/var/lib/ffdb/metrics
-FFDB_DATABASE_WORKER=/usr/local/bin/ffdb-database-worker
+FFDB_DATABASE_WORKER=/opt/ffdb/current/bin/ffdb-database-worker
 FFDB_WORKER_MAX_PROCESSES=8
 FFDB_WORKER_QUEUE_CAPACITY=32
 FFDB_MASTER_KEY=REPLACE_WITH_BASE64_32_BYTES
@@ -730,11 +730,11 @@ sudo chmod 0600 /root/ffdb.env` },
       {
         heading: "Install the verified release",
         code: { label: "Terminal", language: "sh", code: `cd "ffdb-native-$VERSION"
-sudo ./install-native.sh --env-file /root/ffdb.env
+sudo ./install-native.sh --verified-release --env-file /root/ffdb.env
 systemctl cat ffdb-api.service
 systemctl cat ffdb-sync-worker.service
 systemctl cat ffdb-gateway.service` },
-        paragraphs: ["The native installer creates the ffdb account and directories, copies the staged environment with restricted ownership, installs the version-matched binaries, units, backup helper, and static web assets, renders the Caddy site from the public and storage origins, and validates it before returning. Caddy terminates TLS, serves all three compiled sites, and proxies directly to loopback Axum; nginx is not part of this native path."],
+        paragraphs: ["Pass --verified-release only after the immediately preceding Sigstore and SHA-256 checks succeed. It records the canonical signer identity on this installed release so it can later be selected as a trusted rollback target.", "The native installer creates the ffdb account and directories, installs the complete release below /opt/ffdb/releases/VERSION, atomically selects it through /opt/ffdb/current, copies the staged environment with restricted ownership, installs the units and constrained updater client, publishes the versioned static web assets, renders the Caddy site from the public and storage origins, and validates it before returning. Caddy terminates TLS, serves all three compiled sites, and proxies directly to loopback Axum; nginx is not part of this native path."],
       },
       {
         heading: "Install the API unit",
@@ -749,7 +749,7 @@ User=ffdb
 Group=ffdb
 WorkingDirectory=/var/lib/ffdb
 EnvironmentFile=/etc/ffdb/ffdb.env
-ExecStart=/usr/local/bin/ffdb-api
+ExecStart=/opt/ffdb/current/bin/ffdb-api
 Restart=on-failure
 RestartSec=5s
 KillSignal=SIGINT
@@ -767,6 +767,7 @@ ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/ffdb/projects /var/lib/ffdb/backups /var/lib/ffdb/metrics
+ReadWritePaths=/var/lib/ffdb/update-requests
 CapabilityBoundingSet=
 AmbientCapabilities=
 LockPersonality=true
@@ -795,7 +796,7 @@ User=ffdb
 Group=ffdb
 WorkingDirectory=/var/lib/ffdb
 EnvironmentFile=/etc/ffdb/ffdb.env
-ExecStart=/usr/local/bin/ffdb-sync-worker
+ExecStart=/opt/ffdb/current/bin/ffdb-sync-worker
 Restart=on-failure
 RestartSec=5s
 KillSignal=SIGINT
@@ -851,7 +852,8 @@ curl --fail http://127.0.0.1:5173/readyz` },
       },
       {
         heading: "Upgrade without mixing worker protocols",
-        bullets: ["Read /var/lib/ffdb/installed-version, select an exact newer tag from GitHub Releases, and review its migration and compatibility notes.", "Back up PostgreSQL, the metrics ledger, and project data; verify a recent encrypted project backup before changing binaries.", "Download and verify the target native archive exactly as above. Never rebuild or mix individual binaries on an installed host.", "Stop ffdb-api and ffdb-sync-worker, enter the target archive's ffdb-native-VERSION directory, and run sudo ./install-native.sh --start so all three binaries, units, backup helper, and web assets move together while /etc/ffdb and /var/lib/ffdb remain in place.", "Run readiness, RLS isolation, auth refresh, storage signing, sync, and restore smoke tests before discarding the previous verified archive."],
+        paragraphs: ["After this installer is present, use Global administration → Updates or the constrained ffdb-update host client. The root agent verifies the target manifest and Sigstore identity, creates a coordinated backup, installs beside the current release, switches the complete release atomically, restarts the application units, and requires readiness. The gateway and persisted job let the portal reconnect while Axum restarts."],
+        bullets: ["Review the target release notes, state schema, rollback floor, and signature identity before confirming.", "Never rebuild or mix individual binaries; API, database worker, sync worker, units, and web assets come from one release.", "Automatic checks are enabled, but automatic application stays off until an owner explicitly configures a UTC maintenance window.", "Rollback selects only a verified installed release that passes the state-schema and rollback-floor guard.", "Run RLS isolation, auth refresh, storage signing, sync, observability, and restore acceptance before treating the rollout as complete."],
         callout: { kind: "warning", title: "Coordinated release boundary", body: "Protocol version 1 has strict decoding and no dual-version negotiation. Do not perform an in-place rolling mix of API and database-worker releases." },
       },
     ],
@@ -1164,7 +1166,7 @@ await ffdb.auth.signOut();` },
       {
         heading: "Install the versioned email components",
         paragraphs: ["@ffdb/email-components contains the release's React Email defaults and allowed-variable manifest. Install its exact server-matched npm version, or use the checksum-listed tarball from the matching GitHub tag for offline workflows. An application does not need it merely to register or sign in users."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.2
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
 npm install --save-exact "@ffdb/email-components@$VERSION"` },
       },
     ],
@@ -1404,9 +1406,9 @@ for (const item of push.results) {
         paragraphs: ["Install @ffdb/client at the exact version named by the server release. Inspect npm only for discovery; do not float the production dependency range."],
         codes: [
           { label: "Public npm registry", language: "sh", code: `npm view @ffdb/client dist-tags --json
-npm install --save-exact @ffdb/client@0.3.2
+npm install --save-exact @ffdb/client@0.3.3
 npm ls @ffdb/client` },
-          { label: "Verified offline release artifact", language: "sh", code: `npm install --save-exact ./ffdb-client-0.3.2.tgz` },
+          { label: "Verified offline release artifact", language: "sh", code: `npm install --save-exact ./ffdb-client-0.3.3.tgz` },
           { label: "src/ffdb.ts", language: "ts", code: clientSetup },
         ],
         callout: { kind: "note", title: "Check updates without floating", body: "Run npm outdated @ffdb/client to discover a newer version, read its server and package release notes, then install that exact version and run your application tests. Use only checksum-listed tarballs for offline installation." },
@@ -1445,7 +1447,7 @@ await request;` },
       {
         heading: "Install the matched packages",
         paragraphs: ["Install @ffdb/react and @ffdb/sync-client from npm at the exact @ffdb/client and server version. The matching GitHub tag also contains checksum-listed tarballs for verified offline installation."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.2
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION" "@ffdb/react@$VERSION"` },
       },
@@ -1478,7 +1480,7 @@ function Documents() {
       {
         heading: "Install the native integration",
         paragraphs: ["React Native uses exact-version @ffdb/client, @ffdb/sync-client, and @ffdb/react-native npm packages. The matching tag provides signed offline tarballs. The integration supplies contracts and adapters; your app still chooses its SecureStore-like and SQLite implementations."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.2
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION" "@ffdb/react-native@$VERSION"` },
       },
@@ -1548,7 +1550,7 @@ export function onUserMutation(mutation: SyncMutation): Promise<void> {
       {
         heading: "Install the runtime-neutral package",
         paragraphs: ["Install @ffdb/sync-client from npm at the same version as @ffdb/client and the server. The matching GitHub Release contains a signed tarball for offline installation. Browser and Node adapters are subpath exports of this package."],
-        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.2
+        code: { label: "Terminal", language: "sh", code: `VERSION=0.3.3
 npm install --save-exact "@ffdb/client@$VERSION" \\
   "@ffdb/sync-client@$VERSION"` },
       },
@@ -1669,7 +1671,7 @@ await sync.sync();` },
         heading: "Install the CLI package",
         paragraphs: ["Install @ffdb/cli at the exact server version in a trusted operator environment. Use the checksum-listed release tarball for verified offline installation."],
         code: { label: "Terminal", language: "sh", code: `npm view @ffdb/cli dist-tags --json
-npm install --global @ffdb/cli@0.3.2
+npm install --global @ffdb/cli@0.3.3
 ffdb --help` },
         callout: { kind: "note", title: "Check before updating", body: "@ffdb/cli installs the ffdb binary. Use npm view @ffdb/cli version only for discovery, read the target release notes, then install the exact server-matched version." },
       },
@@ -1929,6 +1931,55 @@ GET  /v1/projects/:project_id/commerce/entitlements
 POST /v1/projects/:project_id/commerce/webhooks/stripe  # BYO only
 POST /v1/commerce/webhooks/stripe-connect              # Connect only` },
         callout: { kind: "warning", title: "No implied payment compliance", body: "Using FFDB does not transfer tax, dispute, privacy, fulfillment, restricted-business, or merchant compliance obligations away from the project owner." },
+      },
+    ],
+  },
+  {
+    path: "/host-updates",
+    title: "Host updates and rollback",
+    description: "Check, apply, monitor, and safely reverse signed native FFDB releases from the portal or host console.",
+    group: "Operations",
+    sections: [
+      {
+        heading: "Use the native lifecycle boundary",
+        paragraphs: ["A packaged native installation includes a root-owned, path-activated updater. The portal and Axum API can request only six typed operations: inspect, check, install an exact version, roll back to an installed exact version, read a job, or update the bounded schedule. They cannot supply a URL, filesystem path, command, or shell argument. The updater accepts only canonical releases whose checksum list has a valid GitHub Actions Sigstore identity and whose requested asset is named by the release manifest."],
+        bullets: ["FFDB releases live side by side under /opt/ffdb/releases, and /opt/ffdb/current changes atomically only after verification and backup succeed.", "Caddy and the compiled portal stay available while Axum and the sync worker restart, so the progress screen can reconnect to the persisted job.", "Every install and rollback takes a coordinated host backup, holds one global update lock, records an instance audit event, and requires readiness after restart.", "The API runs as ffdb and only writes a bounded request into the updater queue. It never receives root, sudo, or general process-execution authority."],
+        callout: { kind: "note", title: "Docker remains host controlled", body: "Packaged Docker installations continue to use the signed ffdb-host update and rollback workflow. FFDB does not mount the Docker host or its root socket into the API container merely to offer a portal button." },
+      },
+      {
+        heading: "Verify lifecycle services",
+        paragraphs: ["The native installer enables the request watcher and periodic release check with the application services. Automatic checks are on by default; automatic application is off. Inspect the service boundary after a fresh install or upgrade before relying on portal controls."],
+        code: { label: "Native host", language: "sh", code: `sudo systemctl --no-pager --full status \\
+  ffdb-update-agent.path \\
+  ffdb-update-check.timer
+sudo -u ffdb /usr/local/bin/ffdb-update inspect
+sudo journalctl -u ffdb-update-agent.service --since today --no-pager` },
+      },
+      {
+        heading: "Check and install from the portal",
+        paragraphs: ["Open Global administration, then Updates. Check for updates reads the stable channel without restarting services. Install is shown only for a newer compatible signed release. Owners and instance administrators may inspect and check; install, rollback, and schedule changes require a platform session issued within the previous 15 minutes. If the session is older, the portal asks for the account password through the normal sign-in endpoint, replaces the session, and retries the exact pending action. Passwords are never forwarded to the updater."],
+        bullets: ["Review the target version, signature identity, compatibility state schema, release notes link, and backup requirement before confirming.", "The API returns a job immediately. Keep the progress view open; temporary connection failures during Axum restart are expected and are retried with a bounded backoff.", "Success requires the selected version to be active and both direct API and gateway readiness to pass. A failed health check restores the previous active release and leaves the failure record available for diagnosis.", "Use the job ID and request ID when correlating the portal state with the immutable audit log and system journal."],
+      },
+      {
+        heading: "Configure checks and maintenance",
+        paragraphs: ["The stable channel is the only production channel. Choose the check interval and, only if unattended maintenance is acceptable, explicitly enable automatic application with a UTC maintenance window. A check outside the window records availability but does not restart the host. Disabling automatic checks stops network discovery without hiding already installed versions or job history."],
+        callout: { kind: "warning", title: "Automatic apply is opt in", body: "A fresh installation never applies a release automatically. Enable it only after off-host backups, monitoring, alert delivery, and a staffed rollback procedure have been tested." },
+      },
+      {
+        heading: "Roll back a compatible installed release",
+        paragraphs: ["Rollback selects an already verified release stored on the host; it never downloads an arbitrary older binary. FFDB compares the active and target state-schema metadata and the release rollback floor before enabling the action. A rollback that would cross an incompatible control-plane or durable-state boundary is rejected. Restore the pre-update backup with the documented recovery procedure instead of bypassing that guard."],
+        bullets: ["A rollback creates another backup before changing the active symlink.", "API, database-worker, sync-worker, web assets, units, and gateway configuration move as one versioned set.", "The previous failed release remains installed for investigation, but it is not selected automatically again.", "If the portal cannot reconnect, inspect the persisted job and journal locally; do not repeatedly submit the same operation."],
+      },
+      {
+        heading: "Recover from an interrupted job",
+        code: { label: "Native host", language: "sh", code: `sudo -u ffdb /usr/local/bin/ffdb-update inspect
+sudo -u ffdb /usr/local/bin/ffdb-update job "$JOB_ID"
+sudo systemctl status ffdb-api.service ffdb-sync-worker.service ffdb-gateway.service
+sudo journalctl -u ffdb-update-agent.service -u ffdb-api.service \\
+  -u ffdb-sync-worker.service --since today --no-pager
+curl --fail http://127.0.0.1:8080/readyz
+curl --fail http://127.0.0.1:5173/readyz` },
+        paragraphs: ["Jobs and the active-release pointer survive API and host restarts. If power is lost before the atomic switch, the old release stays active. If it is lost after the switch, systemd starts the selected release and the retained job records the last completed phase. Resolve the current state before submitting a new install or rollback."],
       },
     ],
   },
@@ -2438,6 +2489,17 @@ const pageGuides: Record<RoutePath, PageGuide> = {
     failures: ["Account status is restricted — inspect requirements_due and finish provider onboarding.", "A Connect event sent to the per-project BYO route is rejected — deliver it to the global account-routed Connect endpoint.", "Disconnect returns commerce.account_in_use — preserve the binding because provider-bound commerce records exist.", "A Checkout redirect returns but no access appears — diagnose the signed webhook instead of trusting the browser redirect.", "A reused idempotency key has different input — issue a new key for the new logical operation.", "Fulfillment is rejected — verify captured funds still cover the order after pending and successful refunds."],
     nextSteps: ["Run the project-commerce acceptance matrix with Stripe sandbox events.", "Configure production webhook delivery and merchant operational ownership."],
   },
+  "/host-updates": {
+    what: "Host updates and rollback is the signed native-release lifecycle exposed to instance administrators through a narrow root-owned agent.",
+    why: "Operators need a visible, auditable upgrade path without granting the portal or API general root or shell execution.",
+    when: "Use it after a native install, before each server upgrade, when choosing an automatic check policy, or when a verified release must be rolled back.",
+    prerequisites: ["A packaged native installation with the updater path unit and check timer active.", "Off-host backup custody, working readiness checks, and an owner or instance-administrator platform account."],
+    requiredValues: ["The exact announced release version, canonical signature identity, compatibility state schema, and retained job ID.", "For automatic apply, an explicit UTC maintenance window and operational coverage."],
+    steps: ["Inspect the installed and available versions plus updater capabilities.", "Check the stable release channel and review compatibility and release notes.", "Reauthenticate if required, confirm the mandatory backup, and submit the exact install version.", "Follow the persisted job through verification, backup, activation, restart, and readiness.", "If acceptance fails, select only a compatible installed release or restore the coordinated backup."],
+    result: "One signed release is active atomically, the complete versioned service set is ready, and the audit/job record identifies every lifecycle phase.",
+    failures: ["Signature, checksum, or manifest verification fails — quarantine the download and do not activate it.", "The compatibility guard rejects rollback — restore the coordinated backup rather than bypassing the state boundary.", "The portal disconnects during restart — keep the job ID and let bounded reconnect polling resume before submitting anything else."],
+    nextSteps: ["Run release acceptance against auth, RLS, storage, sync, observability, and restore.", "Review retained jobs and updater timer policy during normal operations."],
+  },
   "/backups": {
     what: "Backups and restore covers encrypted project-database backups plus complete packaged-host recovery archives, integrity checks, retention, and explicit restore.",
     why: "Copying a live SQLite file or keeping only PostgreSQL does not recover complete FFDB application state.",
@@ -2532,6 +2594,7 @@ const contextualIntroHeadings: Readonly<Record<string, string>> = {
   "/cli": "Operate FFDB from the terminal",
   "/billing/platform": "Charge for hosted FFDB usage",
   "/billing/project-payments": "Sell products and memberships",
+  "/host-updates": "Apply signed releases without widening root access",
   "/backups": "Recover the complete data boundary",
   "/observability": "Diagnose a live FFDB deployment",
   "/security": "Harden the production boundary",
@@ -2594,7 +2657,7 @@ curl --fail http://127.0.0.1:5173/readyz
     heading: "Connect an application",
     paragraphs: ["Install the version-matched client, replace the project ID, sign in an end user, and issue the first parameterized query."],
     codes: [
-      { label: "Terminal", language: "sh", code: `npm install @ffdb/client@0.3.2` },
+      { label: "Terminal", language: "sh", code: `npm install @ffdb/client@0.3.3` },
       { label: "src/ffdb.ts", language: "ts", code: clientSetup },
       { label: "First query", language: "ts", code: queryExample },
     ],

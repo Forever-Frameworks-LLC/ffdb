@@ -6,8 +6,8 @@ use std::time::Duration;
 use anyhow::{Context as _, Result, anyhow};
 use base64::Engine as _;
 use ffdb_api::{
-    ApiState, CommerceConnectConfig, CommerceService, CommerceServiceConfig, DurableRateLimiter,
-    InstanceService, InstanceServiceConfig, InstanceStripeBillingConfig,
+    ApiState, CommandHostUpdater, CommerceConnectConfig, CommerceService, CommerceServiceConfig,
+    DurableRateLimiter, InstanceService, InstanceServiceConfig, InstanceStripeBillingConfig,
     InstanceStripeProviderCatalog, InstanceStripeUsageEventConfig, ManagementState,
     ManagementStateConfig, ObservabilityService, OutboxAuthEmailDispatcher, ProjectAuthState,
     StorageService, UsageMeteringService, UsageReportingConfig, UsageReportingService,
@@ -456,6 +456,14 @@ async fn main() -> Result<()> {
         usage_metering: Some(usage_metering),
         commerce: Some(commerce),
         instance: Some(instance),
+        host_updates: Some(Arc::new(
+            CommandHostUpdater::new(
+                std::env::var_os("FFDB_UPDATER_PATH")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("/usr/local/bin/ffdb-update")),
+            )
+            .context("invalid FFDB host updater path")?,
+        )),
         cors_allowed_origins: config
             .http
             .allowed_origins

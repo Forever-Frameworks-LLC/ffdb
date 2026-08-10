@@ -128,7 +128,12 @@ if (manifest.schema_version !== 2
     || !exactArray(manifest.architectures, ["linux/amd64", "linux/arm64"])
     || !exactArray(manifest.profiles, ["external", "single-host"])
     || manifest.signature_identity !== expectedIdentity
-    || manifest.signature_issuer !== expectedIssuer) {
+    || manifest.signature_issuer !== expectedIssuer
+    || manifest.native_update?.state_schema !== 1
+    || manifest.native_update?.minimum_upgrade_version !== "0.3.0"
+    || manifest.native_update?.minimum_rollback_version !== "0.3.0"
+    || manifest.native_update?.assets?.amd64 !== `ffdb-native-linux-amd64-${expectedVersion}.tar.gz`
+    || manifest.native_update?.assets?.arm64 !== `ffdb-native-linux-arm64-${expectedVersion}.tar.gz`) {
   throw new Error("release-manifest.json does not match the canonical release contract");
 }
 const images = [
@@ -158,15 +163,23 @@ for arch in amd64 arm64; do
   archive_root=ffdb-native-$version
   tar -tzf "$work_dir/$asset" > "$work_dir/$asset.list" \
     || die "$asset is not a valid gzip-compressed tar archive"
-  for required_path in install-native.sh uninstall-native.sh VERSION \
-    bin/ffdb-api bin/ffdb-database-worker bin/ffdb-sync-worker \
+  for required_path in install-native.sh uninstall-native.sh VERSION COMPATIBILITY \
+    bin/ffdb-api bin/ffdb-database-worker bin/ffdb-sync-worker bin/ffdb-update \
     web/index.html web/docs/index.html web/app/index.html \
-    systemd/ffdb-gateway.Caddyfile systemd/ffdb-gateway.service; do
+    systemd/ffdb-gateway.Caddyfile systemd/ffdb-gateway.service \
+    systemd/ffdb-update-agent.path systemd/ffdb-update-agent.service \
+    systemd/ffdb-update-check.service systemd/ffdb-update-check.timer; do
     grep -F -x -q "$archive_root/$required_path" "$work_dir/$asset.list" \
       || die "$asset is missing $archive_root/$required_path"
   done
   archived_version=$(tar -xOf "$work_dir/$asset" "$archive_root/VERSION" | tr -d '\r\n')
   [ "$archived_version" = "$version" ] || die "$asset contains the wrong version"
+  tar -xOf "$work_dir/$asset" "$archive_root/COMPATIBILITY" \
+    | grep -F -q 'FFDB_NATIVE_STATE_SCHEMA=1' \
+    || die "$asset contains an unsupported native state schema"
+  tar -xOf "$work_dir/$asset" "$archive_root/COMPATIBILITY" \
+    | grep -F -q 'FFDB_NATIVE_MINIMUM_ROLLBACK_VERSION=0.3.0' \
+    || die "$asset contains an unsupported rollback floor"
 done
 
 for package in client sync-client react react-native email-components cli; do

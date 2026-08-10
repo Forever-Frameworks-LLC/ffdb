@@ -1752,6 +1752,13 @@ impl InstanceService {
         self.require_administrator(actor).await.map(|_| ())
     }
 
+    pub(crate) async fn authorize_host_updates(
+        &self,
+        actor: UserId,
+    ) -> Result<InstanceAdministratorRole, InstanceServiceError> {
+        self.require_administrator(actor).await
+    }
+
     async fn require_owner(&self, actor: UserId) -> Result<(), InstanceServiceError> {
         if self.require_administrator(actor).await? == InstanceAdministratorRole::Owner {
             Ok(())

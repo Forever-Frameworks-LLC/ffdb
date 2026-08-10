@@ -250,6 +250,301 @@
         }
       }
     },
+    "/v1/instance/updates": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "getHostUpdateStatus",
+        "description": "Inspect signed release availability, compatibility evidence, capabilities, settings, and the active durable host-update job. An unsupported installation is returned as a readable supported=false state.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host lifecycle state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/updates/check": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "checkForHostUpdate",
+        "description": "Queue a signed-release availability check. No client-controlled URL or executable input is accepted.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durable update job queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateJob"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/updates/install": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "installHostUpdate",
+        "description": "Queue installation of one exact signed FFDB release. Requires authentication performed in the previous 15 minutes.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostUpdateVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durable update job queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "428": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/updates/rollback": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "rollbackHostUpdate",
+        "description": "Queue rollback to an installed, compatibility-approved signed release. Requires authentication performed in the previous 15 minutes.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostUpdateVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durable rollback job queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "428": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/updates/jobs/{job_id}": {
+      "parameters": [
+        {
+          "name": "job_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "getHostUpdateJob",
+        "description": "Read durable host-update progress before or after an API restart.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable host-update job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/instance/updates/settings": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "getHostUpdateSettings",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host-update settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateSettings"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "operationId": "configureHostUpdates",
+        "description": "Queue a validated update-policy change. Automatic apply is opt-in and requires a bounded recurring UTC maintenance window. Requires authentication performed in the previous 15 minutes.",
+        "security": [
+          {
+            "developerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostUpdateSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durable configuration job queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostUpdateJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "428": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/v1/instance/organization-creation-policy": {
       "patch": {
         "tags": [
@@ -3834,6 +4129,327 @@
       }
     },
     "schemas": {
+      "HostUpdateVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+            "maxLength": 64
+          }
+        }
+      },
+      "HostUpdateCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check",
+          "install",
+          "rollback",
+          "automatic_checks",
+          "automatic_apply"
+        ],
+        "properties": {
+          "check": {
+            "type": "boolean"
+          },
+          "install": {
+            "type": "boolean"
+          },
+          "rollback": {
+            "type": "boolean"
+          },
+          "automatic_checks": {
+            "type": "boolean"
+          },
+          "automatic_apply": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HostUpdateSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "channel",
+          "automatic_checks",
+          "check_interval_hours",
+          "automatic_apply",
+          "maintenance_window_start",
+          "maintenance_window_duration_minutes"
+        ],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "const": "stable"
+          },
+          "automatic_checks": {
+            "type": "boolean"
+          },
+          "check_interval_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168
+          },
+          "automatic_apply": {
+            "type": "boolean"
+          },
+          "maintenance_window_start": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Recurring start time in UTC."
+          },
+          "maintenance_window_duration_minutes": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 1440
+          }
+        }
+      },
+      "HostUpdateRelease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "active",
+          "rollback_compatible",
+          "state_schema",
+          "minimum_rollback_version",
+          "signature_verified",
+          "signature_identity",
+          "release_url"
+        ],
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rollback_compatible": {
+            "type": "boolean"
+          },
+          "state_schema": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minimum_rollback_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signature_verified": {
+            "type": "boolean"
+          },
+          "signature_identity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "release_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        }
+      },
+      "HostUpdateJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "job_id",
+          "operation",
+          "requested_version",
+          "state",
+          "phase",
+          "installed_version",
+          "available_version",
+          "previous_version",
+          "backup_path",
+          "message",
+          "error_code",
+          "retryable",
+          "created_at_ms",
+          "updated_at_ms"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "check",
+              "install",
+              "rollback",
+              "configure"
+            ]
+          },
+          "requested_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "installed_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "available_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previous_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "backup_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "created_at_ms": {
+            "type": "integer"
+          },
+          "updated_at_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "HostUpdateStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "supported",
+          "unavailable_reason",
+          "capabilities",
+          "state_schema",
+          "minimum_rollback_version",
+          "signature_identity",
+          "installed_version",
+          "available_version",
+          "update_available",
+          "last_check_at_ms",
+          "active_job",
+          "releases",
+          "settings"
+        ],
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          },
+          "unavailable_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/HostUpdateCapabilities"
+          },
+          "state_schema": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minimum_rollback_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signature_identity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installed_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "available_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "update_available": {
+            "type": "boolean"
+          },
+          "last_check_at_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "active_job": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HostUpdateJob"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HostUpdateRelease"
+            }
+          },
+          "settings": {
+            "$ref": "#/components/schemas/HostUpdateSettings"
+          }
+        }
+      },
       "PlatformBillingTier": {
         "type": "string",
         "enum": [

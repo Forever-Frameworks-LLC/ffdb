@@ -108,7 +108,7 @@ For a reproducible rollout, download the installer from an exact announced tag
 and pass the same version explicitly:
 
 ```bash
-VERSION=0.3.2
+VERSION=0.3.3
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 sudo sh ffdb-install.sh --version "$VERSION" \
@@ -137,7 +137,7 @@ The TypeScript SDK, sync client, React/React Native integrations, email
 components, and CLI are version-matched public npm packages:
 
 ```bash
-VERSION=0.3.2
+VERSION=0.3.3
 npm install --save-exact \
   "@ffdb/client@$VERSION" \
   "@ffdb/sync-client@$VERSION" \
@@ -227,6 +227,17 @@ artifacts are an advanced component path for operators who supply and harden
 the surrounding services themselves; see the
 [self-hosting guide](docs/operations/self-hosting.md). The repository's default
 `compose.yaml` remains contributor tooling and is not a production template.
+
+Native installations include a constrained, root-owned release updater. It
+verifies canonical signed artifacts, creates a coordinated backup, installs
+complete releases side by side below `/opt/ffdb/releases`, and switches
+`/opt/ffdb/current` atomically. Instance owners and administrators can operate
+that lifecycle from **Global administration → Updates** after a recent login;
+automatic release checks are enabled, while automatic application stays off
+until an owner explicitly configures a UTC maintenance window. The API never
+receives sudo or general shell authority. Packaged Docker installations retain
+the host-controlled `ffdb-host update` and `rollback` workflow rather than
+mounting the Docker host or root socket into the API container.
 
 ## Security
 

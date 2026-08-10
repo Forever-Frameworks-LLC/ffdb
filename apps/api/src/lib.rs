@@ -6,6 +6,7 @@ mod commerce;
 #[cfg(test)]
 mod control_plane_migrations;
 mod email;
+mod host_updates;
 mod idempotency;
 mod instance;
 mod management;
@@ -16,6 +17,7 @@ mod storage;
 mod usage_reporting;
 pub use auth::{OutboxAuthEmailDispatcher, ProjectAuthState};
 pub use commerce::{CommerceConnectConfig, CommerceService, CommerceServiceConfig};
+pub use host_updates::{CommandHostUpdater, HostUpdateError, HostUpdater};
 pub use instance::{
     InstanceBillingProvider, InstanceService, InstanceServiceConfig, InstanceServiceError,
     InstanceStripeBillingConfig, InstanceStripeProviderCatalog, InstanceStripeUsageEventConfig,
@@ -96,6 +98,7 @@ pub struct ApiState {
     pub usage_metering: Option<Arc<UsageMeteringService>>,
     pub commerce: Option<Arc<CommerceService>>,
     pub instance: Option<Arc<InstanceService>>,
+    pub host_updates: Option<Arc<dyn HostUpdater>>,
     pub cors_allowed_origins: Vec<String>,
     pub trusted_proxy_cidrs: Vec<IpNet>,
     pub rate_limiter: Option<Arc<dyn ApiRateLimiter>>,
@@ -422,6 +425,18 @@ pub fn router(state: ApiState) -> Router {
         .route(
             "/v1/instance/observability",
             get(observability::instance_summary),
+        )
+        .route("/v1/instance/updates", get(host_updates::status))
+        .route("/v1/instance/updates/check", post(host_updates::check))
+        .route("/v1/instance/updates/install", post(host_updates::install))
+        .route(
+            "/v1/instance/updates/rollback",
+            post(host_updates::rollback),
+        )
+        .route("/v1/instance/updates/jobs/{job_id}", get(host_updates::job))
+        .route(
+            "/v1/instance/updates/settings",
+            get(host_updates::settings).patch(host_updates::configure),
         )
         .route(
             "/v1/instance",
@@ -901,6 +916,12 @@ fn stable_route(path: &str) -> &'static str {
     match segments.as_slice() {
         ["v1", "instance"] => "/v1/instance",
         ["v1", "instance", "observability"] => "/v1/instance/observability",
+        ["v1", "instance", "updates"] => "/v1/instance/updates",
+        ["v1", "instance", "updates", "check"] => "/v1/instance/updates/check",
+        ["v1", "instance", "updates", "install"] => "/v1/instance/updates/install",
+        ["v1", "instance", "updates", "rollback"] => "/v1/instance/updates/rollback",
+        ["v1", "instance", "updates", "settings"] => "/v1/instance/updates/settings",
+        ["v1", "instance", "updates", "jobs", _] => "/v1/instance/updates/jobs/:job",
         ["v1", "instance", "setup", "status"] => "/v1/instance/setup/status",
         ["v1", "instance", "organizations"] => "/v1/instance/organizations",
         ["v1", "instance", "organizations", _] => "/v1/instance/organizations/:organization",
@@ -3070,6 +3091,7 @@ mod tests {
             usage_metering: None,
             commerce: None,
             instance: None,
+            host_updates: None,
             cors_allowed_origins: vec!["https://portal.example.test".to_owned()],
             trusted_proxy_cidrs: Vec::new(),
             rate_limiter,
@@ -3221,6 +3243,7 @@ mod tests {
             usage_metering: None,
             commerce: None,
             instance: None,
+            host_updates: None,
             cors_allowed_origins: Vec::new(),
             trusted_proxy_cidrs: Vec::new(),
             rate_limiter: None,
@@ -3340,6 +3363,15 @@ mod tests {
         assert_eq!(
             stable_route(&format!("/v1/instance/users/{user_id}")),
             "/v1/instance/users/:user"
+        );
+    }
+
+    #[test]
+    fn host_update_job_route_never_exposes_job_ids_to_metrics() {
+        let job_id = Uuid::now_v7();
+        assert_eq!(
+            stable_route(&format!("/v1/instance/updates/jobs/{job_id}")),
+            "/v1/instance/updates/jobs/:job"
         );
     }
 }

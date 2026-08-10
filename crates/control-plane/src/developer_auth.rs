@@ -47,6 +47,10 @@ pub struct PlatformSessionIdentity {
     pub user_id: UserId,
     pub normalized_email: String,
     pub family_id: Uuid,
+    /// Original password sign-in time used to require recent authentication
+    /// before host-level operations. It is server-derived, never a client
+    /// claim.
+    pub authenticated_at_ms: i64,
 }
 
 #[derive(Debug)]
@@ -368,6 +372,7 @@ impl PlatformSessionStore for PgPlatformSessionStore {
                 user_id: user.id,
                 normalized_email: user.normalized_email.clone(),
                 family_id: record.family_id,
+                authenticated_at_ms: record.issued_at_ms,
             },
         })
     }
@@ -388,6 +393,8 @@ impl PlatformSessionStore for PgPlatformSessionStore {
                     (extract(epoch FROM s.expires_at)*1000)::bigint expires_at_ms, \
                     (extract(epoch FROM s.used_at)*1000)::bigint used_at_ms,s.replaced_by, \
                     (extract(epoch FROM s.revoked_at)*1000)::bigint revoked_at_ms, \
+                    (SELECT (extract(epoch FROM min(f.issued_at))*1000)::bigint \
+                     FROM platform_sessions f WHERE f.family_id=s.family_id) authenticated_at_ms, \
                     u.email,(extract(epoch FROM u.disabled_at)*1000)::bigint user_disabled_at_ms \
              FROM platform_sessions s JOIN platform_users u ON u.id=s.user_id \
              WHERE s.lookup_prefix=$1 FOR UPDATE OF s,u",
@@ -454,6 +461,9 @@ impl PlatformSessionStore for PgPlatformSessionStore {
         let email: String = row
             .try_get("email")
             .map_err(|_| PlatformAuthError::Unavailable)?;
+        let authenticated_at_ms: i64 = row
+            .try_get("authenticated_at_ms")
+            .map_err(|_| PlatformAuthError::Unavailable)?;
         transaction.commit().await.map_err(map_sqlx)?;
         Ok(PlatformSessionRotation::Rotated {
             plaintext,
@@ -462,6 +472,7 @@ impl PlatformSessionStore for PgPlatformSessionStore {
                 user_id: current.user_id,
                 normalized_email: email,
                 family_id: current.family_id,
+                authenticated_at_ms,
             }),
         })
     }
@@ -481,6 +492,8 @@ impl PlatformSessionStore for PgPlatformSessionStore {
                     (extract(epoch FROM s.expires_at)*1000)::bigint expires_at_ms, \
                     (extract(epoch FROM s.used_at)*1000)::bigint used_at_ms,s.replaced_by, \
                     (extract(epoch FROM s.revoked_at)*1000)::bigint revoked_at_ms, \
+                    (SELECT (extract(epoch FROM min(f.issued_at))*1000)::bigint \
+                     FROM platform_sessions f WHERE f.family_id=s.family_id) authenticated_at_ms, \
                     u.email,(extract(epoch FROM u.disabled_at)*1000)::bigint user_disabled_at_ms \
              FROM platform_sessions s JOIN platform_users u ON u.id=s.user_id \
              WHERE s.lookup_prefix=$1",
@@ -497,12 +510,16 @@ impl PlatformSessionStore for PgPlatformSessionStore {
         let disabled_at_ms: Option<i64> = row
             .try_get("user_disabled_at_ms")
             .map_err(|_| PlatformAuthError::Unavailable)?;
+        let authenticated_at_ms: i64 = row
+            .try_get("authenticated_at_ms")
+            .map_err(|_| PlatformAuthError::Unavailable)?;
         authenticate_record(
             &self.codec,
             &candidate,
             &record,
             email,
             disabled_at_ms,
+            authenticated_at_ms,
             now_ms,
         )
     }
@@ -706,6 +723,7 @@ fn authenticate_record(
     record: &PlatformSessionRecord,
     normalized_email: String,
     user_disabled_at_ms: Option<i64>,
+    authenticated_at_ms: i64,
     now_ms: i64,
 ) -> Result<PlatformSessionIdentity, PlatformAuthError> {
     if !codec.verify_digest(&candidate.digest, &record.digest)
@@ -720,6 +738,7 @@ fn authenticate_record(
         user_id: record.user_id,
         normalized_email,
         family_id: record.family_id,
+        authenticated_at_ms,
     })
 }
 
@@ -775,19 +794,20 @@ mod tests {
         };
         let candidate = codec.parse_and_digest(plaintext.expose())?;
         assert!(
-            authenticate_record(&codec, &candidate, &record, "a@b.test".into(), None, 50).is_ok()
+            authenticate_record(&codec, &candidate, &record, "a@b.test".into(), None, 1, 50)
+                .is_ok()
         );
 
         let mut expired = record.clone();
         expired.expires_at_ms = 50;
         assert_eq!(
-            authenticate_record(&codec, &candidate, &expired, "a@b.test".into(), None, 50),
+            authenticate_record(&codec, &candidate, &expired, "a@b.test".into(), None, 1, 50),
             Err(PlatformAuthError::InvalidCredentials)
         );
         let mut revoked = record.clone();
         revoked.revoked_at_ms = Some(40);
         assert_eq!(
-            authenticate_record(&codec, &candidate, &revoked, "a@b.test".into(), None, 50),
+            authenticate_record(&codec, &candidate, &revoked, "a@b.test".into(), None, 1, 50),
             Err(PlatformAuthError::InvalidCredentials)
         );
         let wrong_codec = OpaqueTokenCodec::new("platform", vec![9; 32])?;
@@ -799,10 +819,113 @@ mod tests {
                 &record,
                 "a@b.test".into(),
                 None,
+                1,
                 50,
             ),
             Err(PlatformAuthError::InvalidCredentials)
         );
+        Ok(())
+    }
+
+    #[test]
+    fn rotated_identity_preserves_original_password_authentication_time()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let codec = OpaqueTokenCodec::new("platform", vec![8; 32])?;
+        let (plaintext, parts) = codec.issue()?;
+        let record = PlatformSessionRecord {
+            id: TokenId::new(),
+            family_id: Uuid::now_v7(),
+            user_id: UserId::new(),
+            prefix: parts.prefix,
+            digest: parts.digest,
+            issued_at_ms: 900_000,
+            expires_at_ms: 2_000_000,
+            used_at_ms: None,
+            replaced_by: None,
+            revoked_at_ms: None,
+        };
+        let identity = authenticate_record(
+            &codec,
+            &codec.parse_and_digest(plaintext.expose())?,
+            &record,
+            "a@b.test".into(),
+            None,
+            1,
+            1_000_000,
+        )?;
+        assert_eq!(identity.authenticated_at_ms, 1);
+        assert_ne!(identity.authenticated_at_ms, record.issued_at_ms);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn database_rotation_preserves_session_family_password_authentication_time()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let Ok(database_url) = std::env::var("TEST_DATABASE_URL") else {
+            return Ok(());
+        };
+        let pool = PgPool::connect(&database_url).await?;
+        let user_id = UserId::new();
+        let email = format!("platform-rotation-{user_id}@example.test");
+        let password = format!("Platform-rotation-test-{user_id}");
+        let hasher = ffdb_auth::Argon2PasswordHasher::default();
+        let password_hash = hasher.hash(SecretString::new(password.clone()))?;
+        sqlx::query(
+            "INSERT INTO platform_users \
+             (id,email,password_phc,email_verified_at,created_at,updated_at) \
+             VALUES ($1,$2,$3,now(),now(),now())",
+        )
+        .bind(user_id.0)
+        .bind(&email)
+        .bind(password_hash.as_phc())
+        .execute(&pool)
+        .await?;
+
+        let service = PlatformAuthService::new(
+            Arc::new(PgPlatformUserRepository::new(pool.clone())),
+            Arc::new(PgPlatformSessionStore::new(pool.clone(), vec![17; 32])?),
+            Arc::new(hasher),
+        )?;
+        let password_authenticated_at_ms = 1_000_000;
+        let original = service
+            .sign_in(
+                &email,
+                SecretString::new(password),
+                password_authenticated_at_ms,
+            )
+            .await?;
+        let rotated = service
+            .refresh(original.plaintext.expose(), 1_900_000)
+            .await?;
+        let (rotated_token, rotation_identity) = match rotated {
+            PlatformSessionRotation::Rotated {
+                plaintext,
+                identity,
+                ..
+            } => (plaintext, identity),
+            other => return Err(format!("unexpected rotation result: {other:?}").into()),
+        };
+        assert_eq!(
+            rotation_identity.authenticated_at_ms,
+            password_authenticated_at_ms
+        );
+        let authenticated = service
+            .authenticate(rotated_token.expose(), 2_000_000)
+            .await?;
+        assert_eq!(
+            authenticated.authenticated_at_ms,
+            password_authenticated_at_ms
+        );
+        assert_ne!(authenticated.authenticated_at_ms, 1_900_000);
+
+        sqlx::query("DELETE FROM platform_sessions WHERE user_id=$1")
+            .bind(user_id.0)
+            .execute(&pool)
+            .await?;
+        sqlx::query("DELETE FROM platform_users WHERE id=$1")
+            .bind(user_id.0)
+            .execute(&pool)
+            .await?;
         Ok(())
     }
 }
