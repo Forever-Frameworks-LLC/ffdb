@@ -592,7 +592,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "ffdb-api"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -678,7 +678,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-billing"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "async-trait",
  "ffdb-protocol",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-commerce"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "ffdb-protocol",
  "serde",
@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-config"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "base64",
  "ffdb-protocol",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-database-router"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "async-trait",
  "ffdb-protocol",
@@ -750,7 +750,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-database-worker"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -778,7 +778,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-email"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "async-trait",
  "ffdb-postgres",
@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-object-storage"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "async-trait",
  "base64",
@@ -847,7 +847,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-org-metrics"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "ffdb-protocol",
  "hmac",
@@ -860,7 +860,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-postgres"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "sqlx-core",
  "sqlx-postgres",
@@ -868,7 +868,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-protocol"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "base64",
  "hex",
@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-sync-engine"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "base64",
  "hmac",
@@ -951,7 +951,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-sync-worker"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "async-trait",
  "base64",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "ffdb-test-support"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "ffdb-protocol",
  "serde_json",
@@ -2969,7 +2969,7 @@ checksum = "998767ef88740d1f5b0682a9c53c24431453923962269c2db68ee43788c5a40d"
 
 [[package]]
 name = "winapi"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
 dependencies = [

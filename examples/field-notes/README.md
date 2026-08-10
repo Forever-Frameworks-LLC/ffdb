@@ -36,7 +36,7 @@ the right full-system test surfaces for those capabilities.
 
 Requirements:
 
-- the hosted FFDB server must match this checkout's package version (`0.3.9`);
+- the hosted FFDB server must match this checkout's package version (`0.3.10`);
 - one project ID;
 - one project developer key with `database_migrate`, `database_schema`,
   `storage_manage`, and `backups_manage` (the last scope authorizes the
