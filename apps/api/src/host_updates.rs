@@ -915,7 +915,7 @@ mod tests {
     use tokio::sync::Mutex;
     use url::Url;
 
-    use crate::instance::InstanceServiceConfig;
+    use crate::instance::{InstanceService, InstanceServiceConfig};
     use crate::management::{ManagementState, ManagementStateConfig};
     use crate::{CredentialError, CredentialVerifier};
 
