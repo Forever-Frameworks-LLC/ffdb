@@ -1,6 +1,6 @@
 {
   "name": "@ffdb/email-components",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "description": "Versioned React Email templates and variable manifests for FFDB transactional email",
   "keywords": ["ffdb", "react-email", "email", "authentication", "templates"],
   "homepage": "https://ffdb.forever-frameworks.com/docs/authentication",

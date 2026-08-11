@@ -34,7 +34,7 @@ copies in the matching GitHub Release. Application developers do not need an
 FFDB source checkout.
 
 ```sh
-VERSION=0.3.10
+VERSION=0.3.11
 npm install --save-exact \
   "@ffdb/client@$VERSION" \
   "@ffdb/sync-client@$VERSION" \
