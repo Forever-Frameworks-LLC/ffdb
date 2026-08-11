@@ -32,6 +32,7 @@ provides checksum-listed tarballs for verified offline installation.
 - `apps/docs`: React/Vite documentation application
 - `apps/portal`: React/Vite management portal
 - `examples/field-notes`: polished React + Node feature lab for the public FFDB application surface
+- `examples/field-notes-native`: Expo companion for SecureStore sessions, native SQLite sync, storage, and diagnostics
 - `crates`: narrow Rust security, data, and provider components
 - `packages`: TypeScript client, React/RN integrations, sync client, CLI, and email components
 - `infra`: local PostgreSQL and deployment assets
@@ -109,7 +110,7 @@ For a reproducible rollout, download the installer from an exact announced tag
 and pass the same version explicitly:
 
 ```bash
-VERSION=0.3.11
+VERSION=0.3.12
 RELEASE_BASE="https://github.com/Forever-Frameworks-LLC/ffdb/releases/download/v$VERSION"
 curl -fsSLo ffdb-install.sh "$RELEASE_BASE/install.sh"
 sudo sh ffdb-install.sh --version "$VERSION" \
@@ -138,7 +139,7 @@ The TypeScript SDK, sync client, React/React Native integrations, email
 components, and CLI are version-matched public npm packages:
 
 ```bash
-VERSION=0.3.11
+VERSION=0.3.12
 npm install --save-exact \
   "@ffdb/client@$VERSION" \
   "@ffdb/sync-client@$VERSION" \

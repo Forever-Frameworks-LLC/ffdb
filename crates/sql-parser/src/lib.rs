@@ -13,6 +13,7 @@ pub use identifier::{Identifier, IdentifierError};
 pub use rls::{
     AlterPolicy, AlterTableRls, CreatePolicy, DropPolicy, PolicyCommand, PolicyMode, Predicate,
     RlsParseError, RlsStatement, RoleName, parse_rls, parse_rls_statement,
+    rewrite_auth_functions_for_execution,
 };
 pub use scanner::{SqlScanError, split_sql_statements};
 use serde::{Deserialize, Serialize};

@@ -102,14 +102,14 @@ describe("polished Auth and Sync routes", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     fireEvent.click(registration);
     expect(screen.getByRole("textbox", { name: /Allowed web origins/i })).toHaveValue("http://localhost:5180");
-    fireEvent.change(screen.getByRole("textbox", { name: /Allowed auth redirects/i }), { target: { value: "http://localhost:5180/?ffdb_auth=verified\nhttp://localhost:5180/?ffdb_auth=password-reset" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /Allowed auth redirects/i }), { target: { value: "http://localhost:5180/?ffdb_auth=verified\nhttp://localhost:5180/?ffdb_auth=password-reset\nffdb-field-notes://auth/callback" } });
     fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
     await waitFor(() => expect(calls.some((request) => request.url.endsWith("/auth/settings") && request.method === "PATCH")).toBe(true));
     const update = calls.find((request) => request.url.endsWith("/auth/settings") && request.method === "PATCH");
     expect(update).toBeDefined();
     await expect(update!.clone().json()).resolves.toMatchObject({
       allowed_web_origins: ["http://localhost:5180"],
-      allowed_auth_redirects: ["http://localhost:5180/?ffdb_auth=verified", "http://localhost:5180/?ffdb_auth=password-reset"],
+      allowed_auth_redirects: ["http://localhost:5180/?ffdb_auth=verified", "http://localhost:5180/?ffdb_auth=password-reset", "ffdb-field-notes://auth/callback"],
     });
 
     fireEvent.click(screen.getByRole("tab", { name: /Users 12/i }));
@@ -123,6 +123,21 @@ describe("polished Auth and Sync routes", () => {
     const tester = screen.getByRole("dialog", { name: "Test an end-user session" });
     expect(within(tester).getByRole("textbox", { name: "Email" })).toHaveValue("target@example.test");
     expect(screen.queryByRole("button", { name: "Test session" })).not.toBeInTheDocument();
+  });
+
+  it("keeps native app links out of the browser-origin allowlist", async () => {
+    const client = testClient(async (request) => {
+      if (request.url.endsWith("/auth/settings")) return Response.json({ registration_enabled: true, email_verification_required: true, access_token_ttl_seconds: 900, refresh_token_ttl_seconds: 2_592_000, password_min_length: 12, allowed_web_origins: [], allowed_auth_redirects: [] });
+      if (request.url.endsWith("/auth/users")) return Response.json([]);
+      return new Response(null, { status: 204 });
+    });
+
+    render(<AuthRoute client={client} initialTab="policy" />);
+
+    const origins = await screen.findByRole("textbox", { name: /Allowed web origins/i });
+    fireEvent.change(origins, { target: { value: "ffdb-field-notes://auth/callback" } });
+    expect(screen.getByText(/native app link.*Allowed auth redirects/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled();
   });
 });
 

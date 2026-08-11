@@ -41,11 +41,16 @@ function validReturnUrl(value: string | undefined): boolean {
   if (value.length === 0 || value.length > 2_048 || value.trim() !== value || /[\u0000-\u001f\u007f]/u.test(value)) return false;
   try {
     const url = new URL(value);
-    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "" && url.username === "" && url.password === "";
+    return url.hostname !== "" && url.username === "" && url.password === "" && !unsafeAuthRedirectProtocols.has(url.protocol);
   } catch {
     return false;
   }
 }
+
+const unsafeAuthRedirectProtocols = new Set([
+  "about:", "blob:", "chrome:", "chrome-extension:", "data:", "file:", "filesystem:", "ftp:",
+  "intent:", "javascript:", "mailto:", "resource:", "sms:", "tel:", "vbscript:", "view-source:", "ws:", "wss:",
+]);
 
 export function AuthActionPage({ action, apiUrl }: { readonly action: AuthAction; readonly apiUrl: string }) {
   return (
@@ -173,7 +178,10 @@ function useAppRedirect(redirectTo: string | null): void {
 }
 
 function returnLabel(redirectTo: string): string {
-  try { return new URL(redirectTo).host; }
+  try {
+    const url = new URL(redirectTo);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.host : `the ${url.protocol.slice(0, -1)} app`;
+  }
   catch { return "your application"; }
 }
 

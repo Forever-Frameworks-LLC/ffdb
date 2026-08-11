@@ -5,10 +5,12 @@ import {
   forgetPortalInstance,
   persistPortalInstance,
   persistPortalProject,
+  persistPortalProjectKeyMetadata,
   portalConfiguration,
   portalInstanceNamespace,
   portalInstances,
   portalProjectKey,
+  portalProjectKeyMetadata,
   selectPortalInstance,
 } from "./config.js";
 
@@ -66,11 +68,15 @@ describe("multi-instance portal configuration", () => {
     const apiUrl = "https://one.example.test";
     persistPortalProject("project-one", "secret-one", "One", "org-one", "One", apiUrl);
     persistPortalProject("project-two", "secret-two", "One", "org-one", "Two", apiUrl);
+    persistPortalProjectKeyMetadata(apiUrl, "project-one", { expiresAtMs: 12_345, managed: true });
+    persistPortalProjectKeyMetadata(apiUrl, "project-two", { expiresAtMs: null, managed: false });
 
     clearPortalProjectKey(apiUrl, "project-one");
 
     expect(portalProjectKey(apiUrl, "project-one")).toBeUndefined();
+    expect(portalProjectKeyMetadata(apiUrl, "project-one")).toBeUndefined();
     expect(portalProjectKey(apiUrl, "project-two")).toBe("secret-two");
+    expect(portalProjectKeyMetadata(apiUrl, "project-two")).toEqual({ expiresAtMs: null, managed: false });
   });
 
   it("forgets one instance and its browser-local namespace without touching another", () => {

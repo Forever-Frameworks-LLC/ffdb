@@ -59,7 +59,7 @@ impl Predicate {
     /// internal identifiers, and malformed auth calls.
     #[must_use]
     pub fn sqlite_sql(&self) -> String {
-        match rewrite_auth_functions(&self.sql) {
+        match rewrite_auth_functions(&self.sql, false) {
             Ok(sql) => sql,
             Err(_) => "0".to_owned(),
         }
@@ -653,12 +653,31 @@ fn validate_predicate(sql: &str) -> Result<(), RlsParseError> {
     if depth != 0 {
         return Err(RlsParseError::MalformedPredicate);
     }
-    let _ = rewrite_auth_functions(sql)?;
+    let _ = rewrite_auth_functions(sql, false)?;
     Ok(())
 }
 
-fn rewrite_auth_functions(sql: &str) -> Result<String, RlsParseError> {
-    let tokens = lex(sql, false)?;
+/// Rewrites FFDB's public `auth.*` SQL functions to their private SQLite
+/// implementations. Caller-authored private identifiers are rejected before
+/// any rewrite, so the runtime can grant access only to names produced here.
+///
+/// This entrypoint accepts ordinary statement comments. Policy predicates use
+/// the stricter comment-free path above.
+pub fn rewrite_auth_functions_for_execution(sql: &str) -> Result<String, RlsParseError> {
+    rewrite_auth_functions(sql, true)
+}
+
+fn rewrite_auth_functions(sql: &str, allow_comments: bool) -> Result<String, RlsParseError> {
+    let tokens = lex(sql, allow_comments)?;
+    if tokens.iter().any(|token| {
+        matches!(
+            &token.kind,
+            TokenKind::Word(word) | TokenKind::Identifier(word)
+                if word.to_ascii_lowercase().starts_with("__ffdb_")
+        )
+    }) {
+        return Err(RlsParseError::InternalIdentifier);
+    }
     let mut output = String::with_capacity(sql.len());
     let mut source_cursor = 0;
     let mut index = 0;
@@ -785,6 +804,36 @@ mod tests {
         ));
         assert!(matches!(
             Predicate::new("auth.set_uid('x')"),
+            Err(RlsParseError::UnsupportedAuthFunction)
+        ));
+    }
+
+    #[test]
+    fn rewrites_auth_functions_in_application_statements() {
+        assert_eq!(
+            rewrite_auth_functions_for_execution(
+                "SELECT id FROM tasks WHERE owner_id = auth.uid() AND auth.claim('team') = ?1",
+            )
+            .unwrap(),
+            "SELECT id FROM tasks WHERE owner_id = __ffdb_auth_uid() AND __ffdb_auth_claim('team') = ?1"
+        );
+        assert_eq!(
+            rewrite_auth_functions_for_execution(
+                "INSERT INTO tasks(owner_id, role) VALUES (auth.uid(), auth.role()) -- auth.jwt()",
+            )
+            .unwrap(),
+            "INSERT INTO tasks(owner_id, role) VALUES (__ffdb_auth_uid(), __ffdb_auth_role()) -- auth.jwt()"
+        );
+    }
+
+    #[test]
+    fn application_rewrite_rejects_private_and_unsupported_functions() {
+        assert!(matches!(
+            rewrite_auth_functions_for_execution("SELECT __ffdb_auth_uid()"),
+            Err(RlsParseError::InternalIdentifier)
+        ));
+        assert!(matches!(
+            rewrite_auth_functions_for_execution("SELECT auth.set_uid('attacker')"),
             Err(RlsParseError::UnsupportedAuthFunction)
         ));
     }

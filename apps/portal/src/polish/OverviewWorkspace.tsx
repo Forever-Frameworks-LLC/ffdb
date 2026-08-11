@@ -24,8 +24,10 @@ import {
 
 import {
   issuePortalProjectCredential,
+  persistPortalProjectKeyMetadata,
   persistPortalProject,
   portalProjectKey,
+  portalProjectKeyMetadata,
   type PortalConfiguration,
 } from "../config.js";
 import { Icon, type IconName } from "../icons.js";
@@ -579,11 +581,16 @@ export function PolishedWorkspacePanel({
     try {
       client.setProjectId(project.id);
       let issuedKey = portalProjectKey(configuration.apiUrl, project.id);
+      let keyMetadata = portalProjectKeyMetadata(configuration.apiUrl, project.id);
       if (issuedKey === undefined && (organization.role === "owner" || organization.role === "admin")) {
         try {
-          issuedKey = await issuePortalProjectCredential(client);
+          const credential = await issuePortalProjectCredential(client);
+          issuedKey = credential.secret;
+          keyMetadata = { expiresAtMs: credential.expiresAtMs, managed: credential.managed };
+          persistPortalProjectKeyMetadata(configuration.apiUrl, project.id, keyMetadata);
         } catch {
           issuedKey = undefined;
+          keyMetadata = undefined;
         }
       }
       client.setDeveloperKey(issuedKey ?? null);
@@ -595,6 +602,8 @@ export function PolishedWorkspacePanel({
         projectId: project.id,
         projectName: project.name,
         developerKey: issuedKey,
+        developerKeyExpiresAtMs: keyMetadata?.expiresAtMs,
+        developerKeyManaged: keyMetadata?.managed,
       });
       onNotice(issuedKey === undefined
         ? `${project.name} is active. Project data actions require an existing scoped key or organization administrator access.`
@@ -956,7 +965,16 @@ function CreateOrganizationModal({ client, configuration, onClose, onConfigurati
     try {
       const organization = await client.createOrganization({ name: name.trim(), slug: slug.trim() });
       persistPortalProject("", undefined, organization.name, organization.id, "Choose a project", configuration.apiUrl);
-      onConfiguration({ ...configuration, organizationId: organization.id, organizationName: organization.name, projectId: "", projectName: "Choose a project", developerKey: undefined });
+      onConfiguration({
+        ...configuration,
+        organizationId: organization.id,
+        organizationName: organization.name,
+        projectId: "",
+        projectName: "Choose a project",
+        developerKey: undefined,
+        developerKeyExpiresAtMs: undefined,
+        developerKeyManaged: undefined,
+      });
       onNotice(`${organization.name} was created.`);
       onCreated();
     } catch (cause) {

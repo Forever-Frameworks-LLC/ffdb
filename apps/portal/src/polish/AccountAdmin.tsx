@@ -37,6 +37,7 @@ import {
   clearPortalProjectKey,
   forgetPortalInstance,
   persistPortalInstance,
+  persistPortalProjectKeyMetadata,
   persistPortalProject,
   portalInstances,
   selectPortalInstance,
@@ -272,7 +273,11 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
   const [keyName, setKeyName] = useState("");
   const [selectedScopes, setSelectedScopes] = useState<readonly DeveloperScope[]>(["database_query", "database_schema"]);
   const [expiry, setExpiry] = useState("2592000000");
-  const [issuedKey, setIssuedKey] = useState<{ readonly name: string; readonly secret: string } | null>(null);
+  const [issuedKey, setIssuedKey] = useState<{
+    readonly name: string;
+    readonly secret: string;
+    readonly expiresAtMs: number | null;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -305,7 +310,7 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
     try {
       const expiresAt = expiry === "never" ? null : Date.now() + Number(expiry);
       const value = await client.createApiKey({ name: keyName.trim(), scopes: selectedScopes, expires_at_ms: expiresAt });
-      setIssuedKey({ name: value.name, secret: value.secret });
+      setIssuedKey({ name: value.name, secret: value.secret, expiresAtMs: value.expires_at_ms });
       setKeyName("");
       setRevision((value_) => value_ + 1);
       onNotice(`${value.name} issued. Copy it before dismissing the one-time secret.`);
@@ -317,7 +322,16 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
     if (issuedKey === null) return;
     client.setDeveloperKey(issuedKey.secret);
     persistPortalProject(configuration.projectId, issuedKey.secret, configuration.organizationName, configuration.organizationId, configuration.projectName, configuration.apiUrl);
-    onConfiguration({ ...configuration, developerKey: issuedKey.secret });
+    persistPortalProjectKeyMetadata(configuration.apiUrl, configuration.projectId, {
+      expiresAtMs: issuedKey.expiresAtMs,
+      managed: false,
+    });
+    onConfiguration({
+      ...configuration,
+      developerKey: issuedKey.secret,
+      developerKeyExpiresAtMs: issuedKey.expiresAtMs,
+      developerKeyManaged: false,
+    });
     onNotice(`${issuedKey.name} is now the browser credential for ${configuration.projectName}.`);
   };
 
@@ -339,7 +353,12 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
       if (activePrefix === `ffdb_dev_${key.prefix}`) {
         clearPortalProjectKey(configuration.apiUrl, configuration.projectId);
         client.setDeveloperKey(null);
-        onConfiguration({ ...configuration, developerKey: undefined });
+        onConfiguration({
+          ...configuration,
+          developerKey: undefined,
+          developerKeyExpiresAtMs: undefined,
+          developerKeyManaged: undefined,
+        });
       }
       setRevision((value) => value + 1);
       onNotice(`${key.name} revoked.`);
@@ -361,7 +380,12 @@ export function PolishedSettingsPanel({ client, configuration, onNotice, onConfi
     if (configuration.projectId === "" || configuration.developerKey === undefined) return;
     clearPortalProjectKey(configuration.apiUrl, configuration.projectId);
     client.setDeveloperKey(null);
-    onConfiguration({ ...configuration, developerKey: undefined });
+    onConfiguration({
+      ...configuration,
+      developerKey: undefined,
+      developerKeyExpiresAtMs: undefined,
+      developerKeyManaged: undefined,
+    });
     onNotice(`Browser credential cleared for ${configuration.projectName}. No server-side key was revoked.`);
   };
 

@@ -364,19 +364,19 @@ function AuthSettingsCard({ client, resource, onChange, onNotice }: {
                   value={webOriginsText}
                   onChange={(event) => setWebOriginsText(event.target.value)}
                 />
-                <small id="allowed-web-origins-hint">Use the exact scheme, host, and port your browser shows.</small>
+                <small id="allowed-web-origins-hint">Use the exact HTTP(S) scheme, host, and port your browser shows.</small>
               </label>
               <label>
                 <span>Allowed auth redirects</span>
-                <small>Exact pages FFDB may return to after verification or password reset.</small>
+                <small>Exact web pages or registered native app links FFDB may return to after verification or password reset.</small>
                 <textarea
                   aria-describedby="allowed-auth-redirects-hint"
-                  placeholder={"http://localhost:5180/?ffdb_auth=verified\nhttp://localhost:5180/?ffdb_auth=password-reset"}
+                  placeholder={"http://localhost:5180/?ffdb_auth=verified\nffdb-field-notes://auth/callback"}
                   spellCheck={false}
                   value={authRedirectsText}
                   onChange={(event) => setAuthRedirectsText(event.target.value)}
                 />
-                <small id="allowed-auth-redirects-hint">Paths, query strings, and fragments must match exactly.</small>
+                <small id="allowed-auth-redirects-hint">Use HTTP(S) pages or registered native schemes. Every path, query, and fragment must match exactly.</small>
               </label>
             </div>
           </div>
@@ -405,8 +405,15 @@ function parseApplicationUrls(value: string, kind: "origin" | "redirect"): { rea
     } catch {
       return { values: [], error: `“${line}” is not a valid absolute URL.` };
     }
-    if (!(["http:", "https:"] as const).includes(url.protocol as "http:" | "https:") || url.username !== "" || url.password !== "") {
-      return { values: [], error: `“${line}” must be an HTTP(S) URL without embedded credentials.` };
+    const webUrl = url.protocol === "http:" || url.protocol === "https:";
+    if (url.hostname === "" || url.username !== "" || url.password !== "") {
+      return { values: [], error: `“${line}” must be an absolute URL with a host and no embedded credentials.` };
+    }
+    if (kind === "origin" && !webUrl) {
+      return { values: [], error: `“${line}” is a native app link. Add it under Allowed auth redirects; web origins must use HTTP(S).` };
+    }
+    if (kind === "redirect" && !webUrl && unsafeAuthRedirectProtocols.has(url.protocol)) {
+      return { values: [], error: `“${line}” uses a scheme that cannot be used for an authentication redirect.` };
     }
     if (kind === "origin" && (url.pathname !== "/" || url.search !== "" || url.hash !== "")) {
       return { values: [], error: `“${line}” includes a path, query, or fragment; web origins stop after the port.` };
@@ -416,6 +423,11 @@ function parseApplicationUrls(value: string, kind: "origin" | "redirect"): { rea
   }
   return { values, error: null };
 }
+
+const unsafeAuthRedirectProtocols = new Set([
+  "about:", "blob:", "chrome:", "chrome-extension:", "data:", "file:", "filesystem:", "ftp:",
+  "intent:", "javascript:", "mailto:", "resource:", "sms:", "tel:", "vbscript:", "view-source:", "ws:", "wss:",
+]);
 
 function AuthUsersCard({ resource, hasSession, onReload, onTest, onToggle }: {
   readonly resource: Loadable<readonly AuthUser[]>;

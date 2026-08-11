@@ -1401,11 +1401,7 @@ fn normalized_auth_redirect(
         return Err(());
     }
     let url = Url::parse(value).map_err(|_| ())?;
-    if !matches!(url.scheme(), "http" | "https")
-        || url.host_str().is_none()
-        || !url.username().is_empty()
-        || url.password().is_some()
-    {
+    if !valid_auth_redirect_url(&url) {
         return Err(());
     }
     let normalized = url.to_string();
@@ -1419,14 +1415,6 @@ fn normalized_auth_redirect(
 }
 
 fn normalized_web_origins(values: &[String]) -> Result<Vec<String>, ()> {
-    normalized_application_urls(values, true)
-}
-
-fn normalized_auth_redirects(values: &[String]) -> Result<Vec<String>, ()> {
-    normalized_application_urls(values, false)
-}
-
-fn normalized_application_urls(values: &[String], origins_only: bool) -> Result<Vec<String>, ()> {
     if values.len() > 20 {
         return Err(());
     }
@@ -1441,22 +1429,68 @@ fn normalized_application_urls(values: &[String], origins_only: bool) -> Result<
             || url.host_str().is_none()
             || !url.username().is_empty()
             || url.password().is_some()
+            || url.path() != "/"
+            || url.query().is_some()
+            || url.fragment().is_some()
         {
             return Err(());
         }
-        let value = if origins_only {
-            if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
-                return Err(());
-            }
-            url.origin().ascii_serialization()
-        } else {
-            url.to_string()
-        };
+        let value = url.origin().ascii_serialization();
         if !normalized.contains(&value) {
             normalized.push(value);
         }
     }
     Ok(normalized)
+}
+
+fn normalized_auth_redirects(values: &[String]) -> Result<Vec<String>, ()> {
+    if values.len() > 20 {
+        return Err(());
+    }
+    let mut normalized = Vec::with_capacity(values.len());
+    for value in values {
+        let value = value.trim();
+        if value.is_empty() || value.len() > 2_048 {
+            return Err(());
+        }
+        let url = Url::parse(value).map_err(|_| ())?;
+        if !valid_auth_redirect_url(&url) {
+            return Err(());
+        }
+        let value = url.to_string();
+        if !normalized.contains(&value) {
+            normalized.push(value);
+        }
+    }
+    Ok(normalized)
+}
+
+fn valid_auth_redirect_url(url: &Url) -> bool {
+    let blocked_scheme = matches!(
+        url.scheme(),
+        "about"
+            | "blob"
+            | "chrome"
+            | "chrome-extension"
+            | "data"
+            | "file"
+            | "filesystem"
+            | "ftp"
+            | "intent"
+            | "javascript"
+            | "mailto"
+            | "resource"
+            | "sms"
+            | "tel"
+            | "vbscript"
+            | "view-source"
+            | "ws"
+            | "wss"
+    );
+    !blocked_scheme
+        && url.host_str().is_some()
+        && url.username().is_empty()
+        && url.password().is_none()
 }
 
 fn auth_redirect_error(request_id: RequestId) -> Response {
@@ -1946,7 +1980,7 @@ pub(crate) async fn update_settings(
             return ApiError::new(
                 StatusCode::BAD_REQUEST,
                 "auth.invalid_application_url",
-                "web origins and authentication redirects must be valid HTTP(S) URLs within the supported limits",
+                "web origins must be HTTP(S) origins; authentication redirects must be exact HTTP(S) URLs or safe native app links within the supported limits",
                 request_id,
             )
             .into_response();
@@ -2644,7 +2678,10 @@ mod tests {
 
     #[test]
     fn auth_redirects_require_an_exact_configured_url() {
-        let allowed = vec!["https://app.example.test/auth/complete?from=email#done".to_owned()];
+        let allowed = vec![
+            "https://app.example.test/auth/complete?from=email#done".to_owned(),
+            "ffdb-field-notes://auth/callback".to_owned(),
+        ];
         assert_eq!(
             normalized_auth_redirect(
                 &allowed,
@@ -2667,6 +2704,14 @@ mod tests {
                 .is_err()
         );
         assert!(normalized_auth_redirect(&allowed, Some("javascript:alert(1)"),).is_err());
+        assert_eq!(
+            normalized_auth_redirect(&allowed, Some("ffdb-field-notes://auth/callback"))
+                .ok()
+                .flatten()
+                .as_deref(),
+            Some("ffdb-field-notes://auth/callback")
+        );
+        assert!(normalized_auth_redirect(&allowed, Some("data://auth/callback")).is_err());
     }
 
     #[test]
@@ -2690,7 +2735,7 @@ mod tests {
             "access_token_ttl_seconds": 120,
             "password_min_length": 16,
             "allowed_web_origins": ["http://localhost:5180"],
-            "allowed_auth_redirects": ["http://localhost:5180/auth/complete"]
+            "allowed_auth_redirects": ["http://localhost:5180/auth/complete", "ffdb-field-notes://auth/callback"]
         }))
         .map_err(|error| error.to_string())?;
         let proposed = current
@@ -2703,7 +2748,10 @@ mod tests {
         assert_eq!(proposed.allowed_web_origins, ["http://localhost:5180"]);
         assert_eq!(
             proposed.allowed_auth_redirects,
-            ["http://localhost:5180/auth/complete"]
+            [
+                "http://localhost:5180/auth/complete",
+                "ffdb-field-notes://auth/callback"
+            ]
         );
 
         let invalid: UpdateAuthSettingsRequest = serde_json::from_value(serde_json::json!({
@@ -2719,6 +2767,17 @@ mod tests {
         }))
         .map_err(|error| error.to_string())?;
         assert!(current.applying(&invalid_origin).is_err());
+        let native_origin: UpdateAuthSettingsRequest = serde_json::from_value(serde_json::json!({
+            "allowed_web_origins": ["ffdb-field-notes://auth/callback"]
+        }))
+        .map_err(|error| error.to_string())?;
+        assert!(current.applying(&native_origin).is_err());
+        let unsafe_redirect: UpdateAuthSettingsRequest =
+            serde_json::from_value(serde_json::json!({
+                "allowed_auth_redirects": ["javascript://auth/callback"]
+            }))
+            .map_err(|error| error.to_string())?;
+        assert!(current.applying(&unsafe_redirect).is_err());
         assert!(
             serde_json::from_value::<UpdateAuthSettingsRequest>(serde_json::json!({
                 "password_min_length": 12,

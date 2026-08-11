@@ -3621,7 +3621,7 @@ mod tests {
     }
 
     #[test]
-    fn query_write_flows_to_policy_filtered_sync_pull() {
+    fn query_write_flows_to_policy_filtered_sync_pull() -> Result<(), String> {
         let route = route();
         let (_directory, worker) = worker(route.clone(), runtime::ExecutionLimits::default());
         let developer = protocol::ExecutionMode::Developer(protocol::DeveloperPrincipal {
@@ -3689,8 +3689,9 @@ mod tests {
         }
         .unwrap();
         let insert = protocol::QueryRequest {
-            sql: "INSERT INTO sync_documents(id,owner_id,body) VALUES (1,?1,'captured')".to_owned(),
-            parameters: vec![protocol::SqlParameter::Text(alice.subject.to_string())],
+            sql: "INSERT INTO sync_documents(id,owner_id,body) VALUES (1,auth.uid(),'captured')"
+                .to_owned(),
+            parameters: Vec::new(),
             options: protocol::QueryOptions::default(),
         };
         worker
@@ -3703,6 +3704,29 @@ mod tests {
                 &runtime::CancellationToken::default(),
             )
             .unwrap();
+        let selected = worker
+            .handle(
+                request_with_mode(
+                    &route,
+                    protocol::ExecutionMode::EndUser(alice.clone()),
+                    protocol::WorkerOperation::Query(protocol::QueryRequest {
+                        sql: "SELECT body FROM sync_documents WHERE owner_id = auth.uid()"
+                            .to_owned(),
+                        parameters: Vec::new(),
+                        options: protocol::QueryOptions::default(),
+                    }),
+                ),
+                &runtime::CancellationToken::default(),
+            )
+            .unwrap();
+        let selected = match selected.response {
+            protocol::WorkerResponse::Query(selected) => selected,
+            _ => return Err("expected query response".to_owned()),
+        };
+        assert_eq!(
+            selected.rows,
+            vec![vec![protocol::ResultCell::Text("captured".to_owned())]]
+        );
         let alice_pull = worker
             .handle(
                 request_with_mode(
@@ -3746,6 +3770,7 @@ mod tests {
         }
         .unwrap();
         assert!(bob_pull.changes.is_empty());
+        Ok(())
     }
 
     #[test]
