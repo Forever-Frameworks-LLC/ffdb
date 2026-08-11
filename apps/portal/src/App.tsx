@@ -24,11 +24,15 @@ import {
 } from "@ffdb/client";
 
 import {
+  clearPortalProjectKey,
   createPortalClient,
   issuePortalProjectCredential,
+  persistPortalProjectKeyMetadata,
   persistPortalInstance,
   persistPortalProject,
+  PORTAL_PROJECT_CREDENTIAL_REFRESH_LEAD_MS,
   portalProjectKey,
+  portalProjectKeyMetadata,
   portalInstances,
   portalConfiguration,
   selectPortalInstance,
@@ -89,7 +93,11 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
   const [hostUpdateAvailable, setHostUpdateAvailable] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [projectCredentialError, setProjectCredentialError] = useState<string | null>(null);
-  const [projectCredentialPending, setProjectCredentialPending] = useState(false);
+  const [projectCredentialReady, setProjectCredentialReady] = useState<{
+    readonly apiUrl: string;
+    readonly projectId: string;
+    readonly developerKey: string;
+  } | null>(null);
   const [projectCredentialRevision, setProjectCredentialRevision] = useState(0);
 
   useEffect(() => {
@@ -145,50 +153,130 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
   }, [client, instanceStatus]);
 
   useEffect(() => {
-    if (
-      developerAccess === null
-      || developerAccess === undefined
-      || instanceSetup?.setup_required === true
-      || configuration.projectId === ""
-      || configuration.developerKey !== undefined
-    ) {
-      setProjectCredentialPending(false);
+    if (developerAccess === null || developerAccess === undefined || instanceSetup?.setup_required === true || configuration.projectId === "") {
+      setProjectCredentialReady(null);
       setProjectCredentialError(null);
       return;
     }
     let current = true;
+    let refreshTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
     const projectId = configuration.projectId;
-    setProjectCredentialPending(true);
+    const apiUrl = configuration.apiUrl;
+    setProjectCredentialReady(null);
     setProjectCredentialError(null);
     client.setProjectId(projectId);
-    void issuePortalProjectCredential(client).then(
-      (credential) => {
-        if (!current) return;
-        client.setDeveloperKey(credential);
+    void (async () => {
+      let developerKey = configuration.developerKey;
+      let metadata = configuration.developerKeyManaged === undefined
+        ? portalProjectKeyMetadata(apiUrl, projectId)
+        : {
+          managed: configuration.developerKeyManaged,
+          expiresAtMs: configuration.developerKeyExpiresAtMs ?? null,
+        };
+
+      if (developerKey !== undefined) {
+        client.setDeveloperKey(developerKey);
+        try {
+          await client.schema({ retry: false });
+        } catch (cause) {
+          if (isRejectedPortalProjectCredential(cause)) {
+            clearPortalProjectKey(apiUrl, projectId);
+            client.setDeveloperKey(null);
+            developerKey = undefined;
+            metadata = undefined;
+          }
+        }
+      }
+
+      if (developerKey !== undefined && metadata === undefined) {
+        try {
+          const tokenPrefix = developerKey.split(".", 1)[0];
+          const matchingKey = (await client.apiKeys({ retry: false }))
+            .find((key) => `ffdb_dev_${key.prefix}` === tokenPrefix && key.revoked_at_ms === null);
+          if (matchingKey !== undefined) {
+            metadata = {
+              expiresAtMs: matchingKey.expires_at_ms,
+              managed: matchingKey.name === "portal-session",
+            };
+            persistPortalProjectKeyMetadata(apiUrl, projectId, metadata);
+          }
+        } catch {
+          // A valid explicitly supplied key may belong to a role that cannot list
+          // project keys. Keep using it without claiming that the portal manages it.
+        }
+      }
+
+      const shouldRefresh = developerKey === undefined
+        || metadata?.managed === true
+          && metadata.expiresAtMs !== null
+          && metadata.expiresAtMs <= Date.now() + PORTAL_PROJECT_CREDENTIAL_REFRESH_LEAD_MS;
+
+      if (shouldRefresh) {
+        const credential = await issuePortalProjectCredential(client);
+        developerKey = credential.secret;
+        metadata = { expiresAtMs: credential.expiresAtMs, managed: credential.managed };
+        client.setDeveloperKey(credential.secret);
         persistPortalProject(
           projectId,
-          credential,
+          credential.secret,
           configuration.organizationName,
           configuration.organizationId,
           configuration.projectName,
-          configuration.apiUrl,
+          apiUrl,
         );
-        setConfiguration((value) => value.projectId === projectId
-          ? { ...value, developerKey: credential }
+        persistPortalProjectKeyMetadata(apiUrl, projectId, metadata);
+        if (current) {
+          setConfiguration((value) => value.projectId === projectId && value.apiUrl === apiUrl
+            ? {
+              ...value,
+              developerKey: credential.secret,
+              developerKeyExpiresAtMs: credential.expiresAtMs,
+              developerKeyManaged: true,
+            }
+            : value);
+        }
+      } else if (
+        current
+        && metadata !== undefined
+        && (configuration.developerKeyExpiresAtMs !== metadata.expiresAtMs
+          || configuration.developerKeyManaged !== metadata.managed)
+      ) {
+        setConfiguration((value) => value.projectId === projectId && value.apiUrl === apiUrl
+          ? {
+            ...value,
+            developerKeyExpiresAtMs: metadata?.expiresAtMs,
+            developerKeyManaged: metadata?.managed,
+          }
           : value);
-        setProjectCredentialPending(false);
-      },
-      (cause) => {
-        if (!current) return;
-        setProjectCredentialPending(false);
-        setProjectCredentialError(errorMessage(cause));
-      },
-    );
-    return () => { current = false; };
+      }
+
+      if (!current || developerKey === undefined) return;
+      setProjectCredentialReady({ apiUrl, projectId, developerKey });
+      if (metadata?.managed === true && metadata.expiresAtMs !== null) {
+        const delay = Math.max(
+          1_000,
+          metadata.expiresAtMs - Date.now() - PORTAL_PROJECT_CREDENTIAL_REFRESH_LEAD_MS,
+        );
+        refreshTimer = globalThis.setTimeout(
+          () => setProjectCredentialRevision((value) => value + 1),
+          Math.min(delay, 2_147_483_647),
+        );
+      }
+    })().catch((cause) => {
+      if (!current) return;
+      setProjectCredentialReady(null);
+      setProjectCredentialError(errorMessage(cause));
+    });
+    return () => {
+      current = false;
+      if (refreshTimer !== undefined) globalThis.clearTimeout(refreshTimer);
+    };
   }, [
     client,
     configuration.apiUrl,
     configuration.developerKey,
+    configuration.developerKeyExpiresAtMs,
+    configuration.developerKeyManaged,
     configuration.organizationId,
     configuration.organizationName,
     configuration.projectId,
@@ -266,6 +354,10 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
 
   const canAdministerInstance = isInstanceAdministrator(instanceStatus);
   const instanceAuthorizationPending = developerAccess !== null && instanceStatus === undefined;
+  const projectCredentialIsReady = configuration.developerKey !== undefined
+    && projectCredentialReady?.apiUrl === configuration.apiUrl
+    && projectCredentialReady.projectId === configuration.projectId
+    && projectCredentialReady.developerKey === configuration.developerKey;
 
   return (
     <div className="app-shell">
@@ -290,7 +382,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
           onNotice={setNotice}
         />
         <main className={selected === "SQL Editor" || selected === "Database" || selected === "Observability" || selected === "Migrations" ? "main-content main-content--workbench" : "main-content"}>
-          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Updates", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && (projectCredentialPending || configuration.developerKey === undefined) ? <ProjectCredentialLoading /> : (
+          {isInstanceAdministrationRoute(selected) && instanceAuthorizationPending ? <InstanceAuthorizationLoading /> : isInstanceAdministrationRoute(selected) && !canAdministerInstance ? <InstanceAccessDenied /> : configuration.projectId === "" && !(["Projects", "Members", "Usage", "Instance", "Instance Billing", "Instance Users", "Updates", "Settings", "Account"] as readonly PortalRoute[]).includes(selected) ? <ConfigurationRequired /> : requiresProjectCredential(selected) && projectCredentialError !== null ? <ProjectCredentialUnavailable detail={projectCredentialError} onRetry={() => setProjectCredentialRevision((value) => value + 1)} /> : requiresProjectCredential(selected) && !projectCredentialIsReady ? <ProjectCredentialLoading /> : (
             <RoutePanel
               route={selected}
               authInitialTab={authInitialTab}
@@ -723,7 +815,16 @@ function ScopeSelectors({ client, configuration, instanceStatus, onConfiguration
     persistPortalProject("", undefined, organization.name, organization.id, "Choose a project", configuration.apiUrl);
     client.setProjectId("");
     client.setDeveloperKey(null);
-    onConfiguration({ ...configuration, organizationId: organization.id, organizationName: organization.name, projectId: "", projectName: "Choose a project", developerKey: undefined });
+    onConfiguration({
+      ...configuration,
+      organizationId: organization.id,
+      organizationName: organization.name,
+      projectId: "",
+      projectName: "Choose a project",
+      developerKey: undefined,
+      developerKeyExpiresAtMs: undefined,
+      developerKeyManaged: undefined,
+    });
     onNotice(`${organization.name} is now the active organization`);
   };
 
@@ -1492,7 +1593,16 @@ function WorkspacePanel({ view, client, configuration, onConfiguration, onNotice
     try {
       const organization = await client.createOrganization({ name: organizationName.trim(), slug: organizationSlug.trim() });
       persistPortalProject("", undefined, organization.name, organization.id, "Choose a project", configuration.apiUrl);
-      onConfiguration({ ...configuration, organizationId: organization.id, organizationName: organization.name, projectId: "", projectName: "Choose a project", developerKey: undefined });
+      onConfiguration({
+        ...configuration,
+        organizationId: organization.id,
+        organizationName: organization.name,
+        projectId: "",
+        projectName: "Choose a project",
+        developerKey: undefined,
+        developerKeyExpiresAtMs: undefined,
+        developerKeyManaged: undefined,
+      });
       setOrganizationName(""); setOrganizationSlug(""); setRevision((value) => value + 1);
       onNotice(`${organization.name} created; create its first project to finish onboarding`);
     } catch (cause) {
@@ -1504,16 +1614,30 @@ function WorkspacePanel({ view, client, configuration, onConfiguration, onNotice
   const activateProject = async (project: Awaited<ReturnType<FFDBClient["projects"]>>[number], organizationNameValue: string, organizationId: string) => {
     client.setProjectId(project.id);
     let issuedKey = portalProjectKey(configuration.apiUrl, project.id);
+    let keyMetadata = portalProjectKeyMetadata(configuration.apiUrl, project.id);
     if (issuedKey === undefined) {
       try {
-        issuedKey = await issuePortalProjectCredential(client);
+        const credential = await issuePortalProjectCredential(client);
+        issuedKey = credential.secret;
+        keyMetadata = { expiresAtMs: credential.expiresAtMs, managed: credential.managed };
+        persistPortalProjectKeyMetadata(configuration.apiUrl, project.id, keyMetadata);
       } catch {
         issuedKey = undefined;
+        keyMetadata = undefined;
       }
     }
     client.setDeveloperKey(issuedKey ?? null);
     persistPortalProject(project.id, issuedKey, organizationNameValue, organizationId, project.name, configuration.apiUrl);
-    onConfiguration({ ...configuration, organizationId, organizationName: organizationNameValue, projectId: project.id, projectName: project.name, developerKey: issuedKey });
+    onConfiguration({
+      ...configuration,
+      organizationId,
+      organizationName: organizationNameValue,
+      projectId: project.id,
+      projectName: project.name,
+      developerKey: issuedKey,
+      developerKeyExpiresAtMs: keyMetadata?.expiresAtMs,
+      developerKeyManaged: keyMetadata?.managed,
+    });
     onNotice(issuedKey === undefined ? `${project.name} is active; opening a secure project session` : `${project.name} is ready with a temporary portal credential`);
   };
 
@@ -1619,7 +1743,16 @@ function SettingsPanel({ client, configuration, onNotice, onConfiguration }: { r
       setIssuedKey(value.secret);
       client.setDeveloperKey(value.secret);
       persistPortalProject(client.projectId, value.secret, configuration.organizationName, configuration.organizationId, configuration.projectName, configuration.apiUrl);
-      onConfiguration({ ...configuration, developerKey: value.secret });
+      persistPortalProjectKeyMetadata(configuration.apiUrl, client.projectId, {
+        expiresAtMs: value.expires_at_ms,
+        managed: false,
+      });
+      onConfiguration({
+        ...configuration,
+        developerKey: value.secret,
+        developerKeyExpiresAtMs: value.expires_at_ms,
+        developerKeyManaged: false,
+      });
       await reload();
     } catch (cause) { setError(errorMessage(cause)); }
   };
@@ -1668,6 +1801,14 @@ function QueryResultTable({ result }: { readonly result: QueryResult }) { return
 function errorMessage(cause: unknown): string {
   if (cause instanceof FFDBError) return `${cause.code}: ${cause.message}`;
   return cause instanceof Error ? cause.message : "Unknown portal request failure";
+}
+
+function isRejectedPortalProjectCredential(cause: unknown): boolean {
+  return cause instanceof FFDBError && [
+    "auth.invalid_credential",
+    "auth.expired_credential",
+    "auth.wrong_project",
+  ].includes(cause.code);
 }
 
 function isInstanceSetupRequired(cause: unknown): boolean {

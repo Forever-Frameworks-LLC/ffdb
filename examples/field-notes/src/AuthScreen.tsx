@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Check, Database, Eye, EyeOff, Info, ShieldCheck } from "lucide-react";
+import { FFDBError } from "@ffdb/client";
 import { useAuth, useFFDB } from "@ffdb/react";
 
 import { ffdbProjectId } from "./ffdb";
@@ -54,7 +55,7 @@ export function AuthScreen() {
         await auth.signIn(email, password);
       }
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "FFDB could not complete the request.");
+      setMessage(authErrorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -112,6 +113,21 @@ export function AuthScreen() {
       <footer className="auth-footer"><ShieldCheck /> Developer keys stay server-side.</footer>
     </div>
   );
+}
+
+function authErrorMessage(cause: unknown): string {
+  if (cause instanceof FFDBError) {
+    if (cause.code === "auth.invalid_credentials") {
+      return "That email and password do not match an account in this FFDB project. Use Forgot password to set a fresh test password.";
+    }
+    if (cause.code === "auth.verification_required") {
+      return "This account still needs email verification. Open the newest verification email, then try again.";
+    }
+    if (cause.code === "auth.disabled") {
+      return "This account is disabled. Re-enable it from the FFDB portal before signing in.";
+    }
+  }
+  return cause instanceof Error ? cause.message : "FFDB could not complete the request.";
 }
 
 function authReturnUrl(result: "verified" | "password-reset"): string {

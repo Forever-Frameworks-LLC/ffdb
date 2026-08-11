@@ -122,6 +122,102 @@ describe("portal backend integration", () => {
       .toBe("ffdb_dev_portal.session-secret");
   });
 
+  it("replaces an invalid cached project credential without requiring site-data cleanup", async () => {
+    const calls: Request[] = [];
+    const client = new FFDBClient({
+      baseUrl: configuration.apiUrl,
+      projectId: configuration.projectId,
+      developerKey: "ffdb_dev_stale.secret",
+      developerSessionStore: await signedInDeveloperStore("portal-stale-project-key-test"),
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/v1/instance/setup/status")) return Response.json({ bootstrap_available: false, setup_required: false, platform_byo_available: true, platform_connect_available: true });
+        if (request.url.endsWith("/v1/instance")) return Response.json(administratorStatus("owner"));
+        if (request.url.endsWith("/api-keys") && request.method === "POST") return Response.json({
+          id: "portal-key-replacement",
+          name: "portal-session",
+          prefix: "replacement",
+          secret: "ffdb_dev_replacement.session-secret",
+          scopes: ["database_query", "database_schema"],
+          expires_at_ms: Date.now() + 43_200_000,
+          created_at_ms: Date.now(),
+        }, { status: 201 });
+        if (request.url.endsWith("/schema") && request.headers.get("authorization") === "Bearer ffdb_dev_stale.secret") {
+          return Response.json({ error: { code: "auth.invalid_credential", message: "credential is invalid", request_id: "stale-1" } }, { status: 401 });
+        }
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [] });
+        if (request.url.endsWith("/policies")) return Response.json([]);
+        if (request.url.endsWith("/logs")) return Response.json([]);
+        if (request.url.endsWith("/backups")) return Response.json([]);
+        if (request.url.endsWith("/storage/buckets")) return Response.json([]);
+        if (request.url.endsWith("/healthz")) return Response.json({ status: "ok" });
+        if (request.url.endsWith("/readyz")) return Response.json({ status: "ready" });
+        if (request.url.endsWith("/metrics")) return new Response("");
+        return Response.json([]);
+      },
+    });
+
+    render(<App client={client} configuration={{ ...configuration, developerKey: "ffdb_dev_stale.secret" }} />);
+
+    await screen.findByLabelText("Project status summary");
+    expect(calls.some((request) => request.url.endsWith("/schema")
+      && request.headers.get("authorization") === "Bearer ffdb_dev_stale.secret")).toBe(true);
+    expect(calls.find((request) => request.url.endsWith("/api-keys") && request.method === "POST")?.headers.get("authorization"))
+      .toBe("Bearer platform-session");
+    expect(calls.some((request) => request.url.endsWith("/schema")
+      && request.headers.get("authorization") === "Bearer ffdb_dev_replacement.session-secret")).toBe(true);
+    expect(globalThis.sessionStorage.getItem("ffdb.portal.instance.https%3A%2F%2Fffdb.example.test.project-key.project-1"))
+      .toBe("ffdb_dev_replacement.session-secret");
+  });
+
+  it("renews a managed portal credential before its expiration window", async () => {
+    const calls: Request[] = [];
+    const client = new FFDBClient({
+      baseUrl: configuration.apiUrl,
+      projectId: configuration.projectId,
+      developerKey: "ffdb_dev_expiring.secret",
+      developerSessionStore: await signedInDeveloperStore("portal-expiring-project-key-test"),
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/v1/instance/setup/status")) return Response.json({ bootstrap_available: false, setup_required: false, platform_byo_available: true, platform_connect_available: true });
+        if (request.url.endsWith("/v1/instance")) return Response.json(administratorStatus("owner"));
+        if (request.url.endsWith("/api-keys") && request.method === "POST") return Response.json({
+          id: "portal-key-renewed",
+          name: "portal-session",
+          prefix: "renewed",
+          secret: "ffdb_dev_renewed.session-secret",
+          scopes: ["database_query", "database_schema"],
+          expires_at_ms: Date.now() + 43_200_000,
+          created_at_ms: Date.now(),
+        }, { status: 201 });
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [] });
+        if (request.url.endsWith("/policies")) return Response.json([]);
+        if (request.url.endsWith("/logs")) return Response.json([]);
+        if (request.url.endsWith("/backups")) return Response.json([]);
+        if (request.url.endsWith("/storage/buckets")) return Response.json([]);
+        if (request.url.endsWith("/healthz")) return Response.json({ status: "ok" });
+        if (request.url.endsWith("/readyz")) return Response.json({ status: "ready" });
+        if (request.url.endsWith("/metrics")) return new Response("");
+        return Response.json([]);
+      },
+    });
+
+    render(<App client={client} configuration={{
+      ...configuration,
+      developerKey: "ffdb_dev_expiring.secret",
+      developerKeyExpiresAtMs: Date.now() + 60_000,
+      developerKeyManaged: true,
+    }} />);
+
+    await screen.findByLabelText("Project status summary");
+    expect(calls.find((request) => request.url.endsWith("/api-keys") && request.method === "POST")?.headers.get("authorization"))
+      .toBe("Bearer platform-session");
+    expect(calls.some((request) => request.url.endsWith("/schema")
+      && request.headers.get("authorization") === "Bearer ffdb_dev_renewed.session-secret")).toBe(true);
+  });
+
   it("labels unavailable operational data instead of inventing health or activity", async () => {
     const client = new FFDBClient({
       baseUrl: configuration.apiUrl,

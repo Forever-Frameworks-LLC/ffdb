@@ -1,6 +1,7 @@
 import { BrowserDeveloperSessionStore, BrowserSessionStore, FFDBClient } from "@ffdb/client";
 
 const PORTAL_PROJECT_CREDENTIAL_TTL_MS = 12 * 60 * 60 * 1_000;
+export const PORTAL_PROJECT_CREDENTIAL_REFRESH_LEAD_MS = 5 * 60 * 1_000;
 const PORTAL_PROJECT_SCOPES = [
   "database_query",
   "database_migrate",
@@ -20,6 +21,8 @@ export interface PortalConfiguration {
   readonly organizationId?: string | undefined;
   readonly projectId: string;
   readonly developerKey: string | undefined;
+  readonly developerKeyExpiresAtMs?: number | null | undefined;
+  readonly developerKeyManaged?: boolean | undefined;
   readonly projectName: string;
   readonly organizationName: string;
 }
@@ -35,6 +38,7 @@ export function portalConfiguration(environment: ImportMetaEnv = import.meta.env
     ?? environment.VITE_FFDB_PROJECT_ID
     ?? "";
   const storedKey = projectId === "" ? undefined : portalProjectKey(apiUrl, projectId);
+  const storedKeyMetadata = projectId === "" ? undefined : portalProjectKeyMetadata(apiUrl, projectId);
   const hostname = globalThis.location?.hostname ?? "";
   const explicitLocalDevelopment = environment.VITE_FFDB_DEV_MODE === "true"
     && ["localhost", "127.0.0.1", "::1"].includes(hostname);
@@ -54,7 +58,19 @@ export function portalConfiguration(environment: ImportMetaEnv = import.meta.env
   const instanceName = configuredInstanceName
     ?? (new URL(apiUrl).hostname === "127.0.0.1" || new URL(apiUrl).hostname === "localhost" ? "Local development" : new URL(apiUrl).host);
   persistPortalInstance({ apiUrl, instanceName });
-  return { apiUrl, instanceName, organizationId, projectId, developerKey, projectName, organizationName };
+  return {
+    apiUrl,
+    instanceName,
+    organizationId,
+    projectId,
+    developerKey,
+    ...(storedKeyMetadata === undefined ? {} : {
+      developerKeyExpiresAtMs: storedKeyMetadata.expiresAtMs,
+      developerKeyManaged: storedKeyMetadata.managed,
+    }),
+    projectName,
+    organizationName,
+  };
 }
 
 export function createPortalClient(configuration: PortalConfiguration): FFDBClient {
@@ -73,24 +89,30 @@ export function createPortalClient(configuration: PortalConfiguration): FFDBClie
  * credential used only by this browser tab. Project API keys remain appropriate
  * for applications and automation; the portal must not require users to copy a
  * permanent secret onto every device. */
-export async function issuePortalProjectCredential(client: FFDBClient): Promise<string> {
-  let session = await client.developerSession();
+export interface IssuedPortalProjectCredential {
+  readonly secret: string;
+  readonly expiresAtMs: number;
+  readonly managed: true;
+}
+
+export async function issuePortalProjectCredential(client: FFDBClient): Promise<IssuedPortalProjectCredential> {
+  const session = await client.developerSession();
   if (session === null) throw new Error("Sign in again to open this project.");
-  let now = Date.now();
-  if (session.expires_at_ms <= now + 60_000) {
-    session = await client.refreshDeveloperSession();
-    now = Date.now();
+  const now = Date.now();
+  if (session.expires_at_ms <= now + PORTAL_PROJECT_CREDENTIAL_REFRESH_LEAD_MS) {
+    throw new Error("Your account session is about to expire. Sign in again to keep this project open.");
   }
   const expiresAt = Math.min(session.expires_at_ms, now + PORTAL_PROJECT_CREDENTIAL_TTL_MS);
-  if (expiresAt <= now + 60_000) {
-    throw new Error("Your account session is about to expire. Sign in again to open this project.");
-  }
   const credential = await client.createApiKey({
     name: "portal-session",
     scopes: PORTAL_PROJECT_SCOPES,
     expires_at_ms: expiresAt,
   });
-  return credential.secret;
+  return {
+    secret: credential.secret,
+    expiresAtMs: credential.expires_at_ms ?? expiresAt,
+    managed: true,
+  };
 }
 
 export function persistPortalProject(projectId: string, developerKey?: string, organizationName?: string, organizationId?: string, projectName?: string, apiUrl?: string): void {
@@ -118,6 +140,40 @@ export function portalProjectKey(apiUrl: string, projectId: string): string | un
     ?? undefined;
 }
 
+export interface PortalProjectKeyMetadata {
+  readonly expiresAtMs: number | null;
+  readonly managed: boolean;
+}
+
+export function persistPortalProjectKeyMetadata(
+  apiUrl: string,
+  projectId: string,
+  metadata: PortalProjectKeyMetadata,
+): void {
+  if (projectId === "") return;
+  const namespace = portalInstanceNamespace(apiUrl);
+  globalThis.sessionStorage?.setItem(
+    `${namespace}.project-key-metadata.${projectId}`,
+    JSON.stringify({ expires_at_ms: metadata.expiresAtMs, managed: metadata.managed }),
+  );
+}
+
+export function portalProjectKeyMetadata(apiUrl: string, projectId: string): PortalProjectKeyMetadata | undefined {
+  if (projectId === "") return undefined;
+  const namespace = portalInstanceNamespace(apiUrl);
+  const stored = globalThis.sessionStorage?.getItem(`${namespace}.project-key-metadata.${projectId}`);
+  if (stored === null || stored === undefined) return undefined;
+  try {
+    const value = JSON.parse(stored) as { readonly expires_at_ms?: unknown; readonly managed?: unknown };
+    if (typeof value.managed !== "boolean") return undefined;
+    if (value.expires_at_ms !== null && typeof value.expires_at_ms !== "number") return undefined;
+    return { expiresAtMs: value.expires_at_ms, managed: value.managed };
+  } catch {
+    globalThis.sessionStorage?.removeItem(`${namespace}.project-key-metadata.${projectId}`);
+    return undefined;
+  }
+}
+
 /** Remove only the browser-held credential for one project. Server-side keys are
  * revoked separately through the API so those two security actions cannot be
  * confused in the UI. */
@@ -125,6 +181,7 @@ export function clearPortalProjectKey(apiUrl: string, projectId: string): void {
   if (projectId === "") return;
   const namespace = portalInstanceNamespace(apiUrl);
   globalThis.sessionStorage?.removeItem(`${namespace}.project-key.${projectId}`);
+  globalThis.sessionStorage?.removeItem(`${namespace}.project-key-metadata.${projectId}`);
   // Remove the pre-multi-instance compatibility entry as well, if present.
   globalThis.sessionStorage?.removeItem(`ffdb.portal.project-key.${projectId}`);
 }
