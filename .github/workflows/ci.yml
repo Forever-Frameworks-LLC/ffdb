@@ -176,12 +176,12 @@ jobs:
           cp fuzz/seeds/rls_bypass/*.sql fuzz/corpus/rls_bypass/
       - name: Fuzz SQL parsing and classification
         run: >-
-          cargo +nightly fuzz run --fuzz-dir fuzz sql_parser fuzz/corpus/sql_parser --
+          bash scripts/run-ci-fuzzer.sh sql_parser fuzz/corpus/sql_parser
           -dict=${{ github.workspace }}/fuzz/sql.dict
           -max_total_time=30 -max_len=4096 -timeout=5
       - name: Fuzz the SQLite RLS execution boundary
         run: >-
-          cargo +nightly fuzz run --fuzz-dir fuzz rls_bypass fuzz/corpus/rls_bypass --
+          bash scripts/run-ci-fuzzer.sh rls_bypass fuzz/corpus/rls_bypass
           -dict=${{ github.workspace }}/fuzz/sql.dict
           -max_total_time=30 -max_len=2048 -timeout=5
 
