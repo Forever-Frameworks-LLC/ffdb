@@ -35,6 +35,7 @@ const defaultSettings: HostUpdateSettings = {
 const updatePollIntervalMs = 1_500;
 const updateReconnectLimitMs = 3 * 60_000;
 const updateRequestTimeoutMs = 2_500;
+const provisionalUpdateJobPrefix = "portal-reconnect-";
 
 function updateReconnectDelayMs(attempt: number): number {
   return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
@@ -73,6 +74,37 @@ function completedReleaseJob(job: HostUpdateJob, status: HostUpdateStatus): Host
       : "Signed release installed and readiness verified",
     updated_at_ms: Date.now(),
   };
+}
+
+function provisionalReleaseJob(operation: Extract<PendingOperation, { readonly kind: "install" | "rollback" }>, status: HostUpdateStatus): HostUpdateJob {
+  const now = Date.now();
+  return {
+    job_id: `${provisionalUpdateJobPrefix}${operationId(operation.kind)}`,
+    operation: operation.kind,
+    requested_version: operation.version,
+    state: "running",
+    phase: "reconnect",
+    installed_version: status.installed_version,
+    available_version: status.available_version,
+    previous_version: status.installed_version,
+    backup_path: null,
+    message: "The update request was sent; waiting for FFDB to reconnect",
+    error_code: null,
+    retryable: true,
+    created_at_ms: now,
+    updated_at_ms: now,
+  };
+}
+
+function isProvisionalReleaseJob(job: HostUpdateJob): boolean {
+  return job.job_id.startsWith(provisionalUpdateJobPrefix);
+}
+
+function statusJobMatchesMonitor(monitored: HostUpdateJob, reported: HostUpdateJob): boolean {
+  if (reported.job_id === monitored.job_id) return true;
+  return isProvisionalReleaseJob(monitored)
+    && reported.operation === monitored.operation
+    && reported.requested_version === monitored.requested_version;
 }
 
 export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }: {
@@ -120,7 +152,7 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
     if (job === null || !isActiveJob(job)) return;
     let current = true;
     let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
-    let reconnectStartedAt: number | null = null;
+    let reconnectStartedAt: number | null = isProvisionalReleaseJob(job) ? Date.now() : null;
     let reconnectAttempts = 0;
     const schedulePoll = (delay: number) => {
       timer = globalThis.setTimeout(() => void poll(), delay);
@@ -135,7 +167,9 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
       try {
         const refreshed = await withUpdateRequestTimeout(loadStatus);
         if (!current) return;
-        const reportedJob = refreshed.active_job?.job_id === job.job_id ? refreshed.active_job : null;
+        const reportedJob = refreshed.active_job !== null && statusJobMatchesMonitor(job, refreshed.active_job)
+          ? refreshed.active_job
+          : null;
         if (reportedJob !== null) {
           if (isActiveJob(reportedJob)) {
             setJob(reportedJob);
@@ -143,6 +177,7 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
             setError(null);
             reconnectStartedAt = null;
             reconnectAttempts = 0;
+            if (isProvisionalReleaseJob(job)) return;
           } else {
             finishJob(reportedJob, refreshed);
             return;
@@ -150,6 +185,17 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
         }
         if (statusConfirmsCompletedRelease(job, refreshed)) {
           finishJob(completedReleaseJob(job, refreshed), refreshed);
+          return;
+        }
+        if (isProvisionalReleaseJob(job)) {
+          if (reconnectStartedAt !== null && Date.now() - reconnectStartedAt >= updateReconnectLimitMs) {
+            setReconnecting(false);
+            setError("FFDB did not confirm the update request within three minutes. Check the installed release before trying again.");
+            return;
+          }
+          setReconnecting(true);
+          schedulePoll(updateReconnectDelayMs(reconnectAttempts));
+          reconnectAttempts += 1;
           return;
         }
         const next = await withUpdateRequestTimeout(() => client.hostUpdateJob(job.job_id, { retry: false }));
@@ -193,10 +239,10 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
     };
   }, [client, job?.job_id, job?.state, loadStatus, onNotice]);
 
-  const beginJob = (next: HostUpdateJob) => {
+  const beginJob = (next: HostUpdateJob, reconnectingAfterSubmission = false) => {
     setJob(next);
     setError(null);
-    setReconnecting(false);
+    setReconnecting(reconnectingAfterSubmission);
   };
 
   const checkForUpdates = async () => {
@@ -213,14 +259,24 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
   };
 
   const requestOperation = async (operation: PendingOperation) => {
+    if (status === null) throw new Error("Host update status is not loaded.");
     const options = { idempotencyKey: operationId(`host-${operation.kind}`), retry: false } as const;
-    const next = operation.kind === "settings"
-      ? await client.configureHostUpdates(operation.settings, options)
-      : operation.kind === "install"
-        ? await client.installHostUpdate(operation.version, options)
-        : await client.rollbackHostUpdate(operation.version, options);
-    beginJob(next);
-    closeConfirmation();
+    try {
+      const next = operation.kind === "settings"
+        ? await client.configureHostUpdates(operation.settings, options)
+        : operation.kind === "install"
+          ? await client.installHostUpdate(operation.version, options)
+          : await client.rollbackHostUpdate(operation.version, options);
+      beginJob(next);
+      closeConfirmation();
+    } catch (cause) {
+      if (operation.kind !== "settings" && isAmbiguousUpdateSubmissionFailure(cause)) {
+        beginJob(provisionalReleaseJob(operation, status), true);
+        closeConfirmation();
+        return;
+      }
+      throw cause;
+    }
   };
 
   const performConfirmedOperation = async () => {
@@ -419,6 +475,11 @@ function isActiveJob(job: HostUpdateJob): boolean {
 
 function isReauthenticationRequired(cause: unknown): boolean {
   return cause instanceof FFDBError && cause.status === 428 && cause.code === "platform_auth.reauthentication_required";
+}
+
+function isAmbiguousUpdateSubmissionFailure(cause: unknown): boolean {
+  return cause instanceof TypeError
+    || cause instanceof FFDBError && [502, 503, 504].includes(cause.status);
 }
 
 function updateErrorMessage(cause: unknown): string {

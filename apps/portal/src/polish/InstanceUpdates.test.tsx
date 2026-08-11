@@ -118,6 +118,43 @@ describe("instance host updates", () => {
     expect(statusReads).toBe(3);
   });
 
+  it("reconciles an install when the restart replaces the submission response with a 503", async () => {
+    let statusReads = 0;
+    let installAttempts = 0;
+    let jobReads = 0;
+    const notice = vi.fn();
+    const client = await updateClient(async (request) => {
+      const path = new URL(request.url).pathname;
+      if (path === "/v1/instance/updates" && request.method === "GET") {
+        statusReads += 1;
+        if (statusReads === 2) {
+          return Response.json({ error: { code: "gateway.unavailable", message: "Service Unavailable", request_id: "restart-503" } }, { status: 503 });
+        }
+        return Response.json(updateStatus(statusReads >= 3));
+      }
+      if (path === "/v1/instance/updates/install") {
+        installAttempts += 1;
+        return Response.json({ error: { code: "gateway.unavailable", message: "Service Unavailable", request_id: "install-503" } }, { status: 503 });
+      }
+      if (path.includes("/v1/instance/updates/jobs/")) {
+        jobReads += 1;
+      }
+      return missingResponse();
+    });
+
+    render(<InstanceUpdatesPanel client={client} onNotice={notice} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Install update" }));
+
+    expect(await screen.findByText("Reconnecting to FFDB…", {}, { timeout: 2_000 })).toBeInTheDocument();
+    expect(screen.queryByText("Host update request failed")).not.toBeInTheDocument();
+    await waitFor(() => expect(notice).toHaveBeenCalledWith("Updated to FFDB 0.3.3"), { timeout: 8_000 });
+    expect(screen.getByText("Signed release installed and readiness verified")).toBeInTheDocument();
+    expect(installAttempts).toBe(1);
+    expect(statusReads).toBe(3);
+    expect(jobReads).toBe(0);
+  });
+
   it("times out a poll stalled by the restart and reconciles completion from installed status", async () => {
     let statusReads = 0;
     const notice = vi.fn();
