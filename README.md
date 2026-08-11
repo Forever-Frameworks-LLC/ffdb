@@ -32,6 +32,7 @@ provides checksum-listed tarballs for verified offline installation.
 - `apps/docs`: React/Vite documentation application
 - `apps/portal`: React/Vite management portal
 - `examples/field-notes`: polished React + Node feature lab for the public FFDB application surface
+- `examples/field-notes-native`: Expo companion for SecureStore sessions, native SQLite sync, storage, and diagnostics
 - `crates`: narrow Rust security, data, and provider components
 - `packages`: TypeScript client, React/RN integrations, sync client, CLI, and email components
 - `infra`: local PostgreSQL and deployment assets
