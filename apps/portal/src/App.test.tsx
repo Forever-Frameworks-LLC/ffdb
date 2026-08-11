@@ -40,6 +40,48 @@ describe("portal backend integration", () => {
     cleanup();
     globalThis.sessionStorage.clear();
   });
+
+  it("restores an update notice after a hard reload and consumes its URL marker", async () => {
+    globalThis.history.replaceState(
+      {},
+      "",
+      "/app/instance/updates?panel=history&ffdb-host-update=installed&ffdb-host-version=0.3.13#latest",
+    );
+    const client = new FFDBClient({
+      baseUrl: configuration.apiUrl,
+      projectId: configuration.projectId,
+      developerKey: "ffdb_dev_test.secret",
+      developerSessionStore: await signedInDeveloperStore("portal-host-update-reload-test"),
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url.endsWith("/v1/instance/setup/status")) return Response.json({ bootstrap_available: false, setup_required: false, platform_byo_available: true, platform_connect_available: true });
+        if (request.url.endsWith("/v1/instance")) return Response.json(administratorStatus("owner"));
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [] });
+        if (request.url.endsWith("/v1/instance/updates")) return Response.json({
+          supported: true,
+          unavailable_reason: null,
+          capabilities: { check: true, install: true, rollback: true, automatic_checks: true, automatic_apply: true },
+          state_schema: 1,
+          minimum_rollback_version: "0.3.0",
+          signature_identity: "release-workflow",
+          installed_version: "0.3.13",
+          available_version: "0.3.13",
+          update_available: false,
+          last_check_at_ms: Date.now(),
+          active_job: null,
+          releases: [],
+          settings: { channel: "stable", automatic_checks: true, check_interval_hours: 24, automatic_apply: false, maintenance_window_start: null, maintenance_window_duration_minutes: 60 },
+        });
+        return Response.json({ error: { code: "route.missing", message: "missing", request_id: "reload-test" } }, { status: 404 });
+      },
+    });
+
+    render(<App client={client} configuration={{ ...configuration, developerKeyManaged: false }} />);
+
+    expect(await screen.findByText("Updated to FFDB 0.3.13")).toBeInTheDocument();
+    await waitFor(() => expect(globalThis.location.href).toBe("http://localhost:3000/app/instance/updates?panel=history#latest"));
+  });
+
   it("loads live overview data and executes SQL through @ffdb/client", async () => {
     const calls: Request[] = [];
     const fetchMock: typeof fetch = async (input, init) => {

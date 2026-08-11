@@ -17,7 +17,7 @@ key, database connection string, or storage-provider credential is bundled.
 | Sessions | List active sessions and rotate the current token pair |
 | Diagnostics | Readiness, authenticated query, sync, storage, and sessions |
 
-The app expects FFDB `0.3.12` or newer because that release enables the
+The app expects FFDB `0.3.13` or newer because that release enables the
 documented `auth.uid()`, `auth.role()`, `auth.jwt()`, and `auth.claim()` calls in
 application SQL as well as RLS policies.
 

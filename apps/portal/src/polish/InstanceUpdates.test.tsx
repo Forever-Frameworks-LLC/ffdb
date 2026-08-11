@@ -56,7 +56,8 @@ describe("instance host updates", () => {
       return missingResponse();
     });
 
-    render(<InstanceUpdatesPanel client={client} onNotice={notice} />);
+    const onReleaseChange = vi.fn();
+    render(<InstanceUpdatesPanel client={client} onNotice={notice} onReleaseChange={onReleaseChange} />);
     fireEvent.click(await screen.findByRole("button", { name: "Review update" }));
     fireEvent.click(screen.getByRole("button", { name: "Install update" }));
     expect(await screen.findByRole("heading", { name: "Sign in again to continue" })).toBeInTheDocument();
@@ -64,6 +65,7 @@ describe("instance host updates", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in and install update" }));
 
     await waitFor(() => expect(notice).toHaveBeenCalledWith("Updated to FFDB 0.3.3"), { timeout: 4_000 });
+    expect(onReleaseChange).toHaveBeenCalledWith("install", "0.3.3");
     expect(installAttempts).toBe(2);
     const installRequests = calls.filter((request) => new URL(request.url).pathname === "/v1/instance/updates/install");
     for (const request of installRequests) {
@@ -108,7 +110,7 @@ describe("instance host updates", () => {
       return missingResponse();
     });
 
-    render(<InstanceUpdatesPanel client={client} onNotice={notice} />);
+    render(<InstanceUpdatesPanel client={client} onNotice={notice} onReleaseChange={vi.fn()} />);
 
     expect(await screen.findByText("Restarting FFDB services")).toBeInTheDocument();
     expect(await screen.findByText("Reconnecting to FFDB…", {}, { timeout: 2_000 })).toBeInTheDocument();
@@ -142,7 +144,7 @@ describe("instance host updates", () => {
       return missingResponse();
     });
 
-    render(<InstanceUpdatesPanel client={client} onNotice={notice} />);
+    render(<InstanceUpdatesPanel client={client} onNotice={notice} onReleaseChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Review update" }));
     fireEvent.click(screen.getByRole("button", { name: "Install update" }));
 
@@ -174,7 +176,7 @@ describe("instance host updates", () => {
       return missingResponse();
     });
 
-    render(<InstanceUpdatesPanel client={client} onNotice={notice} />);
+    render(<InstanceUpdatesPanel client={client} onNotice={notice} onReleaseChange={vi.fn()} />);
 
     expect(await screen.findByText("Restarting FFDB services")).toBeInTheDocument();
     expect(await screen.findByText("Reconnecting to FFDB…", {}, { timeout: 5_000 })).toBeInTheDocument();

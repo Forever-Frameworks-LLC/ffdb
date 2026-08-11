@@ -132,10 +132,10 @@ describe("documentation information architecture", () => {
     const cli = JSON.stringify(cliPage);
     const clientSamples = clientPage?.sections.flatMap((section) => [section.code, ...(section.codes ?? [])]) ?? [];
     expect(client).toContain("exact version named by the server release");
-    expect(clientSamples.some((sample) => sample?.code.includes("@ffdb/client@0.3.12"))).toBe(true);
-    expect(client).toContain("ffdb-client-0.3.12.tgz");
+    expect(clientSamples.some((sample) => sample?.code.includes("@ffdb/client@0.3.13"))).toBe(true);
+    expect(client).toContain("ffdb-client-0.3.13.tgz");
     expect(cli).toContain("exact server version");
-    expect(cli).toContain("@ffdb/cli@0.3.12");
+    expect(cli).toContain("@ffdb/cli@0.3.13");
     expect(JSON.stringify(pageByPath.get("/react"))).toContain("@ffdb/react@$VERSION");
     expect(JSON.stringify(pageByPath.get("/react-native"))).toContain("@ffdb/react-native@$VERSION");
     expect(JSON.stringify(pageByPath.get("/sync-client"))).toContain("@ffdb/sync-client@$VERSION");
@@ -184,9 +184,9 @@ describe("documentation information architecture", () => {
       "ffdb-native-linux-amd64-$VERSION.tar.gz",
       "ffdb-native-linux-ARCH-VERSION.tar.gz",
       "https://github.com/Forever-Frameworks-LLC/ffdb/releases/latest/download/install.sh",
-      "FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.12",
+      "FFDB_RELEASE_BASE_URL=file:///srv/ffdb/releases/v0.3.13",
       "sudo ffdb-host install",
-      "--bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.12.tar.gz",
+      "--bundle /srv/ffdb/releases/ffdb-compose-bundle-0.3.13.tar.gz",
       "sudo ffdb-host verify",
       "sudo ffdb-host start",
       "sudo ffdb-host status",
@@ -249,8 +249,8 @@ describe("documentation information architecture", () => {
     for (const contract of [
       "name: ffdb",
       "docker compose up --detach --wait",
-      "ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.12",
-      "ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.12",
+      "ghcr.io/forever-frameworks-llc/ffdb-runtime:0.3.13",
+      "ghcr.io/forever-frameworks-llc/ffdb-gateway:0.3.13",
       "POSTGRES_PASSWORD",
       "FFDB_BOOTSTRAP_TOKEN",
       "seven named volumes",

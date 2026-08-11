@@ -1,7 +1,7 @@
 {
   "name": "@ffdb/example-field-notes-native",
   "main": "expo-router/entry",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "dependencies": {
     "@ffdb/client": "workspace:*",
     "@ffdb/react-native": "workspace:*",
