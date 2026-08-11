@@ -33,6 +33,17 @@ export interface FeatureCheck {
   readonly detail: string;
 }
 
+export type TaskPersistenceState = "local" | "confirmed" | "last_confirmed";
+
+export function taskPersistenceState(
+  task: FieldTask,
+  pending: boolean,
+  serverReady: boolean,
+): TaskPersistenceState {
+  if (pending || task.serverSequence < 0) return "local";
+  return serverReady ? "confirmed" : "last_confirmed";
+}
+
 export const featureLabels: Readonly<Record<FeatureCheck["id"], string>> = {
   auth: "Authentication",
   sql: "Parameterized SQL",

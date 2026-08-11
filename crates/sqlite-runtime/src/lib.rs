@@ -19,7 +19,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ffdb_sql_parser::{StatementKind, classify_statement, parse_rls_statement};
+use ffdb_sql_parser::{
+    StatementKind, classify_statement, parse_rls_statement, rewrite_auth_functions_for_execution,
+};
 use ffdb_sqlite_rls::{
     ColumnSchema, CompiledRlsPlan, Compiler, RlsCatalog, SchemaSnapshot, TableSchema,
     backing_table_name, generated_source_names,
@@ -29,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub use context::{AuthContext, DeveloperPrincipal, ExecutionMode};
-use context::{ContextLease, InternalLease, SharedContext};
+use context::{ContextLease, InternalLease, PublicAuthLease, SharedContext};
 pub use limits::{CancellationToken, ExecutionLimits};
 pub use sync::{
     SyncChange, SyncChangeOperation, SyncMutation, SyncMutationOperation, SyncMutationReceipt,
@@ -519,10 +521,9 @@ impl Database {
         let result = callback(&mut session);
         drop(session);
         drop(lease);
-        let clean = self
-            .context
-            .lock()
-            .is_ok_and(|state| state.active.is_none() && state.internal_depth == 0);
+        let clean = self.context.lock().is_ok_and(|state| {
+            state.active.is_none() && state.internal_depth == 0 && state.public_auth_depth == 0
+        });
         if !clean {
             self.poisoned.store(true, Ordering::Release);
             return Err(RuntimeError::Poisoned);
@@ -1506,7 +1507,13 @@ impl Session<'_> {
         let statement_kind = classify_statement(&request.sql)
             .ok()
             .map(|class| class.kind);
-        let mut statement = self.connection.prepare(&request.sql)?;
+        let sqlite_sql = rewrite_auth_functions_for_execution(&request.sql)
+            .map_err(|_| RuntimeError::StatementNotAllowed)?;
+        let uses_public_auth = sqlite_sql != request.sql;
+        let _public_auth = uses_public_auth
+            .then(|| PublicAuthLease::enter(&self.context))
+            .transpose()?;
+        let mut statement = self.connection.prepare(&sqlite_sql)?;
         if statement.parameter_count() > self.limits.max_variables {
             return Err(RuntimeError::TooManyVariables);
         }
@@ -1813,6 +1820,49 @@ mod tests {
             })
             .unwrap_err();
         assert_eq!(error, RuntimeError::StatementNotAllowed);
+    }
+
+    #[test]
+    fn application_sql_can_use_public_auth_functions_without_exposing_private_names() {
+        let (_directory, database) = database(ExecutionLimits::default());
+        install_owner_rls(&database);
+        let cancellation = CancellationToken::default();
+
+        let inserted = database
+            .with_context(user("alice"), &cancellation, |session| {
+                session.execute(&statement(
+                    "INSERT INTO documents(id, owner_id, body) \
+                     VALUES (10, auth.uid(), auth.role()) RETURNING owner_id, body",
+                    Vec::new(),
+                ))
+            })
+            .unwrap();
+        assert_eq!(
+            inserted.rows,
+            vec![vec![
+                ResultValue::Text("alice".to_owned()),
+                ResultValue::Text("authenticated".to_owned()),
+            ]]
+        );
+
+        let selected = database
+            .with_context(user("alice"), &cancellation, |session| {
+                session.execute(&statement(
+                    "SELECT id FROM documents WHERE owner_id = auth.uid()",
+                    Vec::new(),
+                ))
+            })
+            .unwrap();
+        assert_eq!(selected.rows, vec![vec![ResultValue::Integer(10)]]);
+
+        for sql in ["SELECT __ffdb_auth_uid()", "SELECT auth.set_uid('bob')"] {
+            let error = database
+                .with_context(user("alice"), &cancellation, |session| {
+                    session.execute(&statement(sql, Vec::new()))
+                })
+                .unwrap_err();
+            assert_eq!(error, RuntimeError::StatementNotAllowed);
+        }
     }
 
     #[test]

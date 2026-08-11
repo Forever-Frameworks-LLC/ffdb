@@ -36,6 +36,7 @@ pub enum ExecutionMode {
 pub(crate) struct ContextState {
     pub active: Option<Arc<ExecutionMode>>,
     pub internal_depth: u32,
+    pub public_auth_depth: u32,
     pub approved_sources: BTreeSet<String>,
     pub request_transaction_id: Option<String>,
     pub client_mutation_id: Option<String>,
@@ -53,7 +54,7 @@ impl ContextLease {
         mode: ExecutionMode,
     ) -> Result<Self, RuntimeError> {
         let mut guard = state.lock().map_err(|_| RuntimeError::Poisoned)?;
-        if guard.active.is_some() || guard.internal_depth != 0 {
+        if guard.active.is_some() || guard.internal_depth != 0 || guard.public_auth_depth != 0 {
             return Err(RuntimeError::ContextAlreadyInstalled);
         }
         guard.active = Some(Arc::new(mode));
@@ -71,6 +72,7 @@ impl Drop for ContextLease {
         if let Ok(mut state) = self.state.lock() {
             state.active = None;
             state.internal_depth = 0;
+            state.public_auth_depth = 0;
             state.request_transaction_id = None;
             state.client_mutation_id = None;
         }
@@ -79,6 +81,32 @@ impl Drop for ContextLease {
 
 pub(crate) struct InternalLease {
     state: SharedContext,
+}
+
+pub(crate) struct PublicAuthLease {
+    state: SharedContext,
+}
+
+impl PublicAuthLease {
+    pub(crate) fn enter(state: &SharedContext) -> Result<Self, RuntimeError> {
+        let mut guard = state.lock().map_err(|_| RuntimeError::Poisoned)?;
+        guard.public_auth_depth = guard
+            .public_auth_depth
+            .checked_add(1)
+            .ok_or(RuntimeError::Poisoned)?;
+        drop(guard);
+        Ok(Self {
+            state: Arc::clone(state),
+        })
+    }
+}
+
+impl Drop for PublicAuthLease {
+    fn drop(&mut self) {
+        if let Ok(mut state) = self.state.lock() {
+            state.public_auth_depth = state.public_auth_depth.saturating_sub(1);
+        }
+    }
 }
 
 pub(crate) struct MutationLease {

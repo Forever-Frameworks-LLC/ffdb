@@ -3689,8 +3689,9 @@ mod tests {
         }
         .unwrap();
         let insert = protocol::QueryRequest {
-            sql: "INSERT INTO sync_documents(id,owner_id,body) VALUES (1,?1,'captured')".to_owned(),
-            parameters: vec![protocol::SqlParameter::Text(alice.subject.to_string())],
+            sql: "INSERT INTO sync_documents(id,owner_id,body) VALUES (1,auth.uid(),'captured')"
+                .to_owned(),
+            parameters: Vec::new(),
             options: protocol::QueryOptions::default(),
         };
         worker
@@ -3703,6 +3704,28 @@ mod tests {
                 &runtime::CancellationToken::default(),
             )
             .unwrap();
+        let selected = worker
+            .handle(
+                request_with_mode(
+                    &route,
+                    protocol::ExecutionMode::EndUser(alice.clone()),
+                    protocol::WorkerOperation::Query(protocol::QueryRequest {
+                        sql: "SELECT body FROM sync_documents WHERE owner_id = auth.uid()"
+                            .to_owned(),
+                        parameters: Vec::new(),
+                        options: protocol::QueryOptions::default(),
+                    }),
+                ),
+                &runtime::CancellationToken::default(),
+            )
+            .unwrap();
+        let protocol::WorkerResponse::Query(selected) = selected.response else {
+            panic!("expected query response");
+        };
+        assert_eq!(
+            selected.rows,
+            vec![vec![protocol::ResultCell::Text("captured".to_owned())]]
+        );
         let alice_pull = worker
             .handle(
                 request_with_mode(

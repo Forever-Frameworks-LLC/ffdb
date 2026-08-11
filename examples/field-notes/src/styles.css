@@ -218,6 +218,7 @@ button:disabled { cursor: wait; opacity: 0.58; }
 .last-sync { color: var(--muted); font-size: 12px; }
 .up-to-date { margin-top: 8px; display: flex; align-items: center; gap: 7px; color: var(--green); font-size: 13px; }
 .up-to-date svg { width: 17px; }
+.up-to-date.error { color: var(--red); }
 .queue-section { display: flex; flex-direction: column; gap: 16px; }
 .queue-section .section-label { margin: 0; }
 .queue-section > div { display: grid; grid-template-columns: 28px 20px 1fr; align-items: center; gap: 7px; font-size: 12px; }
@@ -269,6 +270,7 @@ button:disabled { cursor: wait; opacity: 0.58; }
 .task-state svg { width: 17px; }
 .task-state .pending-state { color: var(--orange); }
 .task-state .synced-state { color: var(--green); }
+.task-state .unverified-state { color: var(--red); }
 .task-state small { font-size: 11px; }
 .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .row-actions button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); opacity: 0; cursor: pointer; }

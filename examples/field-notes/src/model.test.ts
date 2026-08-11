@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ReplicaRecord } from "@ffdb/sync-client";
 
-import { filterTasks, formatBytes, safeFileName, taskFromReplica, taskObjectPrefix } from "./model";
+import {
+  filterTasks,
+  formatBytes,
+  safeFileName,
+  taskFromReplica,
+  taskObjectPrefix,
+  taskPersistenceState,
+} from "./model";
 
 const record: ReplicaRecord = {
   table: "field_tasks",
@@ -49,5 +56,15 @@ describe("field notes model", () => {
     expect(formatBytes(800)).toBe("800 B");
     expect(formatBytes(2_048)).toBe("2 KB");
     expect(formatBytes(1_572_864)).toBe("1.5 MB");
+  });
+
+  it("never calls an optimistic or unverified row server-confirmed", () => {
+    const confirmed = taskFromReplica(record);
+    const optimistic = taskFromReplica({ ...record, serverSequence: -1 });
+
+    expect(taskPersistenceState(confirmed, false, true)).toBe("confirmed");
+    expect(taskPersistenceState(confirmed, true, true)).toBe("local");
+    expect(taskPersistenceState(optimistic, false, true)).toBe("local");
+    expect(taskPersistenceState(confirmed, false, false)).toBe("last_confirmed");
   });
 });

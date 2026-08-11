@@ -28,8 +28,12 @@ fn authorize(state: &SharedContext, context: &AuthContext<'_>) -> Authorization 
             Authorization::Deny
         }
         AuthAction::Function { function_name } if is_internal(function_name) => {
-            if source
-                .is_some_and(|source| approved_generated_source(source, &state.approved_sources))
+            if (state.public_auth_depth > 0
+                && source.is_none()
+                && is_public_auth_implementation(function_name))
+                || source.is_some_and(|source| {
+                    approved_generated_source(source, &state.approved_sources)
+                })
             {
                 Authorization::Allow
             } else {
@@ -164,6 +168,13 @@ fn sqlite_schema_name(name: &str) -> bool {
 
 fn is_internal(name: &str) -> bool {
     name.to_ascii_lowercase().starts_with("__ffdb_")
+}
+
+fn is_public_auth_implementation(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "__ffdb_auth_uid" | "__ffdb_auth_role" | "__ffdb_auth_jwt" | "__ffdb_auth_claim"
+    )
 }
 
 fn approved_generated_source(

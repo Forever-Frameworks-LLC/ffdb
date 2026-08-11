@@ -41,7 +41,7 @@ import {
   X,
 } from "lucide-react";
 import type { AuthTokenPair, SessionSummary, StorageObjectItem } from "@ffdb/client";
-import { generateId } from "@ffdb/client";
+import { FFDBError, generateId } from "@ffdb/client";
 import {
   optimisticList,
   useAuth,
@@ -67,6 +67,7 @@ import {
   queueTaskEdit,
   safeFileName,
   seedWorkspace,
+  taskPersistenceState,
   taskObjectPrefix,
   tasksFromReplica,
   toggleTask,
@@ -126,8 +127,15 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
   const events = eventsFromResult(eventQuery.data);
 
   const loadTasks = useCallback(async () => {
-    const next = tasksFromReplica(await syncClient.listRows("field_tasks"));
+    const [records, pending] = await Promise.all([
+      syncClient.listRows("field_tasks"),
+      syncClient.getPending(Number.MAX_SAFE_INTEGER),
+    ]);
+    const next = tasksFromReplica(records);
     setTasks(next);
+    setPendingTaskIds(new Set(pending
+      .filter((mutation) => mutation.table === "field_tasks" && typeof mutation.primary_key === "string")
+      .map((mutation) => String(mutation.primary_key))));
     setSelectedId((current) => current !== null && next.some((task) => task.id === current) ? current : next[0]?.id ?? null);
   }, [syncClient]);
 
@@ -142,14 +150,17 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
 
   const runSync = useCallback(async (message = "All local changes are up to date.") => {
     setBusy("sync");
+    setHealth("checking");
     setNotice(null);
     try {
       await syncClient.sync();
       await loadTasks();
-      setPendingTaskIds(new Set());
       setEventRevision((value) => value + 1);
+      setHealth("ready");
       setNotice(message);
     } catch (cause) {
+      setHealth("error");
+      await loadTasks().catch(() => undefined);
       setNotice(errorMessage(cause));
     } finally {
       setBusy(null);
@@ -160,15 +171,21 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
     let active = true;
     void (async () => {
       try {
+        await loadTasks();
         await syncClient.sync();
+        await loadTasks();
+        if (active) setHealth("ready");
         const seeded = await seedWorkspace(client, session.user.id);
-        if (seeded) await syncClient.sync();
-        if (active) {
+        if (seeded) {
+          await syncClient.sync();
           await loadTasks();
+        }
+        if (active) {
           setHealth("ready");
         }
       } catch (cause) {
         if (active) {
+          await loadTasks().catch(() => undefined);
           setHealth("error");
           setNotice(errorMessage(cause));
         }
@@ -433,7 +450,10 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
           <small>{ffdbProjectId.slice(0, 18)}{ffdbProjectId.length > 18 ? "…" : ""}</small>
           <button className="sync-button" disabled={busy === "sync"} onClick={() => void runSync()}><RefreshCw className={sync.phase !== "idle" ? "spin" : ""} /> Sync now</button>
           <span className="last-sync">Last sync: {formatTime(sync.lastSyncedAtMs)}</span>
-          <span className="up-to-date"><CheckCircle2 /> {sync.pending === 0 ? "Up to date" : `${sync.pending} pending`}</span>
+          <span className={`up-to-date ${health === "error" || sync.phase === "error" ? "error" : ""}`}>
+            {health === "error" || sync.phase === "error" ? <CircleAlert /> : <CheckCircle2 />}
+            {health === "error" || sync.phase === "error" ? "Server check failed" : sync.pending === 0 ? "Up to date" : `${sync.pending} pending`}
+          </span>
         </div>
         <div className="sidebar-section queue-section">
           <span className="section-label">Sync queue</span>
@@ -451,6 +471,7 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
             totalTasks={tasks.length}
             selectedId={selectedId}
             pendingTaskIds={pendingTaskIds}
+            health={health}
             filter={filter}
             search={search}
             newTitle={newTitle}
@@ -519,6 +540,7 @@ interface WorkspaceViewProps {
   readonly totalTasks: number;
   readonly selectedId: string | null;
   readonly pendingTaskIds: ReadonlySet<string>;
+  readonly health: "checking" | "ready" | "error";
   readonly filter: Filter;
   readonly search: string;
   readonly newTitle: string;
@@ -557,7 +579,14 @@ function WorkspaceView(props: WorkspaceViewProps) {
             {props.editingId === task.id ? <input className="inline-edit" autoFocus value={props.editTitle} onChange={(event) => props.onEditTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") props.onSaveEdit(task); if (event.key === "Escape") props.onCancelEdit(); }} onBlur={() => props.onSaveEdit(task)} onClick={(event) => event.stopPropagation()} /> : <h2>{task.title}</h2>}
             <div><Folder /><span>Field Notes</span><span className={`priority ${task.priority}`} /> <span>{task.priority}</span>{task.attachmentCount > 0 && <><Paperclip /><span>{task.attachmentCount}</span></>}</div>
           </div>
-          <div className="task-state">{props.pendingTaskIds.has(task.id) ? <span className="pending-state"><Cloud /> Pending sync</span> : <span className="synced-state"><CheckCircle2 /> Synced</span>}<small>{task.status === "done" ? "Completed" : "Updated"} {formatTime(task.updatedAtMs)}</small></div>
+          <div className="task-state">
+            {taskPersistenceState(task, props.pendingTaskIds.has(task.id), props.health === "ready") === "local"
+              ? <span className="pending-state"><Cloud /> Local change</span>
+              : taskPersistenceState(task, props.pendingTaskIds.has(task.id), props.health === "ready") === "confirmed"
+                ? <span className="synced-state"><CheckCircle2 /> Server confirmed</span>
+                : <span className="unverified-state"><CircleAlert /> Last confirmed</span>}
+            <small>{task.status === "done" ? "Completed" : "Updated"} {formatTime(task.updatedAtMs)}</small>
+          </div>
           <div className="row-actions"><button onClick={(event) => { event.stopPropagation(); props.onBeginEdit(task); }} aria-label={`Edit ${task.title}`}><Pencil /></button><button onClick={(event) => { event.stopPropagation(); props.onDelete(task); }} aria-label={`Delete ${task.title}`}><Trash2 /></button><ChevronRight /></div>
         </article>
       ))}
@@ -616,5 +645,9 @@ function initials(email: string): string {
 }
 
 function errorMessage(cause: unknown): string {
+  if (cause instanceof FFDBError) {
+    const request = cause.requestId === null ? "" : ` · Request ${cause.requestId}`;
+    return `${cause.message} · ${cause.code}${request}`;
+  }
   return cause instanceof Error ? cause.message : "The FFDB request failed.";
 }
