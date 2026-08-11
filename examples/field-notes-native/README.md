@@ -49,7 +49,8 @@ Never add an FFDB developer key, password, access token, or refresh token to an
 `EXPO_PUBLIC_*` variable.
 
 In the portal, open the selected project at **Auth → Policy → Application
-URLs** and add this exact authentication redirect:
+URLs** and add this exact link to **Allowed auth redirects** (the right-hand
+list, not **Allowed web origins**):
 
 ```text
 ffdb-field-notes://auth/callback

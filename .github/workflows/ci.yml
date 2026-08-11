@@ -222,7 +222,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm audit --audit-level high
+      # Expo's Metro toolchain currently pulls image-size advisories with no
+      # patched release. Keep failing on every fixable high/critical advisory.
+      - run: pnpm audit --audit-level high --ignore-unfixable
 
   compose:
     needs: changes

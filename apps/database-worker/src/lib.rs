@@ -3621,7 +3621,7 @@ mod tests {
     }
 
     #[test]
-    fn query_write_flows_to_policy_filtered_sync_pull() {
+    fn query_write_flows_to_policy_filtered_sync_pull() -> Result<(), String> {
         let route = route();
         let (_directory, worker) = worker(route.clone(), runtime::ExecutionLimits::default());
         let developer = protocol::ExecutionMode::Developer(protocol::DeveloperPrincipal {
@@ -3719,8 +3719,9 @@ mod tests {
                 &runtime::CancellationToken::default(),
             )
             .unwrap();
-        let protocol::WorkerResponse::Query(selected) = selected.response else {
-            panic!("expected query response");
+        let selected = match selected.response {
+            protocol::WorkerResponse::Query(selected) => selected,
+            _ => return Err("expected query response".to_owned()),
         };
         assert_eq!(
             selected.rows,
@@ -3769,6 +3770,7 @@ mod tests {
         }
         .unwrap();
         assert!(bob_pull.changes.is_empty());
+        Ok(())
     }
 
     #[test]
