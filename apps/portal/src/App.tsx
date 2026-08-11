@@ -69,6 +69,7 @@ import {
 import { ObservabilityPanel } from "./polish/Observability.js";
 import { InstanceUpdatesPanel } from "./polish/InstanceUpdates.js";
 import { ConnectPanel } from "./polish/Connect.js";
+import { hostUpdateReloadResult } from "./host-update-reload.js";
 
 export interface AppProps {
   readonly client?: FFDBClient;
@@ -77,6 +78,7 @@ export interface AppProps {
 
 export function App({ client: suppliedClient, configuration: suppliedConfiguration }: AppProps = {}) {
   const initialConfiguration = useMemo(() => suppliedConfiguration ?? portalConfiguration(), [suppliedConfiguration]);
+  const initialHostUpdateResult = useMemo(() => hostUpdateReloadResult(globalThis.location.href), []);
   const [configuration, setConfiguration] = useState(initialConfiguration);
   const client = useMemo(
     () => suppliedClient ?? createPortalClient(configuration),
@@ -86,7 +88,7 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
   const [authInitialTab, setAuthInitialTab] = useState<AuthRouteTab>("users");
   const [sqlDraft, setSqlDraft] = useState("SELECT sqlite_version() AS version");
   const [createOpen, setCreateOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(initialHostUpdateResult?.message ?? null);
   const [developerAccess, setDeveloperAccess] = useState<DeveloperSession | null | undefined>(undefined);
   const [instanceSetup, setInstanceSetup] = useState<Awaited<ReturnType<FFDBClient["instanceSetupStatus"]>> | null | undefined>(undefined);
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null | undefined>(undefined);
@@ -99,6 +101,11 @@ export function App({ client: suppliedClient, configuration: suppliedConfigurati
     readonly developerKey: string;
   } | null>(null);
   const [projectCredentialRevision, setProjectCredentialRevision] = useState(0);
+
+  useEffect(() => {
+    if (initialHostUpdateResult === null) return;
+    globalThis.history.replaceState(globalThis.history.state, "", initialHostUpdateResult.cleanPath);
+  }, [initialHostUpdateResult]);
 
   useEffect(() => {
     let current = true;

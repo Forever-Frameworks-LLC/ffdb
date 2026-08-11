@@ -1,6 +1,6 @@
 {
   "name": "@ffdb/react",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "React providers and hooks for the FFDB client and offline-sync state",
   "keywords": ["ffdb", "react", "database", "offline-first", "sync"],
   "homepage": "https://ffdb.forever-frameworks.com/docs/react",

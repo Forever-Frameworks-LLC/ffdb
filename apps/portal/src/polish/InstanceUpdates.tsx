@@ -11,6 +11,7 @@ import {
 } from "@ffdb/client";
 
 import { Icon } from "../icons.js";
+import { reloadPortalAfterHostUpdate } from "../host-update-reload.js";
 import "./instance-updates.css";
 
 type PendingOperation =
@@ -107,9 +108,10 @@ function statusJobMatchesMonitor(monitored: HostUpdateJob, reported: HostUpdateJ
     && reported.requested_version === monitored.requested_version;
 }
 
-export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }: {
+export function InstanceUpdatesPanel({ client, onNotice, onReleaseChange = reloadPortalAfterHostUpdate, onUpdateAvailability }: {
   readonly client: FFDBClient;
   onNotice(message: string): void;
+  onReleaseChange?(operation: "install" | "rollback", version: string | null): void;
   onUpdateAvailability?(available: boolean): void;
 }) {
   const [status, setStatus] = useState<HostUpdateStatus | null>(null);
@@ -161,7 +163,12 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
       setJob(next);
       setReconnecting(false);
       setError(null);
-      if (next.state === "succeeded") onNotice(completionNotice(next, refreshed));
+      if (next.state === "succeeded") {
+        onNotice(completionNotice(next, refreshed));
+        if (next.operation === "install" || next.operation === "rollback") {
+          onReleaseChange(next.operation, refreshed.installed_version ?? next.requested_version);
+        }
+      }
     };
     const poll = async () => {
       try {
@@ -237,7 +244,7 @@ export function InstanceUpdatesPanel({ client, onNotice, onUpdateAvailability }:
       current = false;
       if (timer !== undefined) globalThis.clearTimeout(timer);
     };
-  }, [client, job?.job_id, job?.state, loadStatus, onNotice]);
+  }, [client, job?.job_id, job?.state, loadStatus, onNotice, onReleaseChange]);
 
   const beginJob = (next: HostUpdateJob, reconnectingAfterSubmission = false) => {
     setJob(next);
