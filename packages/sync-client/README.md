@@ -7,11 +7,11 @@ The runtime must also support `@ffdb/client` (or supply its `fetch`
 implementation) and an authenticated end-user session.
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.13 @ffdb/sync-client@0.3.13
+pnpm add --save-exact @ffdb/client@0.3.14 @ffdb/sync-client@0.3.14
 ```
 
 The matching GitHub Release also provides a checksum-listed
-`ffdb-sync-client-0.3.13.tgz` for verified offline installation.
+`ffdb-sync-client-0.3.14.tgz` for verified offline installation.
 
 ```ts
 import { FFDBClient, MemorySessionStore } from "@ffdb/client";
@@ -63,9 +63,40 @@ retry it. Pending edits are replayed over any snapshot taken before they are
 pushed.
 
 The client exposes `idle`, `snapshot`, `push`, `pull`, and `error` phases through
-`state` and `subscribe()`. An `AbortSignal` cancels the active network work. A
-second concurrent `sync()` call joins the first call and therefore uses the
-first call's signal.
+`state` and `subscribe()`. `lastChangedAtMs` advances only when a pull or
+replacement snapshot changes the replica, so a UI can reload its local view
+without rerendering on every idle wait. An `AbortSignal` cancels the active
+network work. A second concurrent `sync()` call joins the first call and
+therefore uses the first call's signal.
+
+## Automatic sync
+
+Automatic sync is opt-in and runtime-neutral:
+
+```ts
+const live = sync.startAutoSync();
+
+// React Native / Expo lifecycle integration:
+const subscription = AppState.addEventListener("change", (state) => {
+  live.setActive(state === "active");
+});
+
+// Optional connectivity integration (for example, NetInfo):
+live.setOnline(isOnline);
+
+// Graceful shutdown or component cleanup:
+subscription.remove();
+live.stop();
+```
+
+The default controller syncs immediately, debounces optimistic mutations for
+250 ms, waits up to 25 seconds for an authenticated server change hint, and
+falls back to a 15-second poll when connected to an older FFDB server that
+returns the wait immediately. Failures use bounded exponential backoff with
+jitter. Inactive/offline controllers pause, a focus/online wake catches up
+immediately, concurrent work is deduplicated, and Node timers are `unref()`ed.
+The cursor pull remains authoritative and RLS-filtered; a wake hint never
+contains row data or bypasses authorization.
 
 ## Runtime matrix
 
@@ -81,19 +112,22 @@ rejections transactionally. All bundled replicas expose the same deterministic
 `getPending(limit)` and `getRejected(limit)` bookkeeping reads.
 `NodeSQLiteReplica` uses Node 24's built-in
 `node:sqlite`; it does not add a native npm dependency. Importing the core
-package does not open a database, watch connectivity, schedule background work,
-or automatically sync on focus/reconnect. React applications can subscribe with
-`useSync` from `@ffdb/react`; applications normally trigger `sync()` from
-explicit UI and reasonable lifecycle or network-status events.
+package does not open a database or start background work until the application
+constructs a replica and calls `startAutoSync()`. React DOM applications can use
+`useAutoSync` from `@ffdb/react` for visibility, focus, and browser connectivity
+integration; React Native and Node applications use the same controller
+directly.
 
 ```ts
 import { NodeSQLiteReplica } from "@ffdb/sync-client/node";
 
 const replica = new NodeSQLiteReplica("/var/lib/my-app/ffdb-user.sqlite3");
 const sync = new OfflineSyncClient(api, replica);
+const live = sync.startAutoSync();
 try {
-  await sync.sync();
+  // Service work runs while the process is active. Local mutations wake it.
 } finally {
+  live.stop();
   await replica.close();
 }
 ```

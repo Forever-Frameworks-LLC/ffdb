@@ -71,6 +71,7 @@ import type {
   StorageBucket,
   StorageBucketRequest,
   StorageObjectPage,
+  SyncPullOptions,
   SyncPullResponse,
   SyncPushRequest,
   SyncPushResponse,
@@ -2092,11 +2093,20 @@ function providerHeaders(signed: SignedObjectRequest): Headers {
 export class SyncClient {
   constructor(private readonly client: FFDBClient) {}
 
-  pull(cursor: string | null, limit = 1_000, options: RequestOptions = {}): Promise<SyncPullResponse> {
+  pull(cursor: string | null, limit = 1_000, options: SyncPullOptions = {}): Promise<SyncPullResponse> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new RangeError("sync pull limit must be between 1 and 1000");
+    }
+    const waitMs = options.waitMs ?? 0;
+    if (!Number.isSafeInteger(waitMs) || waitMs < 0 || waitMs > 30_000) {
+      throw new RangeError("sync pull waitMs must be between 0 and 30000");
+    }
     const query = new URLSearchParams({ limit: String(limit) });
     if (cursor !== null) query.set("cursor", cursor);
+    if (waitMs > 0) query.set("wait_ms", String(waitMs));
+    const { waitMs: _waitMs, ...requestOptions } = options;
     return this.client.workerRequest(`${this.client.projectPath("sync")}?${query}`, {
-      ...options,
+      ...requestOptions,
       credential: "user",
     });
   }

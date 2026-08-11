@@ -33,8 +33,8 @@ pub use usage_reporting::{
 
 use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
-use std::time::Instant;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
@@ -62,6 +62,8 @@ use ipnet::IpNet;
 use serde::Deserialize;
 use serde_json::Value;
 use sqlx::{PgPool, Row as _};
+use tokio::sync::watch;
+use tokio::time::timeout;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
@@ -71,6 +73,43 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 const AUTHORIZATION: axum::http::HeaderName = axum::http::header::AUTHORIZATION;
+const X_FFDB_SYNC_IDLE: axum::http::HeaderName =
+    axum::http::HeaderName::from_static("x-ffdb-sync-idle");
+const MAX_SYNC_WAIT_MS: u32 = 30_000;
+
+/// In-process wake hints for authenticated long-poll requests.
+///
+/// The cursor pull remains authoritative. A wake contains no row or actor data,
+/// and the initial pull performed after subscription closes the check/wait race.
+#[derive(Debug, Default)]
+pub struct SyncWakeRegistry {
+    projects: Mutex<BTreeMap<ProjectId, watch::Sender<u64>>>,
+}
+
+impl SyncWakeRegistry {
+    fn subscribe(&self, project_id: ProjectId) -> watch::Receiver<u64> {
+        let mut projects = self
+            .projects
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        projects.retain(|_, sender| sender.receiver_count() > 0);
+        projects
+            .entry(project_id)
+            .or_insert_with(|| watch::channel(0).0)
+            .subscribe()
+    }
+
+    fn notify(&self, project_id: ProjectId) {
+        let projects = self
+            .projects
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(sender) = projects.get(&project_id) {
+            let next = (*sender.borrow()).wrapping_add(1);
+            sender.send_replace(next);
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 struct TrustedClientIp(IpAddr);
@@ -107,6 +146,7 @@ pub struct ApiState {
     /// successful audit admission.
     pub audit: Arc<dyn AuditSink>,
     pub readiness_pool: Option<PgPool>,
+    pub sync_wakes: Arc<SyncWakeRegistry>,
 }
 
 impl std::fmt::Debug for ApiState {
@@ -1450,6 +1490,7 @@ async fn policies(
 struct SyncQuery {
     cursor: Option<String>,
     limit: Option<u32>,
+    wait_ms: Option<u32>,
 }
 
 async fn sync_pull(
@@ -1472,18 +1513,48 @@ async fn sync_pull(
         return validation_error("sync limit must be between 1 and 1000", request_id)
             .into_response();
     }
-    dispatch(
+    let wait_ms = parameters.wait_ms.unwrap_or(0);
+    if wait_ms > MAX_SYNC_WAIT_MS {
+        return validation_error("sync wait_ms must be between 0 and 30000", request_id)
+            .into_response();
+    }
+
+    // Subscribe before the authoritative pull. If a write races with that
+    // pull, either the pull observes it or changed() is already ready.
+    let mut wake = state.sync_wakes.subscribe(project_id);
+    let response = dispatch(
         &state,
         project_id,
         request_id,
-        ExecutionMode::EndUser(auth),
+        ExecutionMode::EndUser(auth.clone()),
         WorkerOperation::SyncPull(SyncPullRequest {
-            cursor: parameters.cursor,
+            cursor: parameters.cursor.clone(),
             limit,
         }),
         None,
     )
-    .await
+    .await;
+    if wait_ms == 0 || !response.headers().contains_key(&X_FFDB_SYNC_IDLE) {
+        return response;
+    }
+
+    match timeout(Duration::from_millis(u64::from(wait_ms)), wake.changed()).await {
+        Ok(Ok(())) => {
+            dispatch(
+                &state,
+                project_id,
+                request_id,
+                ExecutionMode::EndUser(auth),
+                WorkerOperation::SyncPull(SyncPullRequest {
+                    cursor: parameters.cursor,
+                    limit,
+                }),
+                None,
+            )
+            .await
+        }
+        Ok(Err(_)) | Err(_) => response,
+    }
 }
 
 async fn sync_push(
@@ -1737,6 +1808,7 @@ async fn dispatch(
         return credential_error(CredentialError::WrongProject, request_id).into_response();
     }
     let (action, resource_kind, cost) = operation_descriptor(&operation);
+    let wakes_sync = operation_wakes_sync(&operation);
     if let Err(response) =
         enforce_execution_rate_limit(state, project_id, request_id, &mode, cost).await
     {
@@ -2109,7 +2181,23 @@ async fn dispatch(
                 AuditOutcome::Success,
             )
             .await;
-            (StatusCode::OK, Json(response)).into_response()
+            if wakes_sync {
+                state.sync_wakes.notify(project_id);
+            }
+            let sync_idle = matches!(
+                &response,
+                WorkerResponse::Sync(payload)
+                    if payload.changes.is_empty()
+                        && !payload.has_more
+                        && payload.control.is_none()
+            );
+            let mut http_response = (StatusCode::OK, Json(response)).into_response();
+            if sync_idle {
+                http_response
+                    .headers_mut()
+                    .insert(X_FFDB_SYNC_IDLE, HeaderValue::from_static("1"));
+            }
+            http_response
         }
         Err(error) => {
             if let Some(observability) = &state.observability {
@@ -2570,6 +2658,31 @@ fn operation_descriptor(operation: &WorkerOperation) -> (&'static str, &'static 
         WorkerOperation::StorageCleanupAck(_) => ("storage.cleanup.ack", "object", 2),
         WorkerOperation::StorageBuckets => ("storage.bucket.list", "bucket", 1),
         WorkerOperation::StorageCreateBucket(_) => ("storage.bucket.create", "bucket", 3),
+    }
+}
+
+fn operation_wakes_sync(operation: &WorkerOperation) -> bool {
+    match operation {
+        WorkerOperation::Query(request) => ffdb_sql_parser::classify_statement(&request.sql)
+            .map(|class| !class.read_only)
+            .unwrap_or(true),
+        WorkerOperation::Transaction(request) => request.statements.iter().any(|statement| {
+            ffdb_sql_parser::classify_statement(&statement.sql)
+                .map(|class| !class.read_only)
+                .unwrap_or(true)
+        }),
+        WorkerOperation::MigrationHistory { .. }
+        | WorkerOperation::Schema
+        | WorkerOperation::Policies
+        | WorkerOperation::Snapshot(_)
+        | WorkerOperation::SyncPull(_)
+        | WorkerOperation::Backup { .. }
+        | WorkerOperation::IntegrityCheck
+        | WorkerOperation::StorageReceipt(_)
+        | WorkerOperation::StorageUsage
+        | WorkerOperation::StorageList(_)
+        | WorkerOperation::StorageBuckets => false,
+        _ => true,
     }
 }
 
@@ -3048,6 +3161,24 @@ mod tests {
                     },
                     statement_telemetry: Vec::new(),
                 }),
+                WorkerOperation::SyncPull(payload) => Ok(ffdb_protocol::WorkerExecution {
+                    response: WorkerResponse::Sync(ffdb_protocol::SyncPullResponse {
+                        changes: Vec::new(),
+                        cursor: payload.cursor.unwrap_or_else(|| "cursor-0".to_owned()),
+                        has_more: false,
+                        control: None,
+                    }),
+                    usage: ffdb_protocol::UsageReceipt {
+                        receipt_id,
+                        request_id,
+                        reads: 0,
+                        writes: 0,
+                        logical_database_bytes: 0,
+                        subject: None,
+                        recorded_at_ms: 0,
+                    },
+                    statement_telemetry: Vec::new(),
+                }),
                 _ => Err(ExecutionError::Rejected {
                     code: "query.statement_not_allowed".into(),
                 }),
@@ -3123,6 +3254,7 @@ mod tests {
             rate_limiter,
             audit: Arc::new(InMemoryAuditSink::default()),
             readiness_pool: None,
+            sync_wakes: Arc::new(SyncWakeRegistry::default()),
         })
     }
 
@@ -3138,6 +3270,75 @@ mod tests {
             .unwrap_or_else(|error| match error {});
         assert_eq!(response.status(), StatusCode::OK);
         assert!(response.headers().contains_key("x-request-id"));
+    }
+
+    #[tokio::test]
+    async fn sync_wake_hints_are_scoped_to_one_project() {
+        let registry = SyncWakeRegistry::default();
+        let first_project = ProjectId::new();
+        let second_project = ProjectId::new();
+        let mut first = registry.subscribe(first_project);
+        let second = registry.subscribe(second_project);
+
+        registry.notify(first_project);
+
+        assert!(first.has_changed().unwrap_or(false));
+        assert!(!second.has_changed().unwrap_or(true));
+        assert!(first.changed().await.is_ok());
+        assert!(!second.has_changed().unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn sync_wait_rejects_values_above_the_server_bound() {
+        let project = ProjectId::new();
+        let response = app()
+            .oneshot(
+                HttpRequest::get(format!(
+                    "/v1/projects/{project}/sync?cursor=cursor-1&wait_ms=30001"
+                ))
+                .header("authorization", "Bearer test")
+                .body(Body::empty())
+                .unwrap_or_else(|_| HttpRequest::new(Body::empty())),
+            )
+            .await
+            .unwrap_or_else(|error| match error {});
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .unwrap_or_default();
+        assert!(
+            String::from_utf8_lossy(&body).contains("sync wait_ms must be between 0 and 30000")
+        );
+    }
+
+    #[tokio::test]
+    async fn idle_sync_wait_returns_after_its_bounded_timeout() {
+        let project = ProjectId::new();
+        let response = app()
+            .oneshot(
+                HttpRequest::get(format!(
+                    "/v1/projects/{project}/sync?cursor=cursor-1&wait_ms=1"
+                ))
+                .header("authorization", "Bearer test")
+                .body(Body::empty())
+                .unwrap_or_else(|_| HttpRequest::new(Body::empty())),
+            )
+            .await
+            .unwrap_or_else(|error| match error {});
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(&X_FFDB_SYNC_IDLE)
+                .and_then(|value| value.to_str().ok()),
+            Some("1")
+        );
+        let body = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .unwrap_or_default();
+        assert!(String::from_utf8_lossy(&body).contains("cursor-1"));
     }
 
     #[tokio::test]
@@ -3289,6 +3490,7 @@ mod tests {
             rate_limiter: None,
             audit: audit.clone(),
             readiness_pool: None,
+            sync_wakes: Arc::new(SyncWakeRegistry::default()),
         });
         let project = ProjectId::new();
         let mut request = HttpRequest::get(format!("/v1/projects/{project}/policies"))

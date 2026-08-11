@@ -45,7 +45,7 @@ describe("portal backend integration", () => {
     globalThis.history.replaceState(
       {},
       "",
-      "/app/instance/updates?panel=history&ffdb-host-update=installed&ffdb-host-version=0.3.13#latest",
+      "/app/instance/updates?panel=history&ffdb-host-update=installed&ffdb-host-version=0.3.14#latest",
     );
     const client = new FFDBClient({
       baseUrl: configuration.apiUrl,
@@ -64,8 +64,8 @@ describe("portal backend integration", () => {
           state_schema: 1,
           minimum_rollback_version: "0.3.0",
           signature_identity: "release-workflow",
-          installed_version: "0.3.13",
-          available_version: "0.3.13",
+          installed_version: "0.3.14",
+          available_version: "0.3.14",
           update_available: false,
           last_check_at_ms: Date.now(),
           active_job: null,
@@ -78,7 +78,7 @@ describe("portal backend integration", () => {
 
     render(<App client={client} configuration={{ ...configuration, developerKeyManaged: false }} />);
 
-    expect(await screen.findByText("Updated to FFDB 0.3.13")).toBeInTheDocument();
+    expect(await screen.findByText("Updated to FFDB 0.3.14")).toBeInTheDocument();
     await waitFor(() => expect(globalThis.location.href).toBe("http://localhost:3000/app/instance/updates?panel=history#latest"));
   });
 

@@ -1,6 +1,6 @@
 import type { AuthTokenPair, SessionSummary, StorageObjectItem } from "@ffdb/client";
 import { FFDBError } from "@ffdb/client";
-import type { OfflineSyncClient, SyncState } from "@ffdb/sync-client";
+import type { AutoSyncController, OfflineSyncClient, SyncState } from "@ffdb/sync-client";
 import * as Crypto from "expo-crypto";
 import * as Linking from "expo-linking";
 import Head from "expo-router/head";
@@ -41,8 +41,10 @@ interface Diagnostic {
 
 const idleSync: SyncState = {
   phase: "idle",
+  autoSync: "stopped",
   pending: 0,
   lastSyncedAtMs: null,
+  lastChangedAtMs: null,
   error: null,
 };
 
@@ -129,12 +131,27 @@ export default function FieldNotesNative() {
     }
     let active = true;
     let unsubscribe: () => void = () => {};
+    let autoSync: AutoSyncController | null = null;
     void nativeSyncClient(session).then(async (client) => {
       if (!active) return;
       setSyncClient(client);
-      unsubscribe = client.subscribe(setSyncState);
-      await loadLocal(client);
-      if (active) await syncNow(client, session);
+      let lastChangedAtMs = client.state.lastChangedAtMs;
+      unsubscribe = client.subscribe((state) => {
+        if (!active) return;
+        setSyncState(state);
+        if (state.phase === "error" || state.autoSync === "backoff") setConnection("error");
+        else if (state.lastSyncedAtMs !== null) setConnection("ready");
+        if (state.lastChangedAtMs !== null && state.lastChangedAtMs !== lastChangedAtMs) {
+          lastChangedAtMs = state.lastChangedAtMs;
+          void Promise.all([loadLocal(client), loadAccountEvidence(session)])
+            .catch((cause: unknown) => {
+              if (active) setNotice(errorMessage(cause));
+            });
+        }
+      });
+      await Promise.all([loadLocal(client), loadAccountEvidence(session)]);
+      if (!active) return;
+      autoSync = client.startAutoSync({ active: AppState.currentState === "active" });
     }).catch((cause: unknown) => {
       if (active) {
         setConnection("error");
@@ -142,16 +159,15 @@ export default function FieldNotesNative() {
       }
     });
     const appState = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void nativeSyncClient(session).then((client) => syncNow(client, session));
-      }
+      autoSync?.setActive(state === "active");
     });
     return () => {
       active = false;
+      autoSync?.stop();
       unsubscribe();
       appState.remove();
     };
-  }, [loadLocal, session, syncNow]);
+  }, [loadAccountEvidence, loadLocal, session]);
 
   const authCallbackFinished = callbackUrl?.startsWith(nativeAuthRedirect) === true;
 
@@ -253,7 +269,7 @@ export default function FieldNotesNative() {
         client_timestamp_ms: now,
       });
       await loadLocal(syncClient);
-      setNotice("Saved only to native SQLite. Tap Sync to push this field note.");
+      setNotice("Saved to native SQLite. Live sync will push this field note automatically.");
     } catch (cause) {
       setNotice(errorMessage(cause));
     }
@@ -272,7 +288,7 @@ export default function FieldNotesNative() {
         client_timestamp_ms: Date.now(),
       });
       await loadLocal(syncClient);
-      setNotice("Deletion is local and queued. Sync to apply it on FFDB.");
+      setNotice("Deletion is local and queued. Live sync will apply it automatically.");
     } catch (cause) {
       setNotice(errorMessage(cause));
     }
@@ -566,15 +582,27 @@ function ConnectionCard({ connection, syncState, onSync }: {
   readonly syncState: SyncState;
   onSync(): void;
 }) {
-  const ready = connection === "ready" && syncState.phase !== "error";
-  const label = ready ? "Server confirmed" : connection === "checking" ? "Checking FFDB" : connection === "offline" ? "Working offline" : "Needs attention";
+  const ready = connection === "ready" && syncState.phase !== "error" && syncState.autoSync !== "backoff";
+  const label = syncState.autoSync === "watching" && ready
+    ? "Live sync"
+    : syncState.autoSync === "syncing"
+      ? "Syncing FFDB"
+      : syncState.autoSync === "backoff"
+        ? "Retrying automatically"
+        : ready
+          ? "Server confirmed"
+          : connection === "checking"
+            ? "Checking FFDB"
+            : connection === "offline"
+              ? "Working offline"
+              : "Needs attention";
   return <View style={styles.connectionCard}>
     <View style={styles.connectionCopy}>
       <View style={styles.connectionHeading}><View style={[styles.dot, ready ? styles.dotReady : styles.dotError]} /><Text style={styles.connectionTitle}>{label}</Text></View>
       <Text style={styles.connectionMeta}>Expo · SecureStore · native SQLite</Text>
       <Text style={styles.connectionMeta}>{syncState.pending} pending · Last sync {formatTime(syncState.lastSyncedAtMs)}</Text>
     </View>
-    <Pressable style={styles.syncButton} onPress={onSync}><Text style={styles.syncGlyph}>↻</Text><Text style={styles.syncButtonText}>Sync</Text></Pressable>
+    <Pressable style={styles.syncButton} onPress={onSync}><Text style={styles.syncGlyph}>↻</Text><Text style={styles.syncButtonText}>Sync now</Text></Pressable>
   </View>;
 }
 

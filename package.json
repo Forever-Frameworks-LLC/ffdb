@@ -1,6 +1,6 @@
 {
   "name": "ffdb-monorepo",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "private": true,
   "packageManager": "pnpm@11.6.0",
   "engines": {

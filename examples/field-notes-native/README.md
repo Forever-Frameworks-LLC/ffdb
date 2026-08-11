@@ -11,13 +11,13 @@ key, database connection string, or storage-provider credential is bundled.
 | Authentication | Register, verify, sign in, reset password, refresh, sign out |
 | Secure persistence | `ReactNativeSessionStore` backed by Expo SecureStore |
 | SQL and RLS | `auth.uid()` in parameterized queries and atomic transactions |
-| Offline sync | Per-user `NativeSQLiteReplica` backed by Expo SQLite |
-| Local mutations | Queue offline task notes and deletes, then push manually |
+| Offline sync | Per-user `NativeSQLiteReplica`, waiting pulls, retry backoff, and AppState resume |
+| Local mutations | Queue offline task notes and deletes, then push automatically |
 | Storage | Sign, upload, commit, list, sign, and download a generated text Blob |
 | Sessions | List active sessions and rotate the current token pair |
 | Diagnostics | Readiness, authenticated query, sync, storage, and sessions |
 
-The app expects FFDB `0.3.13` or newer because that release enables the
+The app expects FFDB `0.3.14` or newer because that release enables the
 documented `auth.uid()`, `auth.role()`, `auth.jwt()`, and `auth.claim()` calls in
 application SQL as well as RLS policies.
 
@@ -63,6 +63,13 @@ also require that origin in the object provider's own CORS policy.
 
 Custom-scheme email callbacks are best tested in an iOS/Android development
 build; Expo Go does not own the app's production scheme.
+
+The app starts the same runtime-neutral automatic-sync controller used by the
+browser and Node examples. `AppState` pauses network work in the background and
+triggers an immediate catch-up on resume. Network failures back off and retry;
+an application that already uses NetInfo can additionally call
+`controller.setOnline(...)` to pause retries while connectivity is known to be
+unavailable.
 
 ## Run it
 

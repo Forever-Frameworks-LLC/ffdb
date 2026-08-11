@@ -3132,6 +3132,17 @@
               "minimum": 1,
               "maximum": 1000
             }
+          },
+          {
+            "name": "wait_ms",
+            "in": "query",
+            "description": "Hold an otherwise-idle authenticated pull until a project change hint arrives or the timeout elapses.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 30000,
+              "default": 0
+            }
           }
         ],
         "responses": {

@@ -2,7 +2,7 @@
   "expo": {
     "name": "FFDB Field Notes",
     "slug": "field-notes-native",
-    "version": "0.3.13",
+    "version": "0.3.14",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ffdb-field-notes",

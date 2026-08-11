@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { FFDBClient, LogicalChange, SnapshotResponse } from "@ffdb/client";
 
 import { MemoryReplica, OfflineSyncClient } from "./index.js";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("MemoryReplica", () => {
   it("keeps the newest server-sequenced row", async () => {
@@ -79,6 +84,174 @@ describe("MemoryReplica", () => {
 });
 
 describe("OfflineSyncClient", () => {
+  it("waits for remote changes and applies the authoritative response", async () => {
+    const change: LogicalChange = {
+      sequence: 2,
+      transaction_id: "transaction-2",
+      table: "notes",
+      primary_key: "note-2",
+      operation: "insert",
+      row_version: 1,
+      values: { title: "from another client" },
+      tombstone: null,
+      actor: "user-2",
+      schema_version: 1,
+      committed_at_ms: 200,
+      client_mutation_id: null,
+    };
+    const pullOptions: unknown[] = [];
+    const client = {
+      sync: {
+        pull: async (_cursor: string | null, _limit: number, options: unknown) => {
+          pullOptions.push(options);
+          return { changes: [change], cursor: "cursor-2", has_more: false, control: null };
+        },
+      },
+    } as unknown as FFDBClient;
+    const replica = new MemoryReplica();
+    await replica.setCursor("cursor-1", 1);
+    const sync = new OfflineSyncClient(client, replica, { now: () => 250 });
+
+    await expect(sync.waitForChanges(25_000)).resolves.toMatchObject({ changed: true });
+
+    expect(pullOptions).toEqual([{ waitMs: 25_000, signal: expect.any(AbortSignal) }]);
+    expect((await sync.getRow("notes", "note-2"))?.values.title).toBe("from another client");
+    expect(sync.state).toMatchObject({
+      phase: "idle",
+      lastSyncedAtMs: 250,
+      lastChangedAtMs: 250,
+      error: null,
+    });
+  });
+
+  it("auto-syncs on start, watches, and debounces optimistic mutations", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    const replica = new MemoryReplica();
+    const sync = new OfflineSyncClient({} as FFDBClient, replica);
+    const syncSpy = vi.spyOn(sync, "sync").mockResolvedValue();
+    const waitSpy = vi.spyOn(sync, "waitForChanges").mockImplementation((_waitMs, signal) =>
+      new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+      }));
+
+    const controller = sync.startAutoSync({ mutationDebounceMs: 250 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    await vi.runOnlyPendingTimersAsync();
+    expect(waitSpy).toHaveBeenCalledWith(25_000, expect.any(AbortSignal));
+
+    await sync.mutate({
+      mutation_id: "mutation-auto",
+      table: "notes",
+      primary_key: "note-auto",
+      operation: "insert",
+      values: { title: "queued" },
+      base_row_version: null,
+      client_timestamp_ms: 1_000,
+    });
+    await vi.advanceTimersByTimeAsync(249);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(syncSpy).toHaveBeenCalledTimes(2);
+
+    controller.stop();
+    expect(sync.state.autoSync).toBe("stopped");
+  });
+
+  it("pauses automatic sync while inactive and catches up when active again", async () => {
+    vi.useFakeTimers();
+    const sync = new OfflineSyncClient({} as FFDBClient, new MemoryReplica());
+    const syncSpy = vi.spyOn(sync, "sync").mockResolvedValue();
+    vi.spyOn(sync, "waitForChanges").mockImplementation((_waitMs, signal) =>
+      new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+      }));
+    const controller = sync.startAutoSync({ active: false });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(syncSpy).not.toHaveBeenCalled();
+    expect(controller.status).toBe("paused");
+
+    controller.setActive(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    controller.stop();
+  });
+
+  it("cancels a waiting pull before a manual sync advances the cursor", async () => {
+    const pullModes: string[] = [];
+    const client = {
+      sync: {
+        push: async () => ({ cursor: "cursor-1", results: [] }),
+        pull: async (_cursor: string | null, _limit: number, options: { waitMs?: number; signal?: AbortSignal }) => {
+          if (options.waitMs !== undefined) {
+            pullModes.push("wait");
+            return new Promise((_resolve, reject) => {
+              options.signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+            });
+          }
+          pullModes.push("manual");
+          return { changes: [], cursor: "cursor-2", has_more: false, control: null };
+        },
+      },
+    } as unknown as FFDBClient;
+    const replica = new MemoryReplica();
+    await replica.setCursor("cursor-1", 1);
+    const sync = new OfflineSyncClient(client, replica);
+
+    const waiting = sync.waitForChanges();
+    await Promise.resolve();
+    await expect(Promise.all([waiting, sync.sync()])).rejects.toMatchObject({ name: "AbortError" });
+    await sync.sync();
+
+    expect(pullModes).toEqual(["wait", "manual"]);
+    expect(await replica.getCursor()).toEqual({ cursor: "cursor-2", schemaVersion: 1 });
+  });
+
+  it("backs off after automatic sync errors and retries within the configured bound", async () => {
+    vi.useFakeTimers();
+    const sync = new OfflineSyncClient({} as FFDBClient, new MemoryReplica());
+    const syncSpy = vi.spyOn(sync, "sync")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(undefined);
+    vi.spyOn(sync, "waitForChanges").mockImplementation((_waitMs, signal) =>
+      new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+      }));
+    const controller = sync.startAutoSync({ retryMinMs: 1_000, retryMaxMs: 1_000, random: () => 1 });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    expect(controller.status).toBe("backoff");
+    await vi.advanceTimersByTimeAsync(999);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(syncSpy).toHaveBeenCalledTimes(2);
+    controller.stop();
+  });
+
+  it("falls back to the polling cadence when an older server returns an idle wait immediately", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const sync = new OfflineSyncClient({} as FFDBClient, new MemoryReplica());
+    const syncSpy = vi.spyOn(sync, "sync").mockResolvedValue();
+    const waitSpy = vi.spyOn(sync, "waitForChanges").mockResolvedValue({ changed: false, waitedMs: 5 });
+    const controller = sync.startAutoSync({ pollIntervalMs: 15_000 });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    await vi.runOnlyPendingTimersAsync();
+    expect(waitSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(syncSpy).toHaveBeenCalledTimes(2);
+    controller.stop();
+  });
+
   it("applies inserts, updates, and deletes optimistically while retaining the queue", async () => {
     let now = 100;
     const replica = new MemoryReplica(() => now);
@@ -460,3 +633,9 @@ describe("OfflineSyncClient", () => {
     expect(await sync.getRejected()).toHaveLength(1);
   });
 });
+
+function abortError(): Error {
+  const error = new Error("aborted");
+  error.name = "AbortError";
+  return error;
+}
