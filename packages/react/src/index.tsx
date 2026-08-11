@@ -17,7 +17,7 @@ import type {
   RequestOptions,
   SessionSummary,
 } from "@ffdb/client";
-import type { OfflineSyncClient, SyncState } from "@ffdb/sync-client";
+import type { AutoSyncOptions, OfflineSyncClient, SyncState } from "@ffdb/sync-client";
 
 const FFDBContext = createContext<FFDBClient | null>(null);
 
@@ -160,6 +160,84 @@ export function useSync(syncClient: OfflineSyncClient): SyncState & { sync(signa
     () => syncClient.state,
   );
   return useMemo(() => ({ ...state, sync: (signal?: AbortSignal) => syncClient.sync(signal) }), [state, syncClient]);
+}
+
+export interface UseAutoSyncOptions extends AutoSyncOptions {
+  readonly enabled?: boolean;
+}
+
+/**
+ * Keep an offline replica current while this browser tab is visible and online.
+ * The runtime-neutral controller still works without DOM globals during SSR.
+ */
+export function useAutoSync(
+  syncClient: OfflineSyncClient,
+  options: UseAutoSyncOptions = {},
+): SyncState & { sync(signal?: AbortSignal): Promise<void> } {
+  const state = useSync(syncClient);
+  const {
+    enabled = true,
+    syncOnStart,
+    syncOnMutation,
+    mutationDebounceMs,
+    pollIntervalMs,
+    longPollMs,
+    retryMinMs,
+    retryMaxMs,
+    active = true,
+    online = true,
+    random,
+  } = options;
+
+  useEffect(() => {
+    if (!enabled) return;
+    const documentValue = typeof document === "undefined" ? null : document;
+    const windowValue = typeof window === "undefined" ? null : window;
+    const navigatorValue = typeof navigator === "undefined" ? null : navigator;
+    const isVisible = () => documentValue === null || documentValue.visibilityState !== "hidden";
+    const isOnline = () => navigatorValue === null || navigatorValue.onLine;
+    const controller = syncClient.startAutoSync({
+      ...(syncOnStart === undefined ? {} : { syncOnStart }),
+      ...(syncOnMutation === undefined ? {} : { syncOnMutation }),
+      ...(mutationDebounceMs === undefined ? {} : { mutationDebounceMs }),
+      ...(pollIntervalMs === undefined ? {} : { pollIntervalMs }),
+      ...(longPollMs === undefined ? {} : { longPollMs }),
+      ...(retryMinMs === undefined ? {} : { retryMinMs }),
+      ...(retryMaxMs === undefined ? {} : { retryMaxMs }),
+      ...(random === undefined ? {} : { random }),
+      active: active && isVisible(),
+      online: online && isOnline(),
+    });
+    const handleVisibility = () => controller.setActive(active && isVisible());
+    const handleFocus = () => controller.wake("focus");
+    const handleOnline = () => controller.setOnline(online && isOnline());
+    documentValue?.addEventListener("visibilitychange", handleVisibility);
+    windowValue?.addEventListener("focus", handleFocus);
+    windowValue?.addEventListener("online", handleOnline);
+    windowValue?.addEventListener("offline", handleOnline);
+    return () => {
+      documentValue?.removeEventListener("visibilitychange", handleVisibility);
+      windowValue?.removeEventListener("focus", handleFocus);
+      windowValue?.removeEventListener("online", handleOnline);
+      windowValue?.removeEventListener("offline", handleOnline);
+      controller.stop();
+    };
+  }, [
+    syncClient,
+    enabled,
+    syncOnStart,
+    syncOnMutation,
+    mutationDebounceMs,
+    pollIntervalMs,
+    longPollMs,
+    retryMinMs,
+    retryMaxMs,
+    active,
+    online,
+    random,
+  ]);
+
+  return state;
 }
 
 export function useSessions(): QueryLikeState<readonly SessionSummary[]> {

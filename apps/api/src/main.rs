@@ -10,8 +10,8 @@ use ffdb_api::{
     DurableRateLimiter, InstanceService, InstanceServiceConfig, InstanceStripeBillingConfig,
     InstanceStripeProviderCatalog, InstanceStripeUsageEventConfig, ManagementState,
     ManagementStateConfig, ObservabilityService, OutboxAuthEmailDispatcher, ProjectAuthState,
-    StorageService, UsageMeteringService, UsageReportingConfig, UsageReportingService,
-    WorkerMetadataAuthorizer, router, spawn_security_state_maintenance,
+    StorageService, SyncWakeRegistry, UsageMeteringService, UsageReportingConfig,
+    UsageReportingService, WorkerMetadataAuthorizer, router, spawn_security_state_maintenance,
 };
 use ffdb_audit::PgAuditSink;
 use ffdb_auth::{AeadSigningKeyEnvelope, PgCredentialVerifier, PgSigningKeyStore, SigningKeyStore};
@@ -474,6 +474,7 @@ async fn main() -> Result<()> {
         rate_limiter: Some(Arc::new(durable_rate_limiter)),
         audit: Arc::new(PgAuditSink::new(pool.clone())),
         readiness_pool: Some(pool),
+        sync_wakes: Arc::new(SyncWakeRegistry::default()),
     };
     let listener = TcpListener::bind(&config.http.bind_address)
         .await

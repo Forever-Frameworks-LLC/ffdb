@@ -22,9 +22,11 @@ const replicaPath = resolve(dataDirectory, `field-notes-${projectId}-${session.u
 const replica = new NodeSQLiteReplica(replicaPath);
 const sync = new OfflineSyncClient(api, replica);
 const taskId = generateId("node_");
+let autoSync = null;
 
 try {
   await sync.sync();
+  autoSync = sync.startAutoSync({ syncOnStart: false });
   await sync.mutate({
     mutation_id: generateId("mutation_"),
     table: "field_tasks",
@@ -47,7 +49,10 @@ try {
 
   const optimistic = await sync.getRow("field_tasks", taskId);
   if (optimistic === null) throw new Error("Optimistic Node replica insert was not visible");
-  await sync.sync();
+  await waitFor(async () => {
+    const record = await sync.getRow("field_tasks", taskId);
+    return sync.state.pending === 0 && (record?.serverSequence ?? -1) >= 0;
+  }, "automatic Node sync did not confirm the insert");
 
   const remote = await api.query({
     sql: "SELECT id, title FROM field_tasks WHERE id = ?1 AND owner_id = auth.uid()",
@@ -64,20 +69,31 @@ try {
     base_row_version: (await sync.getRow("field_tasks", taskId))?.rowVersion ?? null,
     client_timestamp_ms: Date.now(),
   });
-  await sync.sync();
+  await waitFor(() => sync.state.pending === 0, "automatic Node sync did not confirm the delete");
 
   console.log(JSON.stringify({
     ready: true,
     runtime: "node",
     adapter: "NodeSQLiteReplica",
     optimisticInsert: true,
+    automaticSync: true,
     pushedToServer: true,
     cleanupDelete: true,
     replicaPath,
   }, null, 2));
 } finally {
+  autoSync?.stop();
+  await sync.sync().catch(() => undefined);
   await replica.close();
   await api.auth.signOut().catch(() => undefined);
+}
+
+async function waitFor(predicate, message, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await predicate())) {
+    if (Date.now() >= deadline) throw new Error(message);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+  }
 }
 
 function required(name) {

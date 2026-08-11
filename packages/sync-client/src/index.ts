@@ -50,9 +50,13 @@ export interface ReplicaAdapter {
 
 export type SyncPhase = "idle" | "snapshot" | "push" | "pull" | "error";
 
+export type AutoSyncStatus = "stopped" | "paused" | "syncing" | "watching" | "backoff";
+
 export interface SyncState {
   readonly phase: SyncPhase;
+  readonly autoSync: AutoSyncStatus;
   readonly lastSyncedAtMs: number | null;
+  readonly lastChangedAtMs: number | null;
   readonly pending: number;
   readonly error: Error | null;
 }
@@ -63,6 +67,44 @@ export interface OfflineSyncOptions {
   readonly now?: () => number;
 }
 
+export interface AutoSyncOptions {
+  /** Run a full push/pull cycle as soon as automatic sync starts. Defaults to true. */
+  readonly syncOnStart?: boolean;
+  /** Debounce and push optimistic mutations automatically. Defaults to true. */
+  readonly syncOnMutation?: boolean;
+  readonly mutationDebounceMs?: number;
+  /** Fallback cadence for servers that do not support waiting pulls. */
+  readonly pollIntervalMs?: number;
+  /** Duration of each authenticated waiting pull. Set to 0 for polling only. */
+  readonly longPollMs?: number;
+  readonly retryMinMs?: number;
+  readonly retryMaxMs?: number;
+  readonly active?: boolean;
+  readonly online?: boolean;
+  /** Primarily useful for deterministic retry-jitter tests. */
+  readonly random?: () => number;
+}
+
+export type AutoSyncWakeReason = "focus" | "mutation" | "manual";
+
+export interface AutoSyncController {
+  readonly status: AutoSyncStatus;
+  setActive(active: boolean): void;
+  setOnline(online: boolean): void;
+  wake(reason?: AutoSyncWakeReason): void;
+  stop(): void;
+}
+
+export interface SyncWaitResult {
+  readonly changed: boolean;
+  readonly waitedMs: number;
+}
+
+interface WaitingPull {
+  readonly controller: AbortController;
+  promise: Promise<SyncWaitResult>;
+}
+
 export class OfflineSyncClient {
   readonly #client: FFDBClient;
   readonly #replica: ReplicaAdapter;
@@ -70,8 +112,17 @@ export class OfflineSyncClient {
   readonly #pullBatchSize: number;
   readonly #now: () => number;
   readonly #listeners = new Set<(state: SyncState) => void>();
-  #state: SyncState = { phase: "idle", lastSyncedAtMs: null, pending: 0, error: null };
+  #state: SyncState = {
+    phase: "idle",
+    autoSync: "stopped",
+    lastSyncedAtMs: null,
+    lastChangedAtMs: null,
+    pending: 0,
+    error: null,
+  };
   #running: Promise<void> | null = null;
+  #waiting: WaitingPull | null = null;
+  #autoController: AutoSyncControllerImpl | null = null;
 
   constructor(client: FFDBClient, replica: ReplicaAdapter, options: OfflineSyncOptions = {}) {
     this.#client = client;
@@ -116,14 +167,20 @@ export class OfflineSyncClient {
     await this.#replica.enqueue({ ...mutation, enqueuedAtMs: this.#now(), attempts: 0 });
     const pending = (await this.#replica.getPending(Number.MAX_SAFE_INTEGER)).length;
     this.#publish({ ...this.#state, pending });
+    this.#autoController?.wake("mutation");
   }
 
   sync(signal?: AbortSignal): Promise<void> {
     if (this.#running !== null) return this.#running;
-    this.#running = this.#performSync(signal)
+    this.#running = this.#cancelWaitingPull()
+      .then(() => this.#performSync(signal))
       .catch((cause: unknown) => {
         const error = cause instanceof Error ? cause : new Error("Sync failed");
-        this.#publish({ ...this.#state, phase: "error", error });
+        if (isAbortError(error)) {
+          this.#publish({ ...this.#state, phase: "idle", error: null });
+        } else {
+          this.#publish({ ...this.#state, phase: "error", error });
+        }
         throw error;
       })
       .finally(() => {
@@ -132,11 +189,58 @@ export class OfflineSyncClient {
     return this.#running;
   }
 
+  waitForChanges(waitMs = 25_000, signal?: AbortSignal): Promise<SyncWaitResult> {
+    boundedDuration(waitMs, 0, 30_000, "waitMs");
+    if (this.#waiting !== null) return this.#waiting.promise;
+
+    const controller = new AbortController();
+    const waiting: WaitingPull = {
+      controller,
+      promise: Promise.resolve({ changed: false, waitedMs: 0 }),
+    };
+    const unlink = forwardAbort(signal, controller);
+    const startedAt = Date.now();
+    waiting.promise = (async () => {
+      if (this.#running !== null) await this.#running;
+      const changed = await this.#performWaitingPull(waitMs, controller.signal);
+      return { changed, waitedMs: Math.max(0, Date.now() - startedAt) };
+    })()
+      .catch((cause: unknown) => {
+        const error = cause instanceof Error ? cause : new Error("Waiting sync failed");
+        if (!isAbortError(error)) this.#publish({ ...this.#state, phase: "error", error });
+        throw error;
+      })
+      .finally(() => {
+        unlink();
+        if (this.#waiting === waiting) this.#waiting = null;
+      });
+    this.#waiting = waiting;
+    return waiting.promise;
+  }
+
+  startAutoSync(options: AutoSyncOptions = {}): AutoSyncController {
+    this.#autoController?.stop();
+    const controller = new AutoSyncControllerImpl(
+      (signal) => this.sync(signal),
+      (waitMs, signal) => this.waitForChanges(waitMs, signal),
+      (status) => this.#setAutoSyncStatus(status),
+      options,
+      () => {
+        if (this.#autoController === controller) this.#autoController = null;
+      },
+    );
+    this.#autoController = controller;
+    controller.start();
+    return controller;
+  }
+
   async #performSync(signal?: AbortSignal): Promise<void> {
     let position = await this.#replica.getCursor();
+    let changed = false;
     if (position === null) {
       this.#publish({ ...this.#state, phase: "snapshot", error: null });
       position = await this.#resnapshot(signal);
+      changed = true;
     }
 
     this.#publish({ ...this.#state, phase: "push", error: null });
@@ -163,20 +267,67 @@ export class OfflineSyncClient {
     // A duplicate, superseded, or rejected mutation may not emit a new logical
     // change after our current cursor. Replace optimistic state with a fresh
     // authoritative snapshot before continuing the pull in those cases.
-    if (requiresAuthoritativeSnapshot) position = await this.#resnapshot(signal);
+    if (requiresAuthoritativeSnapshot) {
+      position = await this.#resnapshot(signal);
+      changed = true;
+    }
 
     this.#publish({ ...this.#state, phase: "pull", pending: 0, error: null });
+    const pulled = await this.#pullFrom(position, signal);
+    changed = pulled.changed || changed;
+    const syncedAt = this.#now();
+    this.#publish({
+      ...this.#state,
+      phase: "idle",
+      lastSyncedAtMs: syncedAt,
+      lastChangedAtMs: changed
+        ? nextChangedAt(syncedAt, this.#state.lastChangedAtMs)
+        : this.#state.lastChangedAtMs,
+      pending: 0,
+      error: null,
+    });
+  }
+
+  async #performWaitingPull(waitMs: number, signal: AbortSignal): Promise<boolean> {
+    const position = await this.#replica.getCursor();
+    if (position === null) {
+      await this.#performSync(signal);
+      return true;
+    }
+    const pulled = await this.#pullFrom(position, signal, waitMs);
+    const syncedAt = this.#now();
+    this.#publish({
+      ...this.#state,
+      phase: "idle",
+      lastSyncedAtMs: syncedAt,
+      lastChangedAtMs: pulled.changed
+        ? nextChangedAt(syncedAt, this.#state.lastChangedAtMs)
+        : this.#state.lastChangedAtMs,
+      pending: (await this.#replica.getPending(Number.MAX_SAFE_INTEGER)).length,
+      error: null,
+    });
+    return pulled.changed;
+  }
+
+  async #pullFrom(
+    initialPosition: { readonly cursor: string; readonly schemaVersion: number },
+    signal?: AbortSignal,
+    waitMs = 0,
+  ): Promise<{ readonly position: { readonly cursor: string; readonly schemaVersion: number }; readonly changed: boolean }> {
+    let position = initialPosition;
+    let changed = false;
+    let first = true;
     let hasMore = true;
     while (hasMore) {
-      const result = await this.#client.sync.pull(
-        position.cursor,
-        this.#pullBatchSize,
-        signal === undefined ? {} : { signal },
-      );
+      const result = await this.#client.sync.pull(position.cursor, this.#pullBatchSize, {
+        ...(signal === undefined ? {} : { signal }),
+        ...(first && waitMs > 0 ? { waitMs } : {}),
+      });
+      first = false;
       if (result.control?.type === "resnapshot_required" || result.control?.type === "invalidate_scope") {
         position = await this.#resnapshot(signal);
-        hasMore = false;
-        continue;
+        changed = true;
+        break;
       }
       const schemaVersion = position.schemaVersion;
       await this.#replica.transaction(async (transaction) => {
@@ -184,9 +335,10 @@ export class OfflineSyncClient {
         await transaction.setCursor(result.cursor, schemaVersion);
       });
       position = { ...position, cursor: result.cursor };
+      changed = result.changes.length > 0 || changed;
       hasMore = result.has_more;
     }
-    this.#publish({ phase: "idle", lastSyncedAtMs: this.#now(), pending: 0, error: null });
+    return { position, changed };
   }
 
   async #resnapshot(signal?: AbortSignal): Promise<{ readonly cursor: string; readonly schemaVersion: number }> {
@@ -203,9 +355,199 @@ export class OfflineSyncClient {
     return { cursor: snapshot.cursor, schemaVersion: snapshot.schema_version };
   }
 
+  async #cancelWaitingPull(): Promise<void> {
+    const waiting = this.#waiting;
+    if (waiting === null) return;
+    waiting.controller.abort();
+    try {
+      await waiting.promise;
+    } catch (error) {
+      if (!isAbortError(error)) throw error;
+    }
+  }
+
+  #setAutoSyncStatus(autoSync: AutoSyncStatus): void {
+    if (this.#state.autoSync !== autoSync) this.#publish({ ...this.#state, autoSync });
+  }
+
   #publish(state: SyncState): void {
     this.#state = state;
     for (const listener of this.#listeners) listener(state);
+  }
+}
+
+interface NormalizedAutoSyncOptions {
+  readonly syncOnStart: boolean;
+  readonly syncOnMutation: boolean;
+  readonly mutationDebounceMs: number;
+  readonly pollIntervalMs: number;
+  readonly longPollMs: number;
+  readonly retryMinMs: number;
+  readonly retryMaxMs: number;
+  readonly active: boolean;
+  readonly online: boolean;
+  readonly random: () => number;
+}
+
+class AutoSyncControllerImpl implements AutoSyncController {
+  readonly #sync: (signal: AbortSignal) => Promise<void>;
+  readonly #wait: (waitMs: number, signal: AbortSignal) => Promise<SyncWaitResult>;
+  readonly #publishStatus: (status: AutoSyncStatus) => void;
+  readonly #options: NormalizedAutoSyncOptions;
+  readonly #onStop: () => void;
+  #active: boolean;
+  #online: boolean;
+  #stopped = false;
+  #running = false;
+  #rerun = false;
+  #rerunDelayMs = 0;
+  #retryAttempt = 0;
+  #timer: ReturnType<typeof setTimeout> | null = null;
+  #request: AbortController | null = null;
+  #status: AutoSyncStatus = "stopped";
+
+  constructor(
+    sync: (signal: AbortSignal) => Promise<void>,
+    wait: (waitMs: number, signal: AbortSignal) => Promise<SyncWaitResult>,
+    publishStatus: (status: AutoSyncStatus) => void,
+    options: AutoSyncOptions,
+    onStop: () => void,
+  ) {
+    this.#sync = sync;
+    this.#wait = wait;
+    this.#publishStatus = publishStatus;
+    this.#options = normalizeAutoSyncOptions(options);
+    this.#onStop = onStop;
+    this.#active = this.#options.active;
+    this.#online = this.#options.online;
+  }
+
+  get status(): AutoSyncStatus {
+    return this.#status;
+  }
+
+  start(): void {
+    if (this.#stopped) return;
+    if (!this.#active || !this.#online) {
+      this.#setStatus("paused");
+      return;
+    }
+    this.#schedule(this.#options.syncOnStart ? "sync" : "watch", 0);
+  }
+
+  setActive(active: boolean): void {
+    if (this.#stopped || this.#active === active) return;
+    this.#active = active;
+    this.#reconcileAvailability();
+  }
+
+  setOnline(online: boolean): void {
+    if (this.#stopped || this.#online === online) return;
+    this.#online = online;
+    this.#reconcileAvailability();
+  }
+
+  wake(reason: AutoSyncWakeReason = "manual"): void {
+    if (this.#stopped || (reason === "mutation" && !this.#options.syncOnMutation)) return;
+    if (!this.#active || !this.#online) {
+      this.#rerun = true;
+      this.#setStatus("paused");
+      return;
+    }
+    this.#rerun = true;
+    this.#rerunDelayMs = reason === "mutation" ? this.#options.mutationDebounceMs : 0;
+    this.#request?.abort();
+    if (!this.#running) {
+      this.#scheduleRerun();
+    }
+  }
+
+  stop(): void {
+    if (this.#stopped) return;
+    this.#stopped = true;
+    this.#clearTimer();
+    this.#request?.abort();
+    this.#setStatus("stopped");
+    this.#onStop();
+  }
+
+  #reconcileAvailability(): void {
+    if (!this.#active || !this.#online) {
+      this.#clearTimer();
+      this.#request?.abort();
+      this.#setStatus("paused");
+      return;
+    }
+    this.#retryAttempt = 0;
+    this.#rerun = true;
+    this.#rerunDelayMs = 0;
+    this.#request?.abort();
+    if (!this.#running) this.#schedule("sync", 0);
+  }
+
+  #schedule(kind: "sync" | "watch", delayMs: number): void {
+    if (this.#stopped || !this.#active || !this.#online) return;
+    this.#clearTimer();
+    this.#timer = setTimeout(() => {
+      this.#timer = null;
+      void this.#run(kind);
+    }, delayMs);
+    unrefTimer(this.#timer);
+  }
+
+  async #run(kind: "sync" | "watch"): Promise<void> {
+    if (this.#stopped || !this.#active || !this.#online || this.#running) return;
+    this.#running = true;
+    this.#rerun = false;
+    const request = new AbortController();
+    this.#request = request;
+    this.#setStatus(kind === "sync" ? "syncing" : "watching");
+    try {
+      const result = kind === "sync"
+        ? (await this.#sync(request.signal), null)
+        : await this.#wait(this.#options.longPollMs, request.signal);
+      this.#retryAttempt = 0;
+      if (this.#stopped || !this.#active || !this.#online) return;
+      if (this.#rerun) {
+        this.#scheduleRerun();
+      } else if (kind === "watch" && result !== null && waitReturnedTooQuickly(result, this.#options.longPollMs)) {
+        this.#schedule("sync", this.#options.pollIntervalMs);
+      } else if (this.#options.longPollMs > 0) {
+        this.#schedule("watch", 0);
+      } else {
+        this.#schedule("sync", this.#options.pollIntervalMs);
+      }
+    } catch (error) {
+      if (this.#stopped || !this.#active || !this.#online) return;
+      if (isAbortError(error)) {
+        if (this.#rerun) this.#scheduleRerun();
+        else this.#schedule("watch", 0);
+      } else {
+        this.#retryAttempt += 1;
+        this.#setStatus("backoff");
+        this.#schedule("sync", retryDelay(this.#retryAttempt, this.#options));
+      }
+    } finally {
+      if (this.#request === request) this.#request = null;
+      this.#running = false;
+    }
+  }
+
+  #scheduleRerun(): void {
+    const delayMs = this.#rerunDelayMs;
+    this.#rerunDelayMs = 0;
+    this.#schedule("sync", delayMs);
+  }
+
+  #clearTimer(): void {
+    if (this.#timer === null) return;
+    clearTimeout(this.#timer);
+    this.#timer = null;
+  }
+
+  #setStatus(status: AutoSyncStatus): void {
+    this.#status = status;
+    this.#publishStatus(status);
   }
 }
 
@@ -515,6 +857,61 @@ function bounded(value: number, minimum: number, maximum: number): number {
     throw new RangeError(`value must be between ${minimum} and ${maximum}`);
   }
   return value;
+}
+
+function boundedDuration(value: number, minimum: number, maximum: number, name: string): number {
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    throw new RangeError(`${name} must be between ${minimum} and ${maximum}`);
+  }
+  return value;
+}
+
+function normalizeAutoSyncOptions(options: AutoSyncOptions): NormalizedAutoSyncOptions {
+  const retryMinMs = boundedDuration(options.retryMinMs ?? 1_000, 1, 300_000, "retryMinMs");
+  const retryMaxMs = boundedDuration(options.retryMaxMs ?? 30_000, retryMinMs, 3_600_000, "retryMaxMs");
+  return {
+    syncOnStart: options.syncOnStart ?? true,
+    syncOnMutation: options.syncOnMutation ?? true,
+    mutationDebounceMs: boundedDuration(options.mutationDebounceMs ?? 250, 0, 60_000, "mutationDebounceMs"),
+    pollIntervalMs: boundedDuration(options.pollIntervalMs ?? 15_000, 250, 3_600_000, "pollIntervalMs"),
+    longPollMs: boundedDuration(options.longPollMs ?? 25_000, 0, 30_000, "longPollMs"),
+    retryMinMs,
+    retryMaxMs,
+    active: options.active ?? true,
+    online: options.online ?? true,
+    random: options.random ?? Math.random,
+  };
+}
+
+function waitReturnedTooQuickly(result: SyncWaitResult, requestedMs: number): boolean {
+  if (result.changed || requestedMs === 0) return false;
+  return result.waitedMs < Math.min(1_000, Math.max(100, requestedMs / 2));
+}
+
+function nextChangedAt(now: number, previous: number | null): number {
+  return previous === null ? now : Math.max(now, previous + 1);
+}
+
+function retryDelay(attempt: number, options: NormalizedAutoSyncOptions): number {
+  const ceiling = Math.min(options.retryMaxMs, options.retryMinMs * 2 ** Math.max(0, attempt - 1));
+  return Math.round(ceiling * (0.5 + options.random() * 0.5));
+}
+
+function forwardAbort(source: AbortSignal | undefined, destination: AbortController): () => void {
+  if (source === undefined) return () => undefined;
+  const abort = () => destination.abort(source.reason);
+  if (source.aborted) abort();
+  else source.addEventListener("abort", abort, { once: true });
+  return () => source.removeEventListener("abort", abort);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function unrefTimer(timer: ReturnType<typeof setTimeout>): void {
+  const candidate = timer as unknown as { unref?: () => void };
+  candidate.unref?.();
 }
 
 function validateLimit(limit: number): void {

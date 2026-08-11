@@ -239,7 +239,7 @@ export const clientClassSections = [
     ],
     "bullets": [
       "constructor(private readonly client: FFDBClient)",
-      "pull(cursor: string | null, limit = 1_000, options: RequestOptions = {}): Promise<SyncPullResponse>",
+      "pull(cursor: string | null, limit = 1_000, options: SyncPullOptions = {}): Promise<SyncPullResponse>",
       "push(input: SyncPushRequest, options: RequestOptions = {}): Promise<SyncPushResponse>",
       "snapshot(tables?: readonly string[], options: RequestOptions = {}): Promise<SnapshotResponse>"
     ]
@@ -460,6 +460,7 @@ export const clientTypeSections = [
       "export type SyncControl = | { readonly type: \"resnapshot_required\"; readonly reason: string; readonly minimum_schema_version: number; } | { readonly type: \"invalidate_scope\"; readonly scope_fingerprint: string };",
       "export interface SyncMutation { readonly mutation_id: string; readonly table: string; readonly primary_key: JsonValue; readonly operation: ChangeOperation; readonly values: Readonly<Record<string, JsonValue>> | null; readonly base_row_version: number | null; readonly client_timestamp_ms: number | null; }",
       "export interface SyncMutationResult { readonly mutation_id: string; readonly status: MutationStatus; readonly server_sequence: number | null; readonly row_version: number | null; readonly error_code: string | null; }",
+      "export interface SyncPullOptions extends RequestOptions { /** Hold an otherwise-idle pull until a change hint arrives or this timeout elapses. */ readonly waitMs?: number; }",
       "export interface SyncPullResponse { readonly changes: readonly LogicalChange[]; readonly cursor: string; readonly has_more: boolean; readonly control: SyncControl | null; }",
       "export interface SyncPushRequest { readonly schema_version: number; readonly mutations: readonly SyncMutation[]; }",
       "export interface SyncPushResponse { readonly results: readonly SyncMutationResult[]; readonly cursor: string; }",
@@ -823,7 +824,7 @@ export const httpOperationSections = [
     "heading": "HTTP: Sync",
     "bullets": [
       "GET /v1/projects/{project_id}/snapshot — snapshot; auth: userBearer; arguments: project_id (path, required, string); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409",
-      "GET /v1/projects/{project_id}/sync — syncPull; auth: userBearer; arguments: project_id (path, required, string); cursor (query, optional, string); limit (query, optional, integer); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409",
+      "GET /v1/projects/{project_id}/sync — syncPull; auth: userBearer; arguments: project_id (path, required, string); cursor (query, optional, string); limit (query, optional, integer); wait_ms (query, optional, integer); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409",
       "POST /v1/projects/{project_id}/sync/push — syncPush; auth: userBearer; arguments: project_id (path, required, string); body: required object JSON; returns: 200: object; 409: ErrorEnvelope; errors: 409"
     ]
   },

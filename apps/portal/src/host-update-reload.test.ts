@@ -7,14 +7,14 @@ describe("portal reloads after host release changes", () => {
     const href = portalUrlAfterHostUpdate(
       "https://ffdb.example.test/app/instance/updates?panel=history#latest",
       "install",
-      "0.3.13",
+      "0.3.14",
     );
     const url = new URL(href);
 
     expect(url.pathname).toBe("/app/instance/updates");
     expect(url.searchParams.get("panel")).toBe("history");
     expect(url.searchParams.get("ffdb-host-update")).toBe("installed");
-    expect(url.searchParams.get("ffdb-host-version")).toBe("0.3.13");
+    expect(url.searchParams.get("ffdb-host-version")).toBe("0.3.14");
     expect(url.hash).toBe("#latest");
   });
 

@@ -5,8 +5,8 @@ React providers and hooks layered over `@ffdb/client` and
 the underlying client/session/replica adapters support that runtime.
 
 ```bash
-pnpm add --save-exact @ffdb/client@0.3.13 @ffdb/sync-client@0.3.13 \
-  @ffdb/react@0.3.13 react
+pnpm add --save-exact @ffdb/client@0.3.14 @ffdb/sync-client@0.3.14 \
+  @ffdb/react@0.3.14 react
 ```
 
 The matching GitHub Release also provides checksum-listed `.tgz` files for
@@ -26,7 +26,7 @@ export function Providers({ children }: PropsWithChildren) {
 ```
 
 Exports include `useFFDB`, `useAuth`, `useQuery`, `useSessions`,
-`useStorageUpload`, `useSync`, and `optimisticList`.
+`useStorageUpload`, `useSync`, `useAutoSync`, and `optimisticList`.
 
 ## Sync state
 
@@ -45,6 +45,22 @@ function SyncButton() {
 `OfflineSyncClient`. It exposes the current phase, pending count, last-sync time,
 error, and an explicit `sync(signal?)` function. It does not construct a replica,
 start background work, monitor browser focus/AppState/NetInfo, or sync on mount.
+
+For a React DOM application, `useAutoSync` adds the browser lifecycle:
+
+```tsx
+function ConnectionStatus() {
+  const state = useAutoSync(offlineSyncClient);
+  return <span>{state.autoSync === "watching" ? "Live" : state.autoSync}</span>;
+}
+```
+
+It starts the runtime-neutral controller, pauses while the document is hidden or
+the browser reports offline, catches up on focus/reconnect, and stops/cleans up
+listeners on unmount. It is SSR-safe and does not start until the effect mounts.
+Use `useAutoSync(client, { enabled: false })` to retain a manual-only lifecycle.
+React Native applications should call `startAutoSync()` directly and forward
+`AppState` and, when available, network status to the returned controller.
 
 On the web, provide a browser-compatible `FFDBClient` and a persistent
 `ReplicaAdapter` if reload durability is required. On React Native, use secure

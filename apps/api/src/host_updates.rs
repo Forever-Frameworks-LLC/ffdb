@@ -1150,6 +1150,7 @@ mod tests {
             rate_limiter: None,
             audit: audit.clone(),
             readiness_pool: Some(pool),
+            sync_wakes: Arc::new(crate::SyncWakeRegistry::default()),
         };
         let mut headers = HeaderMap::new();
         headers.insert(

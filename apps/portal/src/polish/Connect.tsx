@@ -19,7 +19,7 @@ import {
 import type { PortalConfiguration } from "../config.js";
 import "./connect.css";
 
-const FFDB_VERSION = "0.3.13";
+const FFDB_VERSION = "0.3.14";
 
 type RuntimeId = "react" | "expo" | "node";
 

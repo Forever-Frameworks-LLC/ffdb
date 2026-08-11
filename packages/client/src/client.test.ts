@@ -977,4 +977,27 @@ describe("FFDBClient", () => {
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
     expect(attempts).toBe(1);
   });
+
+  it("adds a bounded wait to authenticated sync pulls", async () => {
+    const calls: Request[] = [];
+    const store = new MemorySessionStore("sync-wait-test");
+    await store.set(session);
+    const client = new FFDBClient({
+      baseUrl: "https://ffdb.example.test",
+      projectId: "project-1",
+      sessionStore: store,
+      fetch: async (input, init) => {
+        calls.push(new Request(input, init));
+        return Response.json({ changes: [], cursor: "cursor-2", has_more: false, control: null });
+      },
+    });
+
+    await client.sync.pull("cursor-1", 500, { waitMs: 25_000 });
+
+    expect(calls[0]?.url).toBe(
+      "https://ffdb.example.test/v1/projects/project-1/sync?limit=500&cursor=cursor-1&wait_ms=25000",
+    );
+    expect(calls[0]?.headers.get("authorization")).toBe("Bearer access-old");
+    expect(() => client.sync.pull("cursor-1", 1_000, { waitMs: 30_001 })).toThrow(RangeError);
+  });
 });

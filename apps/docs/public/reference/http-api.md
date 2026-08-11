@@ -133,7 +133,7 @@ Generated from docs/API/openapi.json. The deployed /openapi.json document remain
 ## Sync
 
 - GET /v1/projects/{project_id}/snapshot — snapshot; auth: userBearer; arguments: project_id (path, required, string); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409
-- GET /v1/projects/{project_id}/sync — syncPull; auth: userBearer; arguments: project_id (path, required, string); cursor (query, optional, string); limit (query, optional, integer); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409
+- GET /v1/projects/{project_id}/sync — syncPull; auth: userBearer; arguments: project_id (path, required, string); cursor (query, optional, string); limit (query, optional, integer); wait_ms (query, optional, integer); body: none; returns: 200: object; 409: ErrorEnvelope; errors: 409
 - POST /v1/projects/{project_id}/sync/push — syncPush; auth: userBearer; arguments: project_id (path, required, string); body: required object JSON; returns: 200: object; 409: ErrorEnvelope; errors: 409
 
 ## Storage

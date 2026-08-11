@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use ffdb_api::{ApiState, CredentialError, CredentialVerifier, router};
+use ffdb_api::{ApiState, CredentialError, CredentialVerifier, SyncWakeRegistry, router};
 use ffdb_database_router::{DatabaseExecutor, DatabaseRouter, ExecutionError, RoutingError};
 use ffdb_protocol::{
     AuthContext, DatabaseRoute, DeveloperPrincipal, DeveloperScope, ExecutionMode, ProjectId,
@@ -96,6 +96,7 @@ fn test_state() -> ApiState {
         rate_limiter: None,
         audit: Arc::new(ffdb_audit::InMemoryAuditSink::default()),
         readiness_pool: None,
+        sync_wakes: Arc::new(SyncWakeRegistry::default()),
     }
 }
 

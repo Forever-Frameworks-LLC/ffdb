@@ -20,8 +20,8 @@ end-user project.
 | Parameterized SQL | owner-scoped reads with tagged parameters |
 | Transactions | task plus event writes commit together |
 | RLS | task, event, and storage policies compare `owner_id` with `auth.uid()` |
-| Browser offline sync | `IndexedDbReplica`, optimistic update/delete, pending state, snapshot/push/pull, online resume |
-| React integration | `FFDBProvider`, `AuthProvider`, `useAuth`, `useFFDB`, `useQuery`, `useSessions`, `useStorageUpload`, `useSync`, and `optimisticList` |
+| Browser offline sync | `IndexedDbReplica`, optimistic update/delete, pending state, authenticated long poll, fallback polling, focus/online resume |
+| React integration | `FFDBProvider`, `AuthProvider`, `useAuth`, `useFFDB`, `useQuery`, `useSessions`, `useStorageUpload`, `useAutoSync`, and `optimisticList` |
 | Object storage | list, upload, authenticated download, delete, and multipart upload/abort for files at least 5 MiB |
 | Trusted project setup | migration apply, bucket creation, schema/policy introspection, readiness, and integrity check |
 | Node | `MemorySessionStore`, parameterized query, `OfflineSyncClient`, and persistent `NodeSQLiteReplica` |
@@ -36,7 +36,7 @@ the right full-system test surfaces for those capabilities.
 
 Requirements:
 
-- the hosted FFDB server must match this checkout's package version (`0.3.13`);
+- the hosted FFDB server must match this checkout's package version (`0.3.14`);
 - one project ID;
 - one project developer key with `database_migrate`, `database_schema`,
   `storage_manage`, and `backups_manage` (the last scope authorizes the
@@ -79,8 +79,9 @@ restart.
 
 1. Create an account, verify it using the delivered token, and sign in.
 2. Let the initial transaction seed four tasks, then create and complete one.
-3. Edit a task title. It changes immediately in IndexedDB and shows `Pending
-   sync`; click **Sync now** to push it.
+3. Edit a task title. It changes immediately in IndexedDB, then the debounced
+   live-sync controller pushes it without a refresh. Keep a second tab open to
+   see authenticated remote changes arrive through the waiting pull.
 4. Upload a small file, download it, and delete it. Try a 5–50 MiB file to run
    the multipart path.
 5. Open **Sessions** in another tab after signing in there, then revoke the
@@ -95,8 +96,9 @@ restart.
    ```
 
 The Node check creates one optimistic row in a user-scoped SQLite replica,
-pushes it to FFDB, verifies it with a parameterized remote query, deletes it,
-and retains the local replica under `.data/` so persistence can be inspected.
+lets the shared automatic-sync controller push it, verifies it with a
+parameterized remote query, automatically deletes it, and retains the local
+replica under `.data/` so persistence can be inspected.
 
 ## Local verification
 

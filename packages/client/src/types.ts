@@ -865,6 +865,11 @@ export interface SyncPullResponse {
   readonly control: SyncControl | null;
 }
 
+export interface SyncPullOptions extends RequestOptions {
+  /** Hold an otherwise-idle pull until a change hint arrives or this timeout elapses. */
+  readonly waitMs?: number;
+}
+
 export interface SyncMutation {
   readonly mutation_id: string;
   readonly table: string;

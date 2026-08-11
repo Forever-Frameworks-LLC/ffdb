@@ -45,13 +45,13 @@ import { FFDBError, generateId } from "@ffdb/client";
 import {
   optimisticList,
   useAuth,
+  useAutoSync,
   useFFDB,
   useQuery,
   useSessions,
   useStorageUpload,
-  useSync,
 } from "@ffdb/react";
-import { OfflineSyncClient } from "@ffdb/sync-client";
+import { OfflineSyncClient, type AutoSyncStatus } from "@ffdb/sync-client";
 import { IndexedDbReplica } from "@ffdb/sync-client/browser";
 
 import { ffdbProjectId } from "./ffdb";
@@ -115,7 +115,7 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
     const replicaName = `ffdb-field-notes-v2-${ffdbProjectId}-${session.user.id}`;
     return new OfflineSyncClient(client, new IndexedDbReplica(replicaName));
   }, [client, session.user.id]);
-  const sync = useSync(syncClient);
+  const sync = useAutoSync(syncClient);
 
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
   const visibleTasks = useMemo(() => filterTasks(tasks, filter, search), [tasks, filter, search]);
@@ -199,6 +199,23 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
   }, [client, loadTasks, session.user.id, syncClient]);
 
   useEffect(() => {
+    if (sync.lastChangedAtMs === null) return;
+    void loadTasks()
+      .then(() => {
+        setEventRevision((value) => value + 1);
+        setHealth("ready");
+      })
+      .catch((cause) => {
+        setHealth("error");
+        setNotice(errorMessage(cause));
+      });
+  }, [loadTasks, sync.lastChangedAtMs]);
+
+  useEffect(() => {
+    if (sync.lastSyncedAtMs !== null && sync.phase === "idle") setHealth("ready");
+  }, [sync.lastSyncedAtMs, sync.phase]);
+
+  useEffect(() => {
     if (selectedId === null) {
       setAttachments([]);
       return;
@@ -209,7 +226,6 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
   useEffect(() => {
     const handleOnline = () => {
       setOnline(true);
-      void runSync("Connection restored and pending changes synced.");
     };
     const handleOffline = () => setOnline(false);
     window.addEventListener("online", handleOnline);
@@ -218,7 +234,7 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [runSync]);
+  }, []);
 
   async function addTask(event: FormEvent) {
     event.preventDefault();
@@ -262,7 +278,7 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
       setPendingTaskIds((current) => new Set(current).add(task.id));
       setEditingId(null);
       await loadTasks();
-      setNotice("Edit queued locally. Use Sync now to push it to FFDB.");
+      setNotice("Edit queued locally. Live sync will push it automatically.");
     } catch (cause) {
       setNotice(errorMessage(cause));
     }
@@ -274,7 +290,7 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
       await queueTaskDelete(syncClient, task);
       setPendingTaskIds((current) => new Set(current).add(task.id));
       await loadTasks();
-      setNotice("Deletion queued locally. Sync when you are ready.");
+      setNotice("Deletion queued locally. Live sync will push it automatically.");
     } catch (cause) {
       setNotice(errorMessage(cause));
     }
@@ -447,14 +463,14 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
         </nav>
         <div className="sidebar-section connection-section">
           <span className="section-label">Connection</span>
-          <strong><span className={`status-dot ${online && health === "ready" ? "connected" : health}`} />{online ? (health === "ready" ? "Online" : "Needs attention") : "Offline"}</strong>
+          <strong><span className={`status-dot ${online && health === "ready" && sync.autoSync !== "backoff" ? "connected" : health}`} />{connectionLabel(online, health, sync.autoSync)}</strong>
           <small>Browser · IndexedDB replica</small>
           <small>{ffdbProjectId.slice(0, 18)}{ffdbProjectId.length > 18 ? "…" : ""}</small>
           <button className="sync-button" disabled={busy === "sync"} onClick={() => void runSync()}><RefreshCw className={sync.phase !== "idle" ? "spin" : ""} /> Sync now</button>
           <span className="last-sync">Last sync: {formatTime(sync.lastSyncedAtMs)}</span>
           <span className={`up-to-date ${health === "error" || sync.phase === "error" ? "error" : ""}`}>
             {health === "error" || sync.phase === "error" ? <CircleAlert /> : <CheckCircle2 />}
-            {health === "error" || sync.phase === "error" ? "Server check failed" : sync.pending === 0 ? "Up to date" : `${sync.pending} pending`}
+            {health === "error" || sync.phase === "error" ? "Retrying automatically" : sync.pending === 0 ? "Watching for changes" : `${sync.pending} pending`}
           </span>
         </div>
         <div className="sidebar-section queue-section">
@@ -644,6 +660,19 @@ function buildFeatureChecks({ session, syncPending, attachmentCount, sessionCoun
 function initials(email: string): string {
   const name = email.split("@")[0] ?? "FF";
   return name.split(/[._-]/).map((part) => part[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "FF";
+}
+
+function connectionLabel(
+  online: boolean,
+  health: "checking" | "ready" | "error",
+  autoSync: AutoSyncStatus,
+): string {
+  if (!online) return "Offline";
+  if (health === "error" || autoSync === "backoff") return "Retrying";
+  if (autoSync === "syncing") return "Syncing";
+  if (autoSync === "paused") return "Paused";
+  if (health === "ready" && autoSync === "watching") return "Live sync";
+  return "Connecting";
 }
 
 function errorMessage(cause: unknown): string {
