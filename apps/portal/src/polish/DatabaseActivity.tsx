@@ -131,8 +131,8 @@ export function SqlEditorPanel({ client, initialSql = "SELECT sqlite_version() A
       statements = splitSqlStatements(batchSql);
       if (statements.length === 0) throw new Error("Enter at least one executable SQL statement.");
       const results = statements.length === 1
-        ? [await client.query({ sql: statements[0]!, options: { max_rows: 500 } })]
-        : await client.transaction({ statements: statements.map((statement) => ({ sql: statement, options: { max_rows: 500 } })) });
+        ? [await client.developerQuery({ sql: statements[0]!, options: { max_rows: 500 } })]
+        : await client.developerTransaction({ statements: statements.map((statement) => ({ sql: statement, options: { max_rows: 500 } })) });
       const next: QueryRun = { id, sql: batchSql, statements, startedAt, durationMs: Date.now() - startedAt, results, error: null };
       setRuns((current) => [next, ...current].slice(0, 20));
       setSelectedRunId(id);
@@ -253,7 +253,7 @@ export function DatabasePanel({ client, onOpenMigrations }: DatabasePanelProps) 
   const loadRows = useCallback(async (table: string) => {
     setRows({ status: "loading" });
     try {
-      setRows({ status: "ready", data: await client.query({ sql: `SELECT * FROM ${quoteIdentifier(table)} LIMIT 500;`, options: { max_rows: 500 } }) });
+      setRows({ status: "ready", data: await client.developerQuery({ sql: `SELECT * FROM ${quoteIdentifier(table)} LIMIT 500;`, options: { max_rows: 500 } }) });
     } catch (cause) {
       setRows({ status: "error", error: errorMessage(cause) });
     }
@@ -831,7 +831,7 @@ function EditableTableGrid({ actionTarget, client, result, table, onReload }: { 
     setSaving(true);
     setMessage(null);
     try {
-      await client.transaction({ statements });
+      await client.developerTransaction({ statements });
       await onReload();
       setMessage({ tone: "success", text: `${statements.length} ${statements.length === 1 ? "change" : "changes"} saved atomically.` });
     } catch (cause) {

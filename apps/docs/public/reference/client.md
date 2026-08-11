@@ -46,7 +46,9 @@ Generated from the exported TypeScript declarations. All Promise-returning netwo
 - `setProjectId(projectId: string): void`
 - `setDeveloperKey(developerKey: string | null): void`
 - `async query<Row extends readonly (null | number | string | { readonly $blob: string })[] = readonly ( | null | number | string | { readonly $blob: string })[]>(request: QueryRequest, options: RequestOptions = {}): Promise<QueryResult<Row>>`
+- `async developerQuery<Row extends readonly (null | number | string | { readonly $blob: string })[] = readonly ( | null | number | string | { readonly $blob: string })[]>(request: QueryRequest, options: RequestOptions = {}): Promise<QueryResult<Row>>`
 - `async transaction( request: TransactionRequest, options: RequestOptions = {},): Promise<readonly QueryResult[]>`
+- `async developerTransaction( request: TransactionRequest, options: RequestOptions = {},): Promise<readonly QueryResult[]>`
 - `async migrate(spec: MigrationSpec, options: RequestOptions = {}): Promise<JsonValue>`
 - `async rollbackMigration(id: string, options: RequestOptions = {}): Promise<JsonValue>`
 - `async schema(options: RequestOptions = {}): Promise<SchemaSnapshot>`

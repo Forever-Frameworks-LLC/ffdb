@@ -110,7 +110,9 @@ export function FieldNotesApp({ session }: { readonly session: AuthTokenPair }) 
   const [diagnosticChecks, setDiagnosticChecks] = useState<readonly FeatureCheck[]>([]);
 
   const syncClient = useMemo(() => {
-    const replicaName = `ffdb-field-notes-${ffdbProjectId}-${session.user.id}`;
+    // v2 starts with an authoritative snapshot after the single-column primary
+    // key protocol fix instead of retaining keys written in the legacy shape.
+    const replicaName = `ffdb-field-notes-v2-${ffdbProjectId}-${session.user.id}`;
     return new OfflineSyncClient(client, new IndexedDbReplica(replicaName));
   }, [client, session.user.id]);
   const sync = useSync(syncClient);

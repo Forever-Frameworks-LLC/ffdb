@@ -2030,6 +2030,7 @@ mod tests {
         assert_eq!(alice.changes.len(), 1);
         assert_eq!(alice.changes[0].operation, SyncChangeOperation::Insert);
         assert_eq!(alice.changes[0].table, "documents");
+        assert_eq!(alice.changes[0].primary_key, serde_json::json!(7));
         assert_eq!(
             alice.changes[0]
                 .values

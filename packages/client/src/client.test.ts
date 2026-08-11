@@ -94,6 +94,38 @@ describe("FFDBClient", () => {
     expect(authorization).toBe("Bearer ffdb_dev_prefix.secret");
   });
 
+  it("keeps privileged database operations on the developer credential when an end-user session also exists", async () => {
+    const calls: Request[] = [];
+    const store = new MemorySessionStore("portal-database-test");
+    await store.set(session);
+    const client = new FFDBClient({
+      baseUrl: "https://ffdb.example.test",
+      projectId: "project-1",
+      developerKey: "ffdb_dev_portal.secret",
+      sessionStore: store,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/transaction")) return Response.json([]);
+        return Response.json({
+          columns: [{ name: "value", type: "integer" }],
+          rows: [[1]],
+          affected_rows: 0,
+          last_insert_rowid: null,
+          truncated: false,
+        });
+      },
+    });
+
+    await client.developerQuery({ sql: "select 1" });
+    await client.developerTransaction({ statements: [{ sql: "select 1" }] });
+
+    expect(calls.map((call) => call.headers.get("authorization"))).toEqual([
+      "Bearer ffdb_dev_portal.secret",
+      "Bearer ffdb_dev_portal.secret",
+    ]);
+  });
+
   it("unwraps the tagged worker protocol without leaking transport envelopes", async () => {
     const client = new FFDBClient({
       baseUrl: "https://ffdb.example.test",
