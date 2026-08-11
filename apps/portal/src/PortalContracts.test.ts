@@ -149,7 +149,7 @@ describe("portal route/action coverage matrix", () => {
     expect(gatewaySource).toContain("script-src 'self'");
     expect(databaseSource).toContain('aria-label="Resize query and results panels"');
     expect(databaseSource).toContain("function EditableTableGrid");
-    expect(databaseSource).toContain("client.transaction({ statements })");
+    expect(databaseSource).toContain("client.developerTransaction({ statements })");
   });
 
   it("keeps narrow database tables compact without sacrificing wide-table scrolling", () => {

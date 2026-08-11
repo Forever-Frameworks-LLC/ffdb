@@ -284,6 +284,28 @@ export class FFDBClient {
     });
   }
 
+  /** Execute with an explicitly configured developer credential.
+   *
+   * This is intended for trusted administration surfaces such as the FFDB
+   * portal. Unlike `query`, an end-user session never takes precedence, so
+   * project operators can inspect RLS-protected data without changing the
+   * authorization behavior of application queries.
+   */
+  async developerQuery<Row extends readonly (null | number | string | { readonly $blob: string })[] = readonly (
+    | null
+    | number
+    | string
+    | { readonly $blob: string }
+  )[]>(request: QueryRequest, options: RequestOptions = {}): Promise<QueryResult<Row>> {
+    return this.workerRequest<QueryResult<Row>>(this.projectPath("query"), {
+      method: "POST",
+      body: JSON.stringify(request),
+      ...options,
+      idempotencyKey: options.idempotencyKey ?? newIdempotencyKey("query"),
+      credential: "developer",
+    });
+  }
+
   async transaction(
     request: TransactionRequest,
     options: RequestOptions = {},
@@ -294,6 +316,21 @@ export class FFDBClient {
       ...options,
       idempotencyKey: options.idempotencyKey ?? newIdempotencyKey("transaction"),
       credential: "either",
+    });
+  }
+
+  /** Execute a transaction with the configured developer credential even when
+   * this client also holds an end-user session. See `developerQuery`. */
+  async developerTransaction(
+    request: TransactionRequest,
+    options: RequestOptions = {},
+  ): Promise<readonly QueryResult[]> {
+    return this.workerRequest<readonly QueryResult[]>(this.projectPath("transaction"), {
+      method: "POST",
+      body: JSON.stringify(request),
+      ...options,
+      idempotencyKey: options.idempotencyKey ?? newIdempotencyKey("transaction"),
+      credential: "developer",
     });
   }
 

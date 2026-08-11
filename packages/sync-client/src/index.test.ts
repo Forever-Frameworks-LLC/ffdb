@@ -200,6 +200,68 @@ describe("OfflineSyncClient", () => {
     expect(sync.state).toMatchObject({ phase: "idle", pending: 0, error: null });
   });
 
+  it("replaces a scalar snapshot row when an older server sends its update with an object key", async () => {
+    const snapshot: SnapshotResponse = {
+      schema_version: 1,
+      cursor: "snapshot-cursor",
+      tables: {
+        notes: {
+          columns: [
+            { name: "id", type: "text" },
+            { name: "title", type: "text" },
+            { name: "complete", type: "integer" },
+            { name: "__ffdb_primary_key", type: "text" },
+            { name: "__ffdb_row_version", type: "integer" },
+            { name: "__ffdb_server_sequence", type: "integer" },
+          ],
+          rows: [["note-1", "asdf", 0, '"note-1"', 1, 1]],
+          affected_rows: 0,
+          last_insert_rowid: null,
+          truncated: false,
+        },
+      },
+    };
+    const update: LogicalChange = {
+      sequence: 2,
+      transaction_id: "transaction-2",
+      table: "notes",
+      primary_key: { id: "note-1" },
+      operation: "update",
+      row_version: 2,
+      values: { id: "note-1", title: "asdf", complete: 1 },
+      tombstone: null,
+      actor: "user-1",
+      schema_version: 1,
+      committed_at_ms: 200,
+      client_mutation_id: "complete-note-1",
+    };
+    const client = {
+      sync: {
+        snapshot: async () => snapshot,
+        push: async () => ({ cursor: "snapshot-cursor", results: [] }),
+        pull: async () => ({
+          changes: [update],
+          cursor: "update-cursor",
+          has_more: false,
+          control: null,
+        }),
+      },
+    } as unknown as FFDBClient;
+    const replica = new MemoryReplica();
+    const sync = new OfflineSyncClient(client, replica);
+
+    await sync.sync();
+
+    expect(await sync.listRows("notes")).toEqual([{
+      table: "notes",
+      primaryKey: "note-1",
+      values: { id: "note-1", title: "asdf", complete: 1 },
+      rowVersion: 2,
+      serverSequence: 2,
+    }]);
+    expect(await sync.getRow("notes", { id: "note-1" })).toBeNull();
+  });
+
   it("rejects an incomplete push response instead of retrying the same pending batch forever", async () => {
     const client = {
       sync: {

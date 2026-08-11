@@ -404,18 +404,33 @@ export function sameMutationContent(left: SyncMutation, right: SyncMutation): bo
 }
 
 async function applyChange(transaction: ReplicaTransaction, change: LogicalChange): Promise<void> {
+  const primaryKey = normalizePrimaryKey(change.primary_key);
+  const legacyPrimaryKey = stableJson(primaryKey) === stableJson(change.primary_key)
+    ? null
+    : change.primary_key;
+  if (legacyPrimaryKey !== null) {
+    await transaction.delete(change.table, legacyPrimaryKey, change.row_version, change.sequence);
+  }
   if (change.operation === "delete") {
-    await transaction.delete(change.table, change.primary_key, change.row_version, change.sequence);
+    await transaction.delete(change.table, primaryKey, change.row_version, change.sequence);
   } else {
     if (change.values === null) throw new Error("Upsert change is missing values");
     await transaction.upsert({
       table: change.table,
-      primaryKey: change.primary_key,
+      primaryKey,
       values: change.values,
       rowVersion: change.row_version,
       serverSequence: change.sequence,
     });
   }
+}
+
+function normalizePrimaryKey(primaryKey: JsonValue): JsonValue {
+  if (primaryKey === null || Array.isArray(primaryKey) || typeof primaryKey !== "object") {
+    return primaryKey;
+  }
+  const entries = Object.entries(primaryKey);
+  return entries.length === 1 ? entries[0]![1] : primaryKey;
 }
 
 function decodeSnapshotTable(table: string, result: QueryResult): readonly ReplicaRecord[] {

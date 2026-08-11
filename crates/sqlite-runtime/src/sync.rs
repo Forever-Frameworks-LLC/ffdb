@@ -361,7 +361,13 @@ impl Session<'_> {
         let mut visible = Vec::new();
         let mut examined = after;
         let mut has_more = false;
-        for change in changes {
+        for mut change in changes {
+            // Change capture stores a canonical object so the internal version
+            // ledger has one unambiguous key format. The public snapshot
+            // protocol has always represented a single-column key as its scalar
+            // value, so pulls must expose the same shape or replicas retain the
+            // snapshot row and insert an apparent duplicate for the update.
+            change.primary_key = public_sync_primary_key(change.primary_key)?;
             let row = change
                 .values
                 .as_ref()
@@ -951,6 +957,19 @@ impl Session<'_> {
             )
             .map_err(Into::into)
     }
+}
+
+fn public_sync_primary_key(primary_key: JsonValue) -> Result<JsonValue, RuntimeError> {
+    let JsonValue::Object(values) = primary_key else {
+        return Err(RuntimeError::Database);
+    };
+    if values.is_empty() {
+        return Err(RuntimeError::Database);
+    }
+    if values.len() == 1 {
+        return values.into_values().next().ok_or(RuntimeError::Database);
+    }
+    Ok(JsonValue::Object(values))
 }
 
 fn capture_source_names(table: &str) -> Result<[Identifier; 4], RuntimeError> {

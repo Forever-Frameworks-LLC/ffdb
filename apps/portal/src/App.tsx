@@ -1303,7 +1303,7 @@ function SqlPanel({ client, sql, onSql }: { readonly client: FFDBClient; readonl
   const [error, setError] = useState<string | null>(null);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setState("running"); setError(null);
-    try { setResult(await client.query({ sql, options: { max_rows: 250 } })); }
+    try { setResult(await client.developerQuery({ sql, options: { max_rows: 250 } })); }
     catch (cause) { setError(errorMessage(cause)); }
     finally { setState("idle"); }
   };
@@ -1328,7 +1328,7 @@ function DatabasePanel({ client }: { readonly client: FFDBClient }) {
   const [selectedTable, setSelectedTable] = useState("");
   const [rows, setRows] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const browse = async (table: string) => { setSelectedTable(table); setError(null); try { setRows(await client.query({ sql: `SELECT * FROM "${table.replaceAll('"', '""')}" LIMIT 100` })); } catch (cause) { setError(errorMessage(cause)); } };
+  const browse = async (table: string) => { setSelectedTable(table); setError(null); try { setRows(await client.developerQuery({ sql: `SELECT * FROM "${table.replaceAll('"', '""')}" LIMIT 100` })); } catch (cause) { setError(errorMessage(cause)); } };
   if (resource.status !== "ready") return <ResourceState resource={resource} title="Loading schema" />;
   const { schema, migrations } = resource.data;
   return <div className="management-grid"><section className="management-panel span-two"><PanelHeader title={`Schema version ${schema.version}`} />{schema.tables.length === 0 ? <EmptyState title="No tables" detail="This project has no application tables yet." /> : <SimpleTable headings={["Table", "RLS", "Force", "Definition", "Data"]} rows={schema.tables.map((table) => [table.name, table.rls_enabled ? "Enabled" : "Disabled", table.rls_forced ? "Yes" : "No", table.sql, <button type="button" key={table.name} onClick={() => void browse(table.name)}>Browse</button>])} />}</section><section className="management-panel span-two"><PanelHeader title="Migration history" />{migrations.length === 0 ? <EmptyState title="No migrations" detail="Applied and rolled-back migrations will appear here." /> : <SimpleTable headings={["Migration", "Status", "Schema", "Applied"]} rows={migrations.map(migrationRow)} />}</section>{selectedTable === "" ? null : <section className="management-panel span-two"><PanelHeader title={`Rows · ${selectedTable}`} />{error === null ? null : <ErrorState message={error} />}{rows === null ? <p>Loading table rows…</p> : <QueryResultTable result={rows} />}</section>}</div>;

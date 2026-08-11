@@ -54,7 +54,7 @@ export function nativeSyncClient(session: AuthTokenPair): Promise<OfflineSyncCli
   if (existing !== undefined) return existing;
   if (ffdb === null) return Promise.reject(new Error(configurationError ?? "FFDB is not configured"));
 
-  const creating = SQLite.openDatabaseAsync(`ffdb-field-notes-${session.user.id}.sqlite3`)
+  const creating = SQLite.openDatabaseAsync(`ffdb-field-notes-v2-${session.user.id}.sqlite3`)
     .then(async (database) => {
       const replica = new NativeSQLiteReplica(new ExpoSQLiteDriver(database));
       await replica.initialize();

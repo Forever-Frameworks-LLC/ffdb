@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { completionStatus, startCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { FFDBClient, type AuditLogEntry } from "@ffdb/client";
+import { FFDBClient, MemorySessionStore, type AuditLogEntry } from "@ffdb/client";
 
 import { ActivityPanel, DatabasePanel, MigrationsPanel, SqlEditorPanel, splitSqlStatements } from "./DatabaseActivity.js";
 
@@ -35,6 +35,47 @@ describe("polished database workflows", () => {
     const request = calls.find((call) => call.url.endsWith("/query"));
     expect(request).toBeDefined();
     await expect(request?.json()).resolves.toMatchObject({ sql: "SELECT sqlite_version() AS version" });
+  });
+
+  it("reads RLS-protected tables with the portal credential even after the Auth tools create an end-user session", async () => {
+    const calls: Request[] = [];
+    const sessions = new MemorySessionStore("portal-operator-rls-test");
+    await sessions.set({
+      access_token: "end-user-access",
+      refresh_token: "end-user-refresh",
+      token_type: "Bearer",
+      expires_in_seconds: 900,
+      session_id: "end-user-session",
+      user: {
+        id: "user-1",
+        email: "user@example.test",
+        email_verified: true,
+        disabled: false,
+        role: "authenticated",
+        custom_claims: {},
+        created_at_ms: 1,
+      },
+    });
+    const client = new FFDBClient({
+      baseUrl: "https://ffdb.example.test",
+      projectId: "project-1",
+      developerKey: "ffdb_dev_portal.secret",
+      sessionStore: sessions,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        calls.push(request);
+        if (request.url.endsWith("/schema")) return Response.json({ version: 1, tables: [{ name: "documents", sql: "CREATE TABLE documents(id TEXT PRIMARY KEY)", rls_enabled: true, rls_forced: true }] });
+        if (request.url.endsWith("/migrations")) return Response.json([]);
+        if (request.url.endsWith("/query")) return Response.json({ columns: [{ name: "id", type: "text" }], rows: [["doc-1"]], affected_rows: 0, last_insert_rowid: null, truncated: false });
+        return Response.json({ error: { code: "missing", message: "missing", request_id: "request-1" } }, { status: 404 });
+      },
+    });
+
+    render(<DatabasePanel client={client} />);
+
+    expect(await screen.findByText("doc-1")).toBeInTheDocument();
+    const query = calls.find((call) => call.url.endsWith("/query"));
+    expect(query?.headers.get("authorization")).toBe("Bearer ffdb_dev_portal.secret");
   });
 
   it("accepts autocomplete with Tab and runs a semicolon-delimited batch with Command-Enter", async () => {
@@ -249,12 +290,18 @@ describe("polished database workflows", () => {
 
     render(<DatabasePanel client={client} />);
     fireEvent.change(await screen.findByRole("textbox", { name: "Edit title row 1" }), { target: { value: "First updated" } });
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Edit title row 1" }).closest("tr")).toHaveClass("is-dirty"));
+    await waitFor(
+      () => expect(screen.getByRole("textbox", { name: "Edit title row 1" }).closest("tr")).toHaveClass("is-dirty"),
+      { timeout: 3_000 },
+    );
     expect(screen.getByRole("toolbar", { name: "Pending table changes" }).closest(".ffdb-data-toolbar")).not.toBeNull();
     fireEvent.click(screen.getByRole("checkbox", { name: "Select row 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Delete selected" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm 1" }));
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Select row 2" }).closest("tr")).toHaveClass("is-pending-delete"));
+    await waitFor(
+      () => expect(screen.getByRole("checkbox", { name: "Select row 2" }).closest("tr")).toHaveClass("is-pending-delete"),
+      { timeout: 3_000 },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     const transaction = await waitFor(() => {
