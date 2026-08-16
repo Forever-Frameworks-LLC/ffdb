@@ -21,8 +21,8 @@
     "@uiw/react-codemirror": "^4.25.9",
     "@lezer/highlight": "^1.2.3",
     "lucide-react": "^0.468.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-resizable-panels": "^4.9.0",
     "sql-formatter": "^15.7.3"
   },
