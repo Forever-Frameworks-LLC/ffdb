@@ -760,7 +760,7 @@ dependencies = [
  "ffdb-protocol",
  "ffdb-sql-parser",
  "ffdb-sqlite-runtime",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "hex",
  "hkdf",
  "hmac",
