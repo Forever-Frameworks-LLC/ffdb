@@ -194,6 +194,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
+
+[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -597,7 +603,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
- "base64",
+ "base64 0.23.1",
  "chrono",
  "ffdb-audit",
  "ffdb-auth",
@@ -658,7 +664,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "ed25519-dalek",
  "ffdb-postgres",
  "ffdb-protocol",
@@ -710,7 +716,7 @@ dependencies = [
 name = "ffdb-config"
 version = "0.3.14"
 dependencies = [
- "base64",
+ "base64 0.23.1",
  "ffdb-protocol",
  "ipnet",
  "secrecy",
@@ -754,7 +760,7 @@ version = "0.3.14"
 dependencies = [
  "aes-gcm",
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "ffdb-migration-engine",
  "ffdb-object-storage",
  "ffdb-protocol",
@@ -817,7 +823,7 @@ name = "ffdb-object-storage"
 version = "0.3.14"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "chrono",
  "ffdb-protocol",
  "getrandom 0.4.3",
@@ -870,7 +876,7 @@ dependencies = [
 name = "ffdb-protocol"
 version = "0.3.14"
 dependencies = [
- "base64",
+ "base64 0.23.1",
  "hex",
  "schemars",
  "serde",
@@ -921,7 +927,7 @@ dependencies = [
 name = "ffdb-sqlite-runtime"
 version = "0.1.0"
 dependencies = [
- "base64",
+ "base64 0.23.1",
  "ffdb-sql-parser",
  "ffdb-sqlite-rls",
  "hex",
@@ -940,7 +946,7 @@ dependencies = [
 name = "ffdb-sync-engine"
 version = "0.3.14"
 dependencies = [
- "base64",
+ "base64 0.23.1",
  "hmac",
  "serde",
  "serde_json",
@@ -954,7 +960,7 @@ name = "ffdb-sync-worker"
 version = "0.3.14"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "ffdb-sync-engine",
  "hex",
  "serde",
@@ -1301,7 +1307,7 @@ version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96547c2556ec9d12fb1578c4eaf448b04993e7fb79cbaad930a656880a6bdfa0"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "futures-channel",
  "futures-util",
@@ -1985,7 +1991,7 @@ version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "futures-core",
  "http",
@@ -2340,7 +2346,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05b44e85bf579a8eeb4ceaa77a3a523baf2bf0e9bac7e40f405d537b5d2d5ccb"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "cfg-if",
  "chrono",
@@ -2379,7 +2385,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87a2bdd6e83f6b3ea525ca9fee568030508b58355a43d0b2c1674d5f79dcd65e"
 dependencies = [
  "atoi",
- "base64",
+ "base64 0.22.1",
  "bitflags",
  "byteorder",
  "chrono",

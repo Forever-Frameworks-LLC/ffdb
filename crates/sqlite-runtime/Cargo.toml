@@ -7,7 +7,7 @@ publish = false
 description = "Hardened, context-bound SQLite execution for FFDB workers"
 
 [dependencies]
-base64 = "0.22.1"
+base64 = "0.23.1"
 ffdb-sql-parser = { path = "../sql-parser" }
 ffdb-sqlite-rls = { path = "../sqlite-rls" }
 hex.workspace = true
