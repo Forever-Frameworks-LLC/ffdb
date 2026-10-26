@@ -30,7 +30,7 @@ regex = "1.11"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Keep libsqlite3-sys aligned with SQLx 0.8's optional SQLite support. FFDB uses
 # rusqlite directly for project databases; SQLx remains PostgreSQL-only at runtime.
-rusqlite = { version = "0.32", features = ["backup", "bundled", "functions", "hooks", "limits", "modern_sqlite"] }
+rusqlite = { version = "0.40", features = ["backup", "bundled", "functions", "hooks", "limits", "modern_sqlite"] }
 schemars = { version = "1.0", features = ["uuid1"] }
 secrecy = "0.10"
 serde = { version = "1.0", features = ["derive"] }
